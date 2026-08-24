@@ -2,9 +2,9 @@
 
 Repositorio público oficial de las skills de AILAB para Claude Code y Codex.
 
-> **Beta técnica:** el código está publicado para revisión, pero la distribución a
-> miembros permanece pausada hasta que los endpoints de catálogo, asistentes y
-> actualizaciones de AILAB estén activos y verificados en producción.
+> **Beta técnica:** disponible para cuentas de AILAB que tengan habilitado el
+> acceso beta. Catálogo, asistentes y actualizaciones se sirven desde AILAB y el
+> servidor sigue siendo la autoridad de acceso, saldo y cobro.
 
 Las skills son clientes públicos. Descargar este repositorio no concede acceso a
 AILAB, créditos ni credenciales de proveedores. Cada miembro utiliza su propia
