@@ -1,0 +1,21 @@
+.DS_Store
+node_modules/
+dist/
+coverage/
+*.tmp
+*.log
+
+# Nunca versionar credenciales, estado local o datos de usuario.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+token
+token.json
+cookie.json
+.config/

@@ -1,0 +1,8 @@
+interface:
+  display_name: "AILAB"
+  short_description: "Playground y asistentes de AILAB"
+  brand_color: "#1296DB"
+  default_prompt: "Usa $ailab para preparar esta creación, mostrarme el coste y esperar mi confirmación antes de gastar créditos."
+
+policy:
+  allow_implicit_invocation: true

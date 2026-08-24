@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-24",
+  "skills": [
+    {
+      "id": "ailab",
+      "name": "AILAB",
+      "version": "2.1.3",
+      "channel": "beta",
+      "path": "skills/ailab",
+      "description": "Playground y asistentes de AILAB desde agentes de código.",
+      "minimum_node": "18.17.0",
+      "clients": [
+        "claude-code",
+        "codex"
+      ]
+    }
+  ]
+}

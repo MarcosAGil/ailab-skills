@@ -1,0 +1,11 @@
+{
+  "name": "ailab-skill",
+  "version": "2.1.3",
+  "private": true,
+  "type": "module",
+  "description": "AILAB desde Claude Code: Playground, asistentes remotos, tokens revocables y actualización segura.",
+  "scripts": {
+    "self-test": "AILAB_SKIP_UPDATE=1 node scripts/ailab.mjs self-test"
+  },
+  "engines": { "node": ">=18.17" }
+}
