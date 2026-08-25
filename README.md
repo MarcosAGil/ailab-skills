@@ -15,6 +15,7 @@ cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 | Skill | Estado | Descripción |
 |---|---|---|
 | `ailab` | Beta | Playground, modelos generativos y asistentes de AILAB. |
+| `vervideo` | Beta | Análisis detallado de vídeos locales con Gemini vía OpenRouter. |
 
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
 es independiente y vive dentro de `skills/<id>/`.
@@ -22,8 +23,9 @@ es independiente y vive dentro de `skills/<id>/`.
 ## Requisitos
 
 - Node.js 18.17 o posterior.
-- Una cuenta de AILAB habilitada.
-- Créditos en la cuenta para las operaciones de pago.
+- Para `ailab`: una cuenta de AILAB habilitada y créditos para las operaciones de pago.
+- Para `vervideo`: Python 3.9 o posterior, una API key propia de OpenRouter y
+  `ffmpeg`/`ffprobe` cuando el vídeo necesite compresión.
 
 ## Instalación
 
@@ -52,6 +54,12 @@ Para instalar todas las skills disponibles:
 node tools/install.mjs --all --target claude
 ```
 
+Para instalar únicamente el analizador de vídeo:
+
+```bash
+node tools/install.mjs vervideo --target claude
+```
+
 El instalador valida el registro, rechaza enlaces simbólicos, realiza una copia
 atómica y ejecuta el autodiagnóstico de la skill antes de conservarla.
 
@@ -69,6 +77,10 @@ En Codex, sustituye `~/.claude/skills/` por `~/.codex/skills/`.
 
 Nunca pegues el token en un chat. El comando `login` lo solicita de forma oculta y
 lo guarda fuera del repositorio con permisos restringidos.
+
+Para `vervideo`, configura personalmente `OPENROUTER_API_KEY` en
+`~/.config/openrouter/.env` con permisos `600`. La clave no se guarda dentro de
+la skill ni se incluye en sus paquetes.
 
 ## Actualizaciones
 

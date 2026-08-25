@@ -43,7 +43,7 @@ try {
     const destination = path.join(target, ...file.relative.split('/'));
     fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o755 });
     fs.copyFileSync(file.absolute, destination);
-    fs.chmodSync(destination, file.relative.endsWith('.mjs') ? 0o755 : 0o644);
+    fs.chmodSync(destination, /\.(?:mjs|py)$/.test(file.relative) ? 0o755 : 0o644);
     fs.utimesSync(destination, fixedDate, fixedDate);
   }
   for (const directory of [target, ...files.map((file) => path.dirname(path.join(target, file.relative)))]) {

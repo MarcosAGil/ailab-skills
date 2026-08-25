@@ -30,6 +30,24 @@ const destinationRoot = path.resolve(customDirectory || path.join(
   'skills',
 ));
 
+function selfTestFor(skill, destination) {
+  if (skill.self_test) {
+    const [entrypoint, ...rest] = skill.self_test.args;
+    return {
+      command: skill.self_test.command,
+      args: [path.join(destination, entrypoint), ...rest],
+      expect: skill.self_test.expect,
+      env: process.env,
+    };
+  }
+  return {
+    command: process.execPath,
+    args: [path.join(destination, 'scripts', 'ailab.mjs'), 'self-test'],
+    expect: 'SELF_TEST_OK',
+    env: { ...process.env, AILAB_SKIP_UPDATE: '1' },
+  };
+}
+
 let validation;
 try {
   validation = validateRepository();
@@ -62,12 +80,14 @@ for (const id of requested) {
       hadPrevious = true;
     }
     fs.renameSync(temporary, destination);
-    const check = spawnSync(process.execPath, [path.join(destination, 'scripts', 'ailab.mjs'), 'self-test'], {
+    const selfTest = selfTestFor(skill, destination);
+    const check = spawnSync(selfTest.command, selfTest.args, {
       encoding: 'utf8',
-      env: { ...process.env, AILAB_SKIP_UPDATE: '1' },
+      env: selfTest.env,
       timeout: 30000,
     });
-    if (check.error || check.status !== 0) {
+    const checkOutput = `${check.stdout || ''}\n${check.stderr || ''}`;
+    if (check.error || check.status !== 0 || !checkOutput.includes(selfTest.expect)) {
       throw new Error((check.stderr || check.stdout || check.error?.message || 'autodiagnóstico fallido').trim());
     }
     if (hadPrevious) fs.rmSync(backup, { recursive: true, force: true });

@@ -14,6 +14,27 @@
         "claude-code",
         "codex"
       ]
+    },
+    {
+      "id": "vervideo",
+      "name": "Ver vídeo",
+      "version": "1.0.0",
+      "channel": "beta",
+      "path": "skills/vervideo",
+      "description": "Análisis exhaustivo de vídeos locales con Gemini vía OpenRouter.",
+      "minimum_python": "3.9",
+      "clients": [
+        "claude-code",
+        "codex"
+      ],
+      "self_test": {
+        "command": "python3",
+        "args": [
+          "scripts/vervideo.py",
+          "--help"
+        ],
+        "expect": "Analiza un vídeo"
+      }
     }
   ]
 }

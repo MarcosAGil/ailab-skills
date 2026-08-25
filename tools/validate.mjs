@@ -65,6 +65,20 @@ function validateSkill(skill) {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   if (pkg.version !== skill.version) fail(`registry y package.json divergen en ${skill.id}.`);
 
+  if (skill.self_test !== undefined) {
+    if (!skill.self_test || typeof skill.self_test !== 'object') fail(`self_test inválido en ${skill.id}.`);
+    if (!['node', 'python3'].includes(skill.self_test.command)) fail(`Comando de self_test no permitido en ${skill.id}.`);
+    if (!Array.isArray(skill.self_test.args) || skill.self_test.args.length < 1) fail(`args de self_test ausentes en ${skill.id}.`);
+    if (skill.self_test.args.some((arg) => typeof arg !== 'string' || !arg || path.isAbsolute(arg) || arg.includes('..'))) {
+      fail(`args de self_test no seguros en ${skill.id}.`);
+    }
+    if (typeof skill.self_test.expect !== 'string' || !skill.self_test.expect) fail(`expect de self_test ausente en ${skill.id}.`);
+    const entrypoint = path.resolve(root, skill.self_test.args[0]);
+    if (!entrypoint.startsWith(root + path.sep) || !fs.existsSync(entrypoint) || !fs.statSync(entrypoint).isFile()) {
+      fail(`Falta el ejecutable de self_test en ${skill.id}.`);
+    }
+  }
+
   const files = walk(root);
   let total = 0;
   for (const file of files) {
@@ -81,7 +95,9 @@ function validateSkill(skill) {
     }
   }
   if (total > 50 * 1024 * 1024) fail(`La skill ${skill.id} supera 50 MB.`);
-  if (!files.some((file) => file.relative === 'scripts/ailab.mjs')) fail(`Falta el bootstrap de ${skill.id}.`);
+  if (!skill.self_test && !files.some((file) => file.relative === 'scripts/ailab.mjs')) {
+    fail(`Falta el bootstrap de ${skill.id}.`);
+  }
   return { files: files.length, bytes: total };
 }
 

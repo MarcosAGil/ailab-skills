@@ -1,0 +1,6 @@
+{
+  "name": "@ailab-skills/vervideo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Analiza vídeos locales con Gemini vía OpenRouter."
+}
