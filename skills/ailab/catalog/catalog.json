@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.5.1",
+  "catalog_version": "1.5.2",
   "min_cli_version": "2.1.0",
   "models": {
     "avatar-photo-video": {
@@ -3231,6 +3231,7 @@
       "params": {
         "aspect_ratio": {
           "default": "adaptive",
+          "help": "En modo i2v se fuerza adaptive porque KIE no admite ratios fijos con First Frame.",
           "type": "enum",
           "values": [
             "adaptive",
@@ -3278,7 +3279,8 @@
           ]
         },
         "prompt": {
-          "max_len": 5000,
+          "help": "Hasta 30.000 caracteres según el contrato actual de KIE.",
+          "max_len": 30000,
           "required": true,
           "type": "string"
         },
