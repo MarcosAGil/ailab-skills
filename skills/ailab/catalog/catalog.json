@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.3.1",
+  "catalog_version": "1.4.0",
   "min_cli_version": "2.1.0",
   "models": {
     "avatar-photo-video": {
@@ -766,6 +766,93 @@
         }
       },
       "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Black Forest Labs"
+    },
+    "flux-video-upscale": {
+      "aliases": [
+        "flux upscale",
+        "flux video upscale",
+        "flux video"
+      ],
+      "description": "Mejora vídeos con FLUX en modo preciso o creativo y salida de hasta 4K.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "column_param": "output_resolution",
+        "credits_matrix": {
+          "0": {
+            "1080p": 28.56,
+            "2K": 51,
+            "4K": 112.2
+          },
+          "1": {
+            "1080p": 40.8,
+            "2K": 71.4,
+            "4K": 161.16
+          }
+        },
+        "kind": "per_second_matrix",
+        "note": "Importe por segundo de vídeo entregado, resolución final y modo, con el margen vigente de AILAB.",
+        "row_param": "creativity",
+        "seconds_param": "duration_seconds"
+      },
+      "expensive": true,
+      "id": "flux-video-upscale",
+      "label": "FLUX Video Upscale",
+      "min_cli_version": "2.1.0",
+      "output": "video",
+      "params": {
+        "creativity": {
+          "default": "0",
+          "help": "0 conserva el original; 1 reconstruye detalle guiado por el prompt.",
+          "type": "enum",
+          "values": [
+            "0",
+            "1"
+          ]
+        },
+        "duration_seconds": {
+          "help": "Duración real del vídeo de entrada.",
+          "max": 20,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "output_resolution": {
+          "help": "Tramo de facturación obligatorio. Calcula el lado mayor de salida: lado mayor original × factor; hasta 1920 = 1080p, hasta 2560 = 2K y por encima = 4K.",
+          "required": true,
+          "type": "enum",
+          "values": [
+            "1080p",
+            "2K",
+            "4K"
+          ]
+        },
+        "prompt": {
+          "help": "Opcional. En modo creativo, describe el detalle que quieres reforzar sin cambiar la escena.",
+          "max_len": 5000,
+          "type": "string"
+        },
+        "upscale_factor": {
+          "default": "2",
+          "type": "enum",
+          "values": [
+            "1.5",
+            "2",
+            "3"
+          ]
+        },
+        "video_url": {
+          "accept": "video",
+          "help": "Vídeo MP4 de hasta 20 segundos y 50 MB.",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "upscale",
       "status": "active",
       "tier": "hub",
       "vendor": "Black Forest Labs"

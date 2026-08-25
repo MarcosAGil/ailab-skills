@@ -66,6 +66,13 @@ node <skill-dir>/scripts/ailab.mjs prepare nano-banana-2-lite \
   --prompt "un zorro de origami sobre fondo crema"
 ```
 
+Para `flux-video-upscale`, inspecciona primero el MP4 con `ffprobe`: debe pesar como
+máximo 50 MB y durar como máximo 20 segundos. Pasa la duración real mediante
+`--duration_seconds`. Calcula el lado mayor de salida multiplicando el lado mayor
+original por `--upscale_factor`: usa `--output_resolution 1080p` hasta 1920 px,
+`2K` hasta 2560 px y `4K` por encima. No asumas 1080p ni preguntes al usuario por
+estos metadatos: mídelo localmente y muestra el tramo calculado en el plan.
+
 Muestra al usuario el plan que imprime la CLI: modelo, parámetros, archivos,
 estimación, máximo autorizado y saldo. Si es una generación aislada, espera su
 confirmación y después ejecuta exactamente:

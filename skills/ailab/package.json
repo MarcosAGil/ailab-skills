@@ -1,6 +1,6 @@
 {
   "name": "ailab-skill",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "private": true,
   "type": "module",
   "description": "AILAB desde Claude Code: Playground, asistentes remotos, tokens revocables y actualización segura.",

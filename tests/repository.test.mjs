@@ -25,7 +25,7 @@ test('el instalador copia y verifica AILAB de forma aislada', (t) => {
     timeout: 30000,
   });
   assert.equal(installed.status, 0, installed.stderr || installed.stdout);
-  assert.match(installed.stdout, /Instalada ailab 2\.1\.5/);
+  assert.match(installed.stdout, /Instalada ailab 2\.1\.6/);
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'SKILL.md')));
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'scripts', 'ailab.mjs')));
 });
@@ -34,11 +34,27 @@ test('la skill empaquetada supera su autodiagnóstico sin red de actualización'
   const checked = spawnSync(process.execPath, ['skills/ailab/scripts/ailab.mjs', 'self-test'], {
     cwd: ROOT,
     encoding: 'utf8',
-    env: { ...process.env, AILAB_SKIP_UPDATE: '1' },
+    env: {
+      ...process.env,
+      AILAB_SKIP_UPDATE: '1',
+      AILAB_CATALOG_PATH: path.join(ROOT, 'skills', 'ailab', 'catalog', 'catalog.json'),
+    },
     timeout: 30000,
   });
   assert.equal(checked.status, 0, checked.stderr || checked.stdout);
-  assert.match(checked.stdout, /SELF_TEST_OK 2\.1\.3 · 47 modelos/);
+  assert.match(checked.stdout, /SELF_TEST_OK 2\.1\.3 · 48 modelos/);
+});
+
+test('FLUX Video Upscale exige un tramo medido y documenta ffprobe', () => {
+  const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills', 'ailab', 'catalog', 'catalog.json'), 'utf8'));
+  const model = catalog.models['flux-video-upscale'];
+  assert.ok(model);
+  assert.equal(model.params.output_resolution.required, true);
+  assert.equal(model.params.output_resolution.default, undefined);
+  const instructions = fs.readFileSync(path.join(ROOT, 'skills', 'ailab', 'SKILL.md'), 'utf8');
+  assert.match(instructions, /flux-video-upscale/);
+  assert.match(instructions, /ffprobe/);
+  assert.match(instructions, /hasta 1920 px/);
 });
 
 test('el paquete es reproducible y contiene una única carpeta raíz', (t) => {
@@ -52,7 +68,7 @@ test('el paquete es reproducible y contiene una única carpeta raíz', (t) => {
   });
   const first = build();
   assert.equal(first.status, 0, first.stderr || first.stdout);
-  const archive = path.join(destination, 'ailab-skill-v2.1.5-beta.zip');
+  const archive = path.join(destination, 'ailab-skill-v2.1.6-beta.zip');
   const firstBytes = fs.readFileSync(archive);
   const second = build();
   assert.equal(second.status, 0, second.stderr || second.stdout);
