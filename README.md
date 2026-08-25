@@ -76,6 +76,10 @@ Los modelos, parámetros, precios finales y asistentes se obtienen desde AILAB. 
 runtime comprueba releases firmadas y conserva la última versión válida si una
 actualización falla. No necesitas hacer `git pull` cada vez que se añade un modelo.
 
+Los cambios en las instrucciones de uso de `SKILL.md`, como la política de
+confirmaciones, requieren volver a ejecutar el instalador. El instalador conserva
+la sesión y la configuración personal, que viven fuera de la carpeta de la skill.
+
 Una nueva skill sí se publica como una carpeta adicional y una entrada nueva en
 `registry.json`.
 

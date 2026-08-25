@@ -25,7 +25,7 @@ test('el instalador copia y verifica AILAB de forma aislada', (t) => {
     timeout: 30000,
   });
   assert.equal(installed.status, 0, installed.stderr || installed.stdout);
-  assert.match(installed.stdout, /Instalada ailab 2\.1\.3/);
+  assert.match(installed.stdout, /Instalada ailab 2\.1\.4/);
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'SKILL.md')));
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'scripts', 'ailab.mjs')));
 });
@@ -52,7 +52,7 @@ test('el paquete es reproducible y contiene una única carpeta raíz', (t) => {
   });
   const first = build();
   assert.equal(first.status, 0, first.stderr || first.stdout);
-  const archive = path.join(destination, 'ailab-skill-v2.1.3-beta.zip');
+  const archive = path.join(destination, 'ailab-skill-v2.1.4-beta.zip');
   const firstBytes = fs.readFileSync(archive);
   const second = build();
   assert.equal(second.status, 0, second.stderr || second.stdout);
