@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.4.0",
+  "catalog_version": "1.5.1",
   "min_cli_version": "2.1.0",
   "models": {
     "avatar-photo-video": {
@@ -3136,7 +3136,7 @@
           ]
         },
         "prompt": {
-          "max_len": 1536,
+          "max_len": 20000,
           "required": true,
           "type": "string"
         },
@@ -3820,6 +3820,157 @@
       "status": "active",
       "tier": "hub",
       "vendor": "Google"
+    },
+    "wan-3-video": {
+      "aliases": [
+        "wan 3",
+        "wan 3.0",
+        "wan 3 video"
+      ],
+      "description": "Generación multimodal de hasta 30 segundos con versiones Normal y Prime, audio nativo y referencias de imagen, vídeo, audio, enlaces y documentos.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "column_param": "resolution",
+        "credits_matrix": {
+          "normal": {
+            "1080P": 32.64,
+            "480P": 8.16,
+            "720P": 16.32
+          },
+          "prime": {
+            "1080P": 51.408,
+            "480P": 12.444,
+            "720P": 25.704
+          }
+        },
+        "kind": "per_second_matrix",
+        "note": "Precio final AILAB por segundo de vídeo entregado, incluido el 2% de servicio.",
+        "row_param": "version",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "wan-3-video",
+      "label": "Wan 3.0 Video",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "adaptive",
+          "type": "enum",
+          "values": [
+            "adaptive",
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16"
+          ]
+        },
+        "audio": {
+          "default": true,
+          "help": "Genera audio nativo sincronizado.",
+          "type": "bool"
+        },
+        "duration": {
+          "default": 5,
+          "help": "Duración de salida entre 2 y 30 segundos. Con vídeo de referencia, entrada y salida no pueden superar 30 segundos.",
+          "max": 30,
+          "min": 2,
+          "type": "int"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "help": "Primer fotograma. JPG, PNG o WebP de hasta 20 MB.",
+          "required_when": {
+            "mode": "i2v"
+          },
+          "type": "file"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "help": "Último fotograma opcional. Requiere el primer fotograma.",
+          "type": "file"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref"
+          ]
+        },
+        "prompt": {
+          "help": "Describe sujeto, acción, cámara, escena, iluminación y sonido. En referencias usa @Image1, @Video1 o @Audio1.",
+          "max_len": 20000,
+          "required": true,
+          "type": "string"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "help": "Hasta 5 audios; cada uno entre 1 y 15 segundos y 15 segundos combinados como máximo.",
+          "max": 5,
+          "type": "file[]"
+        },
+        "reference_file_urls": {
+          "help": "Una URL pública directa a un documento. No se combina con enlaces ni fotogramas.",
+          "max": 1,
+          "max_len": 2048,
+          "type": "string[]"
+        },
+        "reference_image_urls": {
+          "accept": "image",
+          "help": "Hasta 10 imágenes de referencia. No se combinan con los fotogramas.",
+          "max": 10,
+          "type": "file[]"
+        },
+        "reference_link_urls": {
+          "help": "Una página pública sin inicio de sesión. No se combina con documentos ni fotogramas.",
+          "max": 1,
+          "max_len": 2048,
+          "type": "string[]"
+        },
+        "reference_video_urls": {
+          "accept": "video",
+          "help": "Hasta 5 vídeos; cada uno entre 1 y 15 segundos y 15 segundos combinados como máximo.",
+          "max": 5,
+          "type": "file[]"
+        },
+        "resolution": {
+          "default": "720P",
+          "type": "enum",
+          "values": [
+            "480P",
+            "720P",
+            "1080P"
+          ]
+        },
+        "seed": {
+          "default": 0,
+          "max": 2147483647,
+          "min": 0,
+          "type": "int"
+        },
+        "version": {
+          "default": "normal",
+          "type": "enum",
+          "values": [
+            "normal",
+            "prime"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Alibaba"
     }
   },
   "server_contract_version": "2"

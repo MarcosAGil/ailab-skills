@@ -25,7 +25,7 @@ test('el instalador copia y verifica AILAB de forma aislada', (t) => {
     timeout: 30000,
   });
   assert.equal(installed.status, 0, installed.stderr || installed.stdout);
-  assert.match(installed.stdout, /Instalada ailab 2\.1\.6/);
+  assert.match(installed.stdout, /Instalada ailab 2\.1\.7/);
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'SKILL.md')));
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'scripts', 'ailab.mjs')));
 });
@@ -42,7 +42,13 @@ test('la skill empaquetada supera su autodiagnóstico sin red de actualización'
     timeout: 30000,
   });
   assert.equal(checked.status, 0, checked.stderr || checked.stdout);
-  assert.match(checked.stdout, /SELF_TEST_OK 2\.1\.3 · 48 modelos/);
+  assert.match(checked.stdout, /SELF_TEST_OK 2\.1\.4 · 49 modelos/);
+});
+
+test('Seedance 2.0 admite prompts de hasta 20.000 caracteres', () => {
+  const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills', 'ailab', 'catalog', 'catalog.json'), 'utf8'));
+  assert.equal(catalog.catalog_version, '1.5.1');
+  assert.equal(catalog.models['seedance-2'].params.prompt.max_len, 20000);
 });
 
 test('FLUX Video Upscale exige un tramo medido y documenta ffprobe', () => {
@@ -68,7 +74,7 @@ test('el paquete es reproducible y contiene una única carpeta raíz', (t) => {
   });
   const first = build();
   assert.equal(first.status, 0, first.stderr || first.stdout);
-  const archive = path.join(destination, 'ailab-skill-v2.1.6-beta.zip');
+  const archive = path.join(destination, 'ailab-skill-v2.1.7-beta.zip');
   const firstBytes = fs.readFileSync(archive);
   const second = build();
   assert.equal(second.status, 0, second.stderr || second.stdout);
