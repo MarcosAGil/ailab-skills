@@ -122,6 +122,26 @@ node <skill-dir>/scripts/ailab.mjs status <task_id> [--output <carpeta>]
 resultado desde la wallet compartida aunque el recibo local no exista. Si el
 servidor marca una operación como ambigua, no inventes otra UUID ni la reintentes.
 
+## Entregar resultados
+
+Al completar una generación, termina siempre con una entrega visible y verificable:
+
+1. Muestra en el chat el prompt final exacto que se envió al modelo, no un resumen ni
+   la petición preliminar hecha al Prompter. Conserva etiquetas, saltos de línea y
+   cualquier prompt negativo. Si el modelo no usa texto, indica `Sin prompt textual`.
+2. Muestra dentro del chat cada imagen o vídeo generado usando la previsualización
+   nativa del cliente y su ruta local absoluta. Para imágenes, usa también Markdown
+   con la ruta absoluta cuando sea compatible. Si el cliente no puede reproducir un
+   vídeo local, presenta un enlace local claramente etiquetado, sin inventar una
+   miniatura.
+3. Escribe `Guardado en:` seguido de la ruta absoluta exacta de cada archivo. No des
+   solo el nombre, una ruta relativa o la carpeta general de salida.
+4. Si hay varios resultados, muestra y enumera todos. No elijas uno silenciosamente.
+
+No afirmes que existe un archivo local si la descarga falló. Si la tarea continúa en
+curso, muestra el prompt, el ID recuperable y el comando `status`, pero reserva la
+previsualización y `Guardado en:` para cuando el archivo se haya descargado realmente.
+
 ## Actualizaciones
 
 El catálogo de modelos, los precios y la documentación de asistentes se actualizan
