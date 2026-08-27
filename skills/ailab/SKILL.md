@@ -188,5 +188,8 @@ update-check · update --confirmed · rollback --confirmed
   idempotente que indique la CLI con el mismo ID.
 - Estado `ambiguous` o `needs_review`: detente y remite al historial o a
   administración. No vuelvas a enviar.
+- HTTP 429: respeta el tiempo exacto que indique la CLI y realiza como máximo un
+  único reintento. Nunca lances bucles, procesos en segundo plano ni reintentos
+  periódicos: pueden prolongar el bloqueo del alojamiento.
 - Resultado con MIME inesperado o demasiado grande: no lo fuerces ni cambies su
   extensión manualmente.

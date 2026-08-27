@@ -110,9 +110,29 @@ async function doFetch(url, init) {
   clearTimeout(timeout);
   try { body = JSON.parse(text); } catch { body = null; }
   if (body === null) {
+    if (res.status === 429) {
+      const headerValue = Number(res.headers.get('retry-after') || 0);
+      return {
+        ok: false,
+        kind: 'rate_limited',
+        httpStatus: res.status,
+        businessCode: null,
+        message: 'El servidor ha limitado temporalmente las peticiones.',
+        retryAfterSeconds: Number.isFinite(headerValue) && headerValue > 0 ? Math.ceil(headerValue) : 60,
+        data: null,
+        raw: text.slice(0, 300),
+      };
+    }
     return { ok: false, kind: 'invalid_response', httpStatus: res.status, businessCode: null, message: 'El servidor no devolvio JSON valido (HTTP ' + res.status + ').', data: null, raw: text.slice(0, 300) };
   }
   const normalized = normalize(res.status, body, contentType);
+  if (normalized.kind === 'rate_limited') {
+    const headerValue = Number(res.headers.get('retry-after') || 0);
+    const bodyValue = Number(body.retry_after || body.retry_after_seconds || 0);
+    normalized.retryAfterSeconds = Number.isFinite(headerValue) && headerValue > 0
+      ? Math.ceil(headerValue)
+      : (Number.isFinite(bodyValue) && bodyValue > 0 ? Math.ceil(bodyValue) : 60);
+  }
   if (normalized.kind === 'session_expired' && init && init.headers && init.headers.Authorization) {
     const retryHeaders = { ...init.headers, 'X-Ailendra-Token': String(init.headers.Authorization).replace(/^Bearer\s+/i, '') };
     delete retryHeaders.Authorization;
@@ -236,7 +256,10 @@ export function explain(n) {
     case 'session_expired': return 'Tu sesion ha caducado. Ejecuta: node scripts/ailab.mjs login';
     case 'insufficient_balance': return (n.message || 'Saldo insuficiente.') + ' Recarga en: ' + CUENTA_URL;
     case 'forbidden': return n.message || 'Tu cuenta no puede usar este modelo.';
-    case 'rate_limited': return 'Demasiadas peticiones seguidas. Espera un momento y reintenta.';
+    case 'rate_limited': {
+      const seconds = Number.isFinite(n.retryAfterSeconds) ? Math.max(1, Math.ceil(n.retryAfterSeconds)) : 60;
+      return 'AILAB ha limitado temporalmente las peticiones. Espera ' + seconds + ' s y haz un unico reintento; no inicies un bucle.';
+    }
     case 'ambiguous_submit': return (n.message || 'El estado del envio es ambiguo.') + ' No se reintentara con otra UUID. Revisa el historial o usa AILAB doctor.';
     case 'network': return n.message;
     case 'timeout': return n.message;

@@ -364,11 +364,15 @@ async function cmdDoctor(cat) {
   const compat = catalogCompatible(cat); add(compat.ok, 'Contrato', compat.ok ? 'v' + cat.server_contract_version + ' · catalogo ' + cat.catalog_version : compat.reason);
   const me = await apiPost({ action: 'me' }); add(me.ok, 'Autenticacion', me.ok ? (me.raw.user.email + ' · saldo ' + me.raw.balance + ' cr') : explain(me));
   try { const dir = resolveOutputDir(); add(true, 'Salida', dir); } catch (e) { add(false, 'Salida', e.message); }
-  const intents = await apiPost({ action: 'submission_intents' });
-  if (intents.ok) {
-    const open = (intents.raw.items || []).filter((i) => i.state === 'ambiguous' || i.state === 'reserved');
-    add(open.length === 0, 'Intenciones abiertas', open.length ? open.length + ' requieren revision en Historial/admin' : 'ninguna');
-  } else add(false, 'Intenciones', explain(intents));
+  if (me.ok) {
+    const intents = await apiPost({ action: 'submission_intents' });
+    if (intents.ok) {
+      const open = (intents.raw.items || []).filter((i) => i.state === 'ambiguous' || i.state === 'reserved');
+      add(open.length === 0, 'Intenciones abiertas', open.length ? open.length + ' requieren revision en Historial/admin' : 'ninguna');
+    } else add(false, 'Intenciones', explain(intents));
+  } else {
+    out('OMITIDO · Intenciones: se evita una segunda peticion mientras falla la autenticacion.');
+  }
   try {
     const { spawnSync } = await import('node:child_process');
     const ff = spawnSync('ffprobe', ['-version'], { stdio: 'ignore' });

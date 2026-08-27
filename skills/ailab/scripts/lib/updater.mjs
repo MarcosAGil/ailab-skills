@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 import { CONFIG_DIR, RELEASE_MANIFEST_URL, SKILL_ROOT, UPDATE_CHANNEL, ensureConfigDir } from './config.mjs';
 
 export const BOOTSTRAP_VERSION = '1.0.0';
-export const BUNDLED_RUNTIME_VERSION = '2.1.5';
+export const BUNDLED_RUNTIME_VERSION = '2.1.9';
 export const UPDATE_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAVjnUJTcIxxRRvRTo83RpaCI7eaPwTg5KIz65p49UZs0=
 -----END PUBLIC KEY-----`;
@@ -19,12 +19,15 @@ const FETCH_TIMEOUT_MS = Number(process.env.AILAB_UPDATE_TIMEOUT_MS || 30000);
 const MAX_MANIFEST_BYTES = 1024 * 1024;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_RELEASE_BYTES = 50 * 1024 * 1024;
+const DOWNLOAD_DELAY_MS = Number(process.env.AILAB_UPDATE_DOWNLOAD_DELAY_MS || 1250);
+const FAILED_UPDATE_RETRY_MS = Number(process.env.AILAB_UPDATE_RETRY_MS || 15 * 60 * 1000);
 const ALLOWED_PREFIXES = ['scripts/', 'catalog/'];
 const runtimeRoot = () => path.join(CONFIG_DIR, 'runtime');
 const currentFile = () => path.join(runtimeRoot(), 'current.json');
 const metaFile = () => path.join(runtimeRoot(), 'update-meta.json');
 const lockDir = () => path.join(runtimeRoot(), '.update-lock');
 const lockOwnerFile = () => path.join(lockDir(), 'owner.json');
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function parseSemver(value) {
   const m = /^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?$/.exec(String(value || ''));
@@ -300,7 +303,12 @@ export async function installRelease(envelope, manifestUrl = RELEASE_MANIFEST_UR
     }
     fs.mkdirSync(staging, { recursive: false, mode: 0o700 });
     const origin = new URL(manifestUrl).origin;
-    for (const item of envelope.signed.files) {
+    const downloadDelayMs = Number.isFinite(options.downloadDelayMs)
+      ? Math.max(0, Number(options.downloadDelayMs))
+      : Math.max(0, DOWNLOAD_DELAY_MS);
+    for (let index = 0; index < envelope.signed.files.length; index++) {
+      const item = envelope.signed.files[index];
+      if (index > 0 && downloadDelayMs > 0) await sleep(downloadDelayMs);
       touchLock();
       await downloadFile(item, staging, origin);
       touchLock();
@@ -324,6 +332,7 @@ export async function installRelease(envelope, manifestUrl = RELEASE_MANIFEST_UR
 function latestCheckDue(force) {
   if (force) return true;
   const meta = readJson(metaFile());
+  if (meta && meta.retry_after_at && Date.parse(meta.retry_after_at) > Date.now()) return false;
   return !meta || !meta.checked_at || Date.now() - Date.parse(meta.checked_at) >= CHECK_INTERVAL_MS;
 }
 
@@ -346,12 +355,14 @@ export async function checkAndMaybeUpdate({
     if (!apply) return { ok: true, current: localVersion, update: envelope.signed.version, required: belowMinimum, runtime: current, envelope };
     const installed = await releaseInstaller(envelope);
     if (!installed.ok) {
-      // No consideramos comprobada una release que no pudo instalarse: el
-      // siguiente arranque reintenta. Si la minima es obligatoria, el bootstrap
-      // recibe `required` y se bloquea en vez de ejecutar código obsoleto.
+      // Una descarga fallida no debe provocar que cada comando vuelva a lanzar
+      // inmediatamente toda la release. El reintento manual ignora este cooldown.
+      const attemptedAt = new Date();
       atomicJson(metaFile(), {
         latest_version: envelope.signed.version,
-        last_attempt_at: new Date().toISOString(),
+        checked_at: attemptedAt.toISOString(),
+        last_attempt_at: attemptedAt.toISOString(),
+        retry_after_at: new Date(attemptedAt.getTime() + Math.max(60000, FAILED_UPDATE_RETRY_MS)).toISOString(),
         required: belowMinimum,
         error: installed.message || 'No se pudo instalar.',
       });
