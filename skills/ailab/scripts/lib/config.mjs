@@ -5,10 +5,15 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const CLI_VERSION = '2.1.9';
+export const CLI_VERSION = '2.1.10';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const SKILL_ROOT = path.resolve(HERE, '..', '..');
+// En la instalación completa este módulo vive en scripts/lib/. En las releases
+// compactas esbuild lo integra en scripts/pg.mjs. Ambas formas deben resolver la
+// misma raíz que contiene catalog/.
+export const SKILL_ROOT = path.basename(HERE) === 'lib'
+  ? path.resolve(HERE, '..', '..')
+  : path.resolve(HERE, '..');
 
 // Base de la plataforma. PG_BASE_URL sigue aceptado para los bancos de pruebas y
 // para no romper automatizaciones de la skill anterior.
