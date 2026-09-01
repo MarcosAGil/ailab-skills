@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const CLI_VERSION = '2.1.10';
+export const CLI_VERSION = '2.1.11';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // En la instalación completa este módulo vive en scripts/lib/. En las releases

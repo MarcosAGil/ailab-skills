@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.5.2",
+  "catalog_version": "1.7.1",
   "min_cli_version": "2.1.0",
   "models": {
     "avatar-photo-video": {
@@ -856,6 +856,170 @@
       "status": "active",
       "tier": "hub",
       "vendor": "Black Forest Labs"
+    },
+    "gemini-omni-flash-1-1": {
+      "aliases": [
+        "omni video",
+        "gemini omni",
+        "gemini omni flash",
+        "gemini-omni-video",
+        "google/gemini-omni-flash-1-1"
+      ],
+      "description": "Vídeo con texto, First/Last Frame o referencias multimodales. Admite Voice IDs y Character IDs creados previamente en la web de AILAB.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "column_param": "duration",
+        "credits_matrix": {
+          "1080p": {
+            "4": 65,
+            "6": 86,
+            "8": 108,
+            "10": 129
+          },
+          "360p": {
+            "4": 65,
+            "6": 86,
+            "8": 108,
+            "10": 129
+          },
+          "4k": {
+            "4": 150,
+            "6": 172,
+            "8": 193,
+            "10": 215
+          },
+          "720p": {
+            "4": 65,
+            "6": 86,
+            "8": 108,
+            "10": 129
+          }
+        },
+        "credits_with_video": {
+          "1080p": 172,
+          "360p": 172,
+          "4k": 258,
+          "720p": 172
+        },
+        "kind": "matrix_table",
+        "note": "Con vídeo la tarifa es plana por resolución y Gemini decide la duración final. Precio final AILAB con el 2% de servicio.",
+        "row_param": "resolution",
+        "video_param": "video_url"
+      },
+      "expensive": true,
+      "id": "gemini-omni-flash-1-1",
+      "label": "Gemini Omni Flash 1.1",
+      "min_cli_version": "2.1.0",
+      "output": "video",
+      "modes": [
+        "t2v",
+        "frames",
+        "reference"
+      ],
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16"
+          ]
+        },
+        "audio_ids": {
+          "help": "Hasta 3 Voice IDs creados previamente con Gemini Omni Audio",
+          "max": 3,
+          "max_len": 255,
+          "type": "string[]"
+        },
+        "character_ids": {
+          "help": "Hasta 3 Character IDs creados previamente con Gemini Omni Character. Cada uno consume una unidad visual.",
+          "max": 3,
+          "max_len": 255,
+          "type": "string[]"
+        },
+        "duration": {
+          "default": "8",
+          "type": "enum",
+          "values": [
+            "4",
+            "6",
+            "8",
+            "10"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "help": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7 unidades de cuota de Kie)",
+          "max": 7,
+          "type": "file[]"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "help": "Primer frame obligatorio en modo frames. No se combina con otras referencias.",
+          "required_when": {
+            "mode": "frames"
+          },
+          "type": "file"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "help": "Último frame opcional. Requiere first_frame_url.",
+          "type": "file"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "frames",
+            "reference"
+          ]
+        },
+        "prompt": {
+          "max_len": 20000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "1080p",
+          "type": "enum",
+          "values": [
+            "360p",
+            "720p",
+            "1080p",
+            "4k"
+          ]
+        },
+        "seed": {
+          "help": "Opcional. Déjala vacía para una semilla aleatoria.",
+          "max": 2147483647,
+          "min": 0,
+          "type": "int"
+        },
+        "video_end": {
+          "help": "Segundo final; maximo 10 s despues de video_start",
+          "max": 30,
+          "min": 1,
+          "type": "int"
+        },
+        "video_start": {
+          "help": "Segundo inicial del clip",
+          "max": 29,
+          "min": 0,
+          "type": "int"
+        },
+        "video_url": {
+          "accept": "video",
+          "help": "Clip de hasta 30 s; selecciona un intervalo de hasta 10 s",
+          "type": "file"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Google"
     },
     "gemini-omni-video": {
       "aliases": [
@@ -2370,6 +2534,134 @@
       "status": "active",
       "tier": "hub",
       "vendor": "Midjourney"
+    },
+    "minimax-h3-max": {
+      "aliases": [
+        "h3 max",
+        "minimax h3 max"
+      ],
+      "description": "Vídeo premium con Texto a vídeo, First/Last Frame y referencias multimodales de imagen, vídeo y audio.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits_by_value": {
+          "t2v": 245,
+          "i2v": 245,
+          "ref": 1300
+        },
+        "kind": "mixed_mode",
+        "matrix_mode": "__none__",
+        "mode_param": "mode",
+        "note": "Autorización máxima conservadora. El servidor reserva y cobra el cálculo exacto según duración, resolución y tokens de imagen/vídeo; el audio de referencia no añade cargo AILAB."
+      },
+      "expensive": true,
+      "id": "minimax-h3-max",
+      "label": "H3 Max",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "help": "Texto a vídeo admite ratios fijos; Referencias también permite adaptive; Imagen a vídeo usa el primer fotograma.",
+          "type": "enum",
+          "values": [
+            "adaptive",
+            "21:9",
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16"
+          ]
+        },
+        "duration": {
+          "default": 5,
+          "help": "Duración de salida entre 5 y 15 segundos.",
+          "max": 15,
+          "min": 5,
+          "type": "int"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "help": "Primer fotograma obligatorio en Imagen a vídeo.",
+          "required_when": {
+            "mode": "i2v"
+          },
+          "type": "file"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "help": "Último fotograma opcional. Requiere el primer fotograma.",
+          "type": "file"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "help": "Solo ref. Hasta 3 audios de 2 a 15 segundos; 15 segundos combinados. Necesitan además imagen o vídeo.",
+          "max": 3,
+          "type": "file[]"
+        },
+        "reference_image_urls": {
+          "accept": "image",
+          "help": "Solo ref. Hasta 9 imágenes; máximo 4.096 px por lado.",
+          "max": 9,
+          "type": "file[]"
+        },
+        "reference_video_urls": {
+          "accept": "video",
+          "help": "Solo ref. Hasta 3 vídeos MP4 de 2 a 15 segundos; 15 segundos combinados.",
+          "max": 3,
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref"
+          ]
+        },
+        "prompt": {
+          "help": "Describe sujeto, acción, cámara, ritmo, diálogo y sonido. En ref nombra archivos como @Image1, @Video1 y @Audio1.",
+          "max_len": 50000,
+          "required": true,
+          "type": "string"
+        },
+        "prompt_expansion_mode": {
+          "default": "balanced",
+          "help": "Equilibrada mantiene buen control; quality desarrolla más el prompt; disabled lo conserva literal.",
+          "type": "enum",
+          "values": [
+            "disabled",
+            "balanced",
+            "quality"
+          ]
+        },
+        "resolution": {
+          "default": "768P",
+          "type": "enum",
+          "values": [
+            "480P",
+            "768P"
+          ]
+        },
+        "seed": {
+          "help": "Opcional. Omite este parámetro para usar una semilla aleatoria.",
+          "max": 2147483647,
+          "min": 0,
+          "type": "int"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "MiniMax"
     },
     "minimax-h3": {
       "aliases": [

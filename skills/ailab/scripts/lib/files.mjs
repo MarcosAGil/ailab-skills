@@ -86,3 +86,125 @@ export function rehashMatches(fileEntry) {
     return inspected.size === fileEntry.size && inspected.sha256 === fileEntry.sha256;
   } catch { return false; }
 }
+
+function uint24le(buffer, offset) {
+  return buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
+}
+
+function imageDimensions(absolute, mime) {
+  const data = fs.readFileSync(absolute);
+  if (mime === 'image/png' && data.length >= 24) {
+    return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+  }
+  if (mime === 'image/jpeg') {
+    let offset = 2;
+    const sof = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+    while (offset + 8 < data.length) {
+      if (data[offset] !== 0xff) { offset += 1; continue; }
+      while (offset < data.length && data[offset] === 0xff) offset += 1;
+      const marker = data[offset++];
+      if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+      if (offset + 2 > data.length) break;
+      const length = data.readUInt16BE(offset);
+      if (length < 2 || offset + length > data.length) break;
+      if (sof.has(marker) && length >= 7) {
+        return { width: data.readUInt16BE(offset + 5), height: data.readUInt16BE(offset + 3) };
+      }
+      offset += length;
+    }
+  }
+  if (mime === 'image/webp' && data.length >= 30) {
+    const chunk = data.subarray(12, 16).toString('ascii');
+    if (chunk === 'VP8X') {
+      return { width: uint24le(data, 24) + 1, height: uint24le(data, 27) + 1 };
+    }
+    if (chunk === 'VP8 ' && data.length >= 30 && data[23] === 0x9d && data[24] === 0x01 && data[25] === 0x2a) {
+      return { width: data.readUInt16LE(26) & 0x3fff, height: data.readUInt16LE(28) & 0x3fff };
+    }
+    if (chunk === 'VP8L' && data.length >= 25 && data[20] === 0x2f) {
+      const bits = data.readUInt32LE(21);
+      return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 };
+    }
+  }
+  return null;
+}
+
+function mp4Box(fd, position, end) {
+  if (position + 8 > end) return null;
+  const header = Buffer.alloc(16);
+  const read = fs.readSync(fd, header, 0, 16, position);
+  if (read < 8) return null;
+  let size = header.readUInt32BE(0);
+  let headerSize = 8;
+  if (size === 1) {
+    if (read < 16) return null;
+    const extended = header.readBigUInt64BE(8);
+    if (extended > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+    size = Number(extended);
+    headerSize = 16;
+  } else if (size === 0) {
+    size = end - position;
+  }
+  if (size < headerSize || position + size > end) return null;
+  return { type: header.subarray(4, 8).toString('ascii'), position, size, headerSize };
+}
+
+function mp4Duration(absolute) {
+  const stat = fs.statSync(absolute);
+  const fd = fs.openSync(absolute, 'r');
+  try {
+    let position = 0;
+    while (position < stat.size) {
+      const box = mp4Box(fd, position, stat.size);
+      if (!box) break;
+      if (box.type === 'moov') {
+        let childPosition = box.position + box.headerSize;
+        const childEnd = box.position + box.size;
+        while (childPosition < childEnd) {
+          const child = mp4Box(fd, childPosition, childEnd);
+          if (!child) break;
+          if (child.type === 'mvhd') {
+            const payload = Buffer.alloc(Math.min(40, child.size - child.headerSize));
+            fs.readSync(fd, payload, 0, payload.length, child.position + child.headerSize);
+            if (payload.length < 20) return null;
+            const version = payload[0];
+            const timescaleOffset = version === 1 ? 20 : 12;
+            const durationOffset = version === 1 ? 24 : 16;
+            if (payload.length < durationOffset + (version === 1 ? 8 : 4)) return null;
+            const timescale = payload.readUInt32BE(timescaleOffset);
+            const rawDuration = version === 1 ? Number(payload.readBigUInt64BE(durationOffset)) : payload.readUInt32BE(durationOffset);
+            if (timescale > 0 && rawDuration > 0 && Number.isFinite(rawDuration)) return rawDuration / timescale;
+            return null;
+          }
+          childPosition += child.size;
+        }
+      }
+      position += box.size;
+    }
+    return null;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+// Metadatos mínimos y deterministas usados para presupuestar H3 Max antes de
+// autorizar gasto. El servidor vuelve a medirlos y es siempre la autoridad.
+export function inspectPricingMetadata(path_) {
+  const inspected = inspectFile(path_, null);
+  if (!inspected.ok) return inspected;
+  try {
+    if (inspected.class === 'image') {
+      const dimensions = imageDimensions(inspected.path, inspected.mime);
+      if (!dimensions || dimensions.width < 1 || dimensions.height < 1) return { ok: false, error: 'No se pudieron leer las dimensiones de ' + path_ + '.' };
+      return { ...inspected, ...dimensions, pixels: dimensions.width * dimensions.height };
+    }
+    if (inspected.class === 'video' && inspected.mime === 'video/mp4') {
+      const duration = mp4Duration(inspected.path);
+      if (!Number.isFinite(duration) || duration <= 0) return { ok: false, error: 'No se pudo leer la duración MP4 de ' + path_ + '.' };
+      return { ...inspected, duration };
+    }
+    return inspected;
+  } catch {
+    return { ok: false, error: 'No se pudieron leer los metadatos de ' + path_ + '.' };
+  }
+}

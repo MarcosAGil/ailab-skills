@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { CATALOG_PATH, CATALOG_URL, CLI_VERSION, CONFIG_DIR, SERVER_CONTRACT_VERSION, ensureConfigDir } from './config.mjs';
+import { inspectPricingMetadata } from './files.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1'];
 
@@ -327,6 +328,43 @@ function effectiveMatrix(estimate, field, previousField, now = Date.now()) {
 
 export function estimateCredits(model, params, now = Date.now()) {
   const e = model.estimate || {};
+  // El catálogo conserva `mixed_mode` para que runtimes antiguos sigan
+  // pudiendo cargarlo. Desde 2.1.11 H3 Max autoriza el coste real local en vez
+  // del máximo teórico de 1.300 cr; el servidor vuelve a medir y decide.
+  if (model.id === 'minimax-h3-max') {
+    const mode = String(params[e.mode_param || 'mode'] || 't2v');
+    const seconds = Number(params.duration || 0);
+    const resolution = String(params.resolution || '768P');
+    if (!Number.isFinite(seconds) || seconds <= 0) return { credits: null, approximate: true, note: 'duración pendiente' };
+    if (mode !== 'ref') {
+      const rate = resolution === '480P' ? 10.2 : 16.32;
+      return { credits: Math.ceil(rate * seconds), approximate: false, note: 'Salida exacta según duración y resolución.' };
+    }
+    const images = Array.isArray(params.reference_image_urls) ? params.reference_image_urls : [];
+    const videos = Array.isArray(params.reference_video_urls) ? params.reference_video_urls : [];
+    let tokens = 0;
+    for (const file of images) {
+      const metadata = inspectPricingMetadata(file);
+      if (!metadata.ok || metadata.class !== 'image' || metadata.width > 4096 || metadata.height > 4096) {
+        return { credits: 1300, approximate: true, note: metadata.error || 'Una imagen supera 4.096 px por lado.' };
+      }
+      tokens += metadata.pixels / 1024;
+    }
+    const videoTokenRate = resolution === '480P' ? 2886 : 7459.2;
+    for (const file of videos) {
+      const metadata = inspectPricingMetadata(file);
+      if (!metadata.ok || metadata.mime !== 'video/mp4' || !Number.isFinite(metadata.duration)) {
+        return { credits: 1300, approximate: true, note: metadata.error || 'Reference-to-Video requiere vídeos MP4 medibles.' };
+      }
+      tokens += metadata.duration * videoTokenRate;
+    }
+    const referenceCredits = Math.max(0, tokens - 4096) / 1000 * 4.08;
+    return {
+      credits: Math.ceil(16.32 * seconds + referenceCredits),
+      approximate: false,
+      note: seconds + ' s · ' + resolution + ' · ' + Math.round(tokens).toLocaleString('es-ES') + ' tokens de referencia'
+    };
+  }
   if (e.kind === 'flat_credits') return { credits: Math.ceil(e.credits), approximate: !!e.approximate, note: e.note || '' };
   if (e.kind === 'per_second_table') {
     const key = params[e.by_param];
