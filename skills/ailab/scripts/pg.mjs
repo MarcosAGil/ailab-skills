@@ -22,6 +22,7 @@ import * as elevenV1 from './adapters/eleven-v1.mjs';
 import * as sunoV1 from './adapters/suno-v1.mjs';
 import * as heygenV1 from './adapters/heygen-v1.mjs';
 import * as jobsTextV1 from './adapters/jobs-text-v1.mjs';
+import * as resembleV1 from './adapters/resemble-v1.mjs';
 import { saveTaskReceipt, loadTaskReceipt, completeTaskReceipt } from './lib/tasks.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -37,6 +38,7 @@ const ADAPTERS = {
   'suno-v1': sunoV1,
   'heygen-v1': heygenV1,
   'jobs-text-v1': jobsTextV1,
+  'resemble-v1': resembleV1,
 };
 const POLL_MS = 5000;
 const TIMEOUT_MS = { image: 10 * 60 * 1000, video: 45 * 60 * 1000, audio: 15 * 60 * 1000, text: 15 * 60 * 1000 };
@@ -46,6 +48,8 @@ const UPLOAD_EXT = {
   'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav',
   'audio/flac': 'flac', 'audio/x-flac': 'flac',
   'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a',
+  'audio/ogg': 'ogg', 'application/ogg': 'ogg', 'audio/opus': 'opus',
+  'audio/aac': 'aac',
 };
 function uploadName(prefix, mime) {
   const ext = UPLOAD_EXT[mime];
@@ -347,15 +351,18 @@ function cmdInfo(cat, name) {
 
 function deriveInternalParams(model, given) {
   const derived = { ...given };
-  if (model.id === 'sam-audio') {
+  if (model.id === 'sam-audio' || model.id === 'resemble-audio-enhancement') {
     const value = derived.audio_url;
     if (Array.isArray(value)) fail('--audio_url solo admite un archivo.');
     if (value === undefined || value === true || value === '') return derived;
     const metadata = inspectPricingMetadata(String(value));
-    if (!metadata.ok || metadata.class !== 'audio' || !Number.isFinite(metadata.duration)) {
+    const allowedClass = model.id === 'resemble-audio-enhancement'
+      ? (metadata.class === 'audio' || metadata.mime === 'video/mp4')
+      : metadata.class === 'audio';
+    if (!metadata.ok || !allowedClass || !Number.isFinite(metadata.duration)) {
       fail(metadata.error || 'No se pudo medir la duración del audio.');
     }
-    if (metadata.duration > 3600) fail('SAM Audio admite audios de hasta 60 minutos.');
+    if (model.id === 'sam-audio' && metadata.duration > 3600) fail('SAM Audio admite audios de hasta 60 minutos.');
     derived.duration_seconds = Math.round(metadata.duration * 100) / 100;
   }
   return derived;

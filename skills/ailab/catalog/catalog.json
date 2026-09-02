@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.8.0",
+  "catalog_version": "1.9.0",
   "min_cli_version": "2.1.0",
   "models": {
     "avatar-photo-video": {
@@ -3127,6 +3127,78 @@
       "status": "active",
       "tier": "hub",
       "vendor": "Recraft"
+    },
+    "resemble-audio-enhancement": {
+      "aliases": [
+        "resemble",
+        "audio enhancement",
+        "mejorar audio",
+        "limpiar audio",
+        "eliminar ruido",
+        "studio sound"
+      ],
+      "description": "Limpia ruido de fondo, normaliza el volumen y aplica un acabado de estudio a un archivo de audio.",
+      "driver": "resemble-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 0.306,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "Tarifa Flex pública de 0,0015 USD/s, margen AILAB del 2% y redondeo final.",
+        "round_up": true,
+        "units_param": "duration_seconds"
+      },
+      "expensive": false,
+      "id": "resemble-audio-enhancement",
+      "label": "Resemble Audio Enhancement",
+      "min_cli_version": "2.1.13",
+      "modes": [
+        "enhance"
+      ],
+      "output": "audio",
+      "params": {
+        "audio_url": {
+          "accept": [
+            "audio/mpeg",
+            "audio/wav",
+            "audio/flac",
+            "audio/mp4",
+            "audio/ogg",
+            "audio/aac",
+            "video/mp4"
+          ],
+          "help": "WAV, MP3, M4A, MP4, OGG, AAC o FLAC de hasta 150 MB.",
+          "required": true,
+          "type": "file"
+        },
+        "duration_seconds": {
+          "help": "Duración real medida localmente y verificada de nuevo por el servidor.",
+          "internal": true,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "normalize": {
+          "default": true,
+          "help": "Equilibra el nivel del audio para obtener un volumen más uniforme.",
+          "type": "bool"
+        },
+        "remove_noise": {
+          "default": true,
+          "help": "Elimina ruido de fondo y distracciones constantes.",
+          "type": "bool"
+        },
+        "studio_sound": {
+          "default": true,
+          "help": "Aplica el procesamiento de acabado y claridad de estudio.",
+          "type": "bool"
+        }
+      },
+      "section": "other",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Resemble AI"
     },
     "remove-background": {
       "aliases": [

@@ -5,7 +5,7 @@
     {
       "id": "ailab",
       "name": "AILAB",
-      "version": "2.1.12",
+      "version": "2.1.13",
       "channel": "beta",
       "path": "skills/ailab",
       "description": "Playground y asistentes de AILAB desde agentes de código.",

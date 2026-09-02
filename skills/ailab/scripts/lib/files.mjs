@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 
-const LIMITS = { image: 30 * 1024 * 1024, video: 200 * 1024 * 1024, audio: 50 * 1024 * 1024 };
+const LIMITS = { image: 30 * 1024 * 1024, video: 200 * 1024 * 1024, audio: 150 * 1024 * 1024 };
 
 export function sniffMime(buf) {
   if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
@@ -16,7 +16,9 @@ export function sniffMime(buf) {
     return 'video/mp4';
   }
   if (buf.length >= 4 && buf.slice(0, 4).toString('hex') === '1a45dfa3') return 'video/webm';
+  if (buf.length >= 4 && buf.slice(0, 4).toString('ascii') === 'OggS') return 'audio/ogg';
   if (buf.length >= 3 && buf.slice(0, 3).toString('ascii') === 'ID3') return 'audio/mpeg';
+  if (buf.length >= 2 && buf[0] === 0xff && (buf[1] & 0xf6) === 0xf0) return 'audio/aac';
   if (buf.length >= 2 && buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0) return 'audio/mpeg';
   if (buf.length >= 12 && buf.slice(0, 4).toString('ascii') === 'RIFF' && buf.slice(8, 12).toString('ascii') === 'WAVE') return 'audio/wav';
   if (buf.length >= 4 && buf.slice(0, 4).toString('ascii') === 'fLaC') return 'audio/flac';
@@ -76,7 +78,10 @@ export function inspectFile(path_, accept) {
   const mime = sniffMime(inspected.header);
   const cls = classFor(mime);
   if (!cls) return { ok: false, error: 'Tipo de archivo no reconocido (se detecta por contenido, no por nombre): ' + path_ };
-  if (accept && cls !== accept) return { ok: false, error: 'Se esperaba ' + accept + ' y "' + path_ + '" es ' + cls + ' (' + mime + ').' };
+  const accepted = Array.isArray(accept) ? accept : (accept ? [accept] : []);
+  if (accepted.length && !accepted.includes(cls) && !accepted.includes(mime)) {
+    return { ok: false, error: 'Se esperaba ' + accepted.join(' o ') + ' y "' + path_ + '" es ' + cls + ' (' + mime + ').' };
+  }
   if (inspected.size > LIMITS[cls]) return { ok: false, error: path_ + ' supera el limite de ' + Math.round(LIMITS[cls] / 1024 / 1024) + 'MB para ' + cls + '.' };
   return { ok: true, path: absolute, size: inspected.size, mime, class: cls, sha256: inspected.sha256 };
 }
@@ -267,6 +272,52 @@ function audioDuration(absolute, mime) {
     const duration = bitrate > 0 ? Math.max(0, stat.size - frameOffset - id3v1Bytes) * 8 / bitrate : 0;
     return Number.isFinite(duration) && duration > 0 ? duration : null;
   }
+  if (['audio/mp4', 'video/mp4'].includes(mime)) return mp4Duration(absolute);
+  if (mime === 'audio/ogg') {
+    const headSize = Math.min(stat.size, 65536);
+    const tailSize = Math.min(stat.size, 262144);
+    const fd = fs.openSync(absolute, 'r');
+    try {
+      const head = Buffer.alloc(headSize); fs.readSync(fd, head, 0, head.length, 0);
+      const tail = Buffer.alloc(tailSize); fs.readSync(fd, tail, 0, tail.length, stat.size - tailSize);
+      let sampleRate = 0, preskip = 0;
+      const opus = head.indexOf(Buffer.from('OpusHead'));
+      if (opus >= 0 && opus + 12 <= head.length) { sampleRate = 48000; preskip = head.readUInt16LE(opus + 10); }
+      else {
+        const vorbis = head.indexOf(Buffer.from([0x01, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73]));
+        if (vorbis >= 0 && vorbis + 16 <= head.length) sampleRate = head.readUInt32LE(vorbis + 12);
+      }
+      if (sampleRate < 8000 || sampleRate > 384000) return null;
+      for (let at = tail.lastIndexOf(Buffer.from('OggS')); at >= 0; at = tail.lastIndexOf(Buffer.from('OggS'), at - 1)) {
+        if (at + 14 > tail.length) continue;
+        const granule = Number(tail.readBigUInt64LE(at + 6));
+        const duration = (granule - preskip) / sampleRate;
+        if (Number.isFinite(duration) && duration > 0) return duration;
+      }
+      return null;
+    } finally { fs.closeSync(fd); }
+  }
+  if (mime === 'audio/aac') {
+    const fd = fs.openSync(absolute, 'r');
+    const rates = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+    try {
+      let offset = 0, sampleRate = 0, frames = 0;
+      const header = Buffer.alloc(7);
+      while (offset < stat.size) {
+        if (fs.readSync(fd, header, 0, 7, offset) !== 7 || header[0] !== 0xff || (header[1] & 0xf6) !== 0xf0) return null;
+        const rateIndex = (header[2] >> 2) & 0x0f;
+        const currentRate = rates[rateIndex];
+        const length = ((header[3] & 3) << 11) | (header[4] << 3) | ((header[5] >> 5) & 7);
+        if (!currentRate || length < 7 || length > 8192 || offset + length > stat.size) return null;
+        if (!sampleRate) sampleRate = currentRate;
+        if (sampleRate !== currentRate) return null;
+        frames += 1 + (header[6] & 3);
+        offset += length;
+      }
+      const duration = sampleRate > 0 ? frames * 1024 / sampleRate : 0;
+      return Number.isFinite(duration) && duration > 0 ? duration : null;
+    } finally { fs.closeSync(fd); }
+  }
   return null;
 }
 
@@ -286,7 +337,7 @@ export function inspectPricingMetadata(path_) {
       if (!Number.isFinite(duration) || duration <= 0) return { ok: false, error: 'No se pudo leer la duración MP4 de ' + path_ + '.' };
       return { ...inspected, duration };
     }
-    if (inspected.class === 'audio' && ['audio/mpeg', 'audio/wav', 'audio/flac'].includes(inspected.mime)) {
+    if (inspected.class === 'audio' && ['audio/mpeg', 'audio/wav', 'audio/flac', 'audio/mp4', 'audio/ogg', 'audio/aac'].includes(inspected.mime)) {
       const duration = audioDuration(inspected.path, inspected.mime);
       if (!Number.isFinite(duration) || duration <= 0) return { ok: false, error: 'No se pudo leer la duración del audio ' + path_ + '.' };
       return { ...inspected, duration };
