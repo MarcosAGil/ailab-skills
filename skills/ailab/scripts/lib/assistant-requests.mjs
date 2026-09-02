@@ -57,10 +57,11 @@ export function assistantRequestIntact(value) {
     history: value.history,
     message: value.message,
     files: value.files,
-    image_urls: [],
+    attachment_urls: [],
     catalog_version: value.catalog_version,
     contract_hash: value.contract_hash,
     estimated_credits: value.estimated_credits,
+    max_credits_authorized: value.max_credits_authorized,
   };
   return crypto.createHash('sha256').update(stableStringify(prepared)).digest('hex') === value.prepared_hash;
 }

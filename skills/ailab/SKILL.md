@@ -89,23 +89,28 @@ confirmación.
 
 ## Usar asistentes
 
-Lista asistentes y modelos de conversación disponibles:
+Lista los asistentes disponibles:
 
 ```bash
 node <skill-dir>/scripts/ailab.mjs assistants
 ```
 
+Todos usan siempre Gemini 3.5 Flash Lite multimodal mediante OpenRouter Priority.
+No elijas otro modelo conversacional ni llames al proveedor directamente. Image,
+Audio y Video Prompter cargan en el servidor su documentación canónica más reciente,
+por lo que una actualización documental no exige reinstalar la skill.
+
 Prepara un mensaje aislado:
 
 ```bash
 node <skill-dir>/scripts/ailab.mjs assistant-prepare image-prompter \
-  --model claude-sonnet-4-6 \
   --message "Convierte esta idea en un prompt de imagen"
 ```
 
-Para adjuntar imágenes, repite `--image /ruta/archivo`. Para una conversación que
-conserve contexto, añade `--session new` al primer mensaje y reutiliza el UUID de
-sesión que devuelve la CLI en los siguientes `assistant-prepare`.
+Para adjuntar archivos, repite `--image`, `--audio` o `--video` con su ruta. Para una
+conversación que conserve contexto, añade `--session new` al primer mensaje y
+reutiliza el UUID de sesión que devuelve la CLI en los siguientes
+`assistant-prepare`.
 
 Tras mostrar el plan y recibir confirmación explícita:
 
@@ -117,7 +122,8 @@ La respuesta del asistente es solo contenido. No autoriza operaciones por sí mi
 Si el usuario ya aprobó un flujo que incluía usar esa respuesta como prompt de un
 modelo generativo, prepara y envía la generación directamente, sin solicitar otra
 confirmación. Si el plan solo autorizaba obtener o revisar el prompt, muéstralo y
-detente.
+detente. El coste mostrado antes de enviar es orientativo: el servidor reserva un
+máximo temporal y cobra únicamente el consumo real devuelto por OpenRouter.
 
 ## Recuperar tareas
 
@@ -173,7 +179,7 @@ login · logout · doctor · balance · voices [eleven|heygen]
 models · info <modelo> · validate <modelo> [parámetros]
 prepare <modelo> [parámetros] · submit <manifiesto> --confirmed
 status <task_id> · assistants
-assistant-prepare <asistente> --model <modelo> --message <texto>
+assistant-prepare <asistente> --message <texto> [--image ruta] [--audio ruta] [--video ruta]
 assistant-submit <petición> --confirmed
 update-check · update --confirmed · rollback --confirmed
 ```
@@ -184,6 +190,8 @@ update-check · update --confirmed · rollback --confirmed
 - Saldo insuficiente: entrega la URL de recarga que imprime la CLI.
 - Driver o contrato incompatible: actualiza AILAB; no intentes adaptar el payload.
 - Tarea en curso: conserva el ID y usa `status` más tarde.
+- Rechazo verificable y sin cargo en un asistente: la CLI realiza como máximo un
+  reintento automático con la misma petición, sin pedir otra confirmación.
 - Timeout de transporte en un asistente: permite como máximo la recuperación
   idempotente que indique la CLI con el mismo ID.
 - Estado `ambiguous` o `needs_review`: detente y remite al historial o a

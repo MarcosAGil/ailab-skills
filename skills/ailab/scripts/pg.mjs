@@ -173,29 +173,52 @@ function readAssistantMessage(opts) {
 
 async function cmdAssistants() {
   const catalog = await refreshAssistantsCatalog({ maxAgeMs: 10 * 60 * 1000, requireNetwork: false });
-  out('Asistentes disponibles · ' + catalog.credits_per_message + ' cr por mensaje:');
-  for (const [id, item] of Object.entries(catalog.assistants)) out('  ' + id + ' · ' + item.label + ' · ' + item.description);
-  out('Modelos de chat:');
-  for (const [id, item] of Object.entries(catalog.models)) out('  ' + id + ' · ' + item.label + ' · ' + item.vendor + (item.accepts_images ? ' · imagenes' : ''));
+  out('Asistentes disponibles · cobro por consumo real:');
+  for (const [id, item] of Object.entries(catalog.assistants)) {
+    out('  ' + id + ' · ' + item.label + ' · ~' + item.estimated_credits + ' cr orientativos · ' + item.description);
+  }
+  const model = catalog.models[catalog.default_model];
+  out('Modelo fijo: ' + model.label + ' · ' + model.vendor + ' · imagen, audio y video.');
+}
+
+function repeatedOpt(opts, key) {
+  if (opts[key] === undefined) return [];
+  return Array.isArray(opts[key]) ? opts[key] : [opts[key]];
+}
+
+function assistantFiles(opts, model) {
+  const specs = [
+    { option: 'image', kind: 'image', maxBytes: 10 * 1024 * 1024 },
+    { option: 'audio', kind: 'audio', maxBytes: 20 * 1024 * 1024 },
+    { option: 'video', kind: 'video', maxBytes: 40 * 1024 * 1024 },
+  ];
+  const files = [];
+  for (const spec of specs) {
+    const values = repeatedOpt(opts, spec.option);
+    const capability = spec.kind === 'image' ? 'accepts_images' : 'accepts_' + spec.kind;
+    if (values.length && !model[capability]) fail('El modelo fijo no admite ' + spec.kind + '.');
+    for (const value of values) {
+      if (value === true) fail('--' + spec.option + ' necesita una ruta.');
+      const inspected = inspectFile(String(value), spec.kind);
+      if (!inspected.ok) fail(inspected.error);
+      if (inspected.size > spec.maxBytes) fail('Cada archivo de ' + spec.kind + ' debe pesar como maximo ' + Math.round(spec.maxBytes / 1024 / 1024) + 'MB.');
+      files.push({ path: inspected.path, sha256: inspected.sha256, mime: inspected.mime, size: inspected.size, kind: spec.kind });
+    }
+  }
+  if (files.length > 6) fail('El Asistente admite como maximo 6 archivos entre imagen, audio y video.');
+  return files;
 }
 
 async function cmdAssistantPrepare(name, opts) {
   const catalog = await refreshAssistantsCatalog({ maxAgeMs: 10 * 60 * 1000, requireNetwork: true });
   const hit = resolveAssistant(catalog, name);
   if (!hit) fail('Asistente no encontrado: ' + name);
-  const modelHit = resolveAssistantModel(catalog, singleOpt(opts, 'model'));
-  if (!modelHit) fail('Modelo de asistente no encontrado: ' + String(opts.model || ''));
+  // --model se acepta por compatibilidad con agentes que aprendieron el
+  // contrato anterior, pero ya no decide el proveedor ni el modelo.
+  singleOpt(opts, 'model');
+  const modelHit = resolveAssistantModel(catalog, catalog.default_model);
   const message = readAssistantMessage(opts);
-  const imageValues = opts.image === undefined ? [] : (Array.isArray(opts.image) ? opts.image : [opts.image]);
-  if (imageValues.length > 4) fail('El Asistente admite como maximo 4 imagenes.');
-  if (imageValues.length && !modelHit.model.accepts_images) fail('El modelo seleccionado no admite imagenes.');
-  const files = [];
-  for (const value of imageValues) {
-    const inspected = inspectFile(String(value), 'image');
-    if (!inspected.ok) fail(inspected.error);
-    if (inspected.size > 5 * 1024 * 1024) fail('Las imagenes del Asistente deben pesar como maximo 5MB cada una.');
-    files.push({ path: inspected.path, sha256: inspected.sha256, mime: inspected.mime, size: inspected.size });
-  }
+  const files = assistantFiles(opts, modelHit.model);
 
   let session = null;
   const sessionOption = singleOpt(opts, 'session');
@@ -219,22 +242,27 @@ async function cmdAssistantPrepare(name, opts) {
     history,
     message,
     files,
-    image_urls: [],
+    attachment_urls: [],
     catalog_version: catalog.catalog_version,
     contract_hash: assistantContractHash(catalog, hit.id, modelHit.id),
-    estimated_credits: catalog.credits_per_message,
+    estimated_credits: hit.assistant.estimated_credits,
+    max_credits_authorized: hit.assistant.max_authorized_credits,
   });
   const me = await requireSession();
   out('── PLAN DE ASISTENTE (sin gasto todavia) ──');
   out('Asistente: ' + hit.assistant.label + ' (' + hit.id + ')');
-  out('Modelo: ' + modelHit.model.label + ' (' + modelHit.id + ')');
+  out('Modelo fijo: ' + modelHit.model.label + ' · ' + modelHit.model.vendor);
   out('Mensaje: ' + JSON.stringify(message.length > 240 ? message.slice(0, 237) + '...' : message));
   out('Historial enviado: ' + history.length + ' mensaje(s)');
-  out('Imagenes: ' + files.length);
-  out('Coste exacto: ' + catalog.credits_per_message + ' cr · saldo actual: ' + me.balance + ' cr.');
+  const counts = { image: 0, audio: 0, video: 0 };
+  for (const file of files) counts[file.kind] += 1;
+  out('Adjuntos: ' + counts.image + ' imagen(es) · ' + counts.audio + ' audio(s) · ' + counts.video + ' video(s)');
+  out('Estimacion: ~' + hit.assistant.estimated_credits + ' cr · se cobra el consumo real.');
+  out('Maximo autorizado temporalmente: ' + hit.assistant.max_authorized_credits + ' cr · saldo actual: ' + me.balance + ' cr.');
   if (session) out('Sesion: ' + session.session_id);
   out('Peticion: ' + request.request_id + ' (caduca en 15 min)');
-  out('Para enviar tras la confirmacion del usuario: node scripts/ailab.mjs assistant-submit ' + request.request_id + ' --confirmed');
+  out('Para enviar despues de la confirmacion unica del plan: node scripts/ailab.mjs assistant-submit ' + request.request_id + ' --confirmed');
+  out('Si el usuario ya autorizo el flujo completo, ejecutalo ahora sin volver a preguntar.');
 }
 
 async function cmdAssistantSubmit(requestId, opts) {
@@ -252,52 +280,58 @@ async function cmdAssistantSubmit(requestId, opts) {
   if (currentHash !== request.contract_hash) fail('El contrato o el precio del asistente cambio. Vuelve a preparar y confirmar.');
   await requireSession();
 
-  let imageUrls = Array.isArray(request.image_urls) ? request.image_urls.slice() : [];
-  if (!imageUrls.length && Array.isArray(request.files) && request.files.length) {
+  let attachmentUrls = Array.isArray(request.attachment_urls) ? request.attachment_urls.slice() : [];
+  if (!attachmentUrls.length && Array.isArray(request.files) && request.files.length) {
     for (const file of request.files) {
-      if (!rehashMatches(file)) fail('La imagen cambio despues de preparar: ' + file.path + '. Vuelve a preparar.');
-      const inspected = inspectFile(file.path, 'image');
+      if (!rehashMatches(file)) fail('El archivo cambio despues de preparar: ' + file.path + '. Vuelve a preparar.');
+      const inspected = inspectFile(file.path, file.kind);
       if (!inspected.ok) fail(inspected.error);
       out('Subiendo ' + file.path + '…');
-      const uploaded = await uploadPath(inspected.path, uploadName('assistant-image', inspected.mime), inspected.mime, file.sha256);
+      const uploaded = await uploadPath(inspected.path, uploadName('assistant-' + file.kind, inspected.mime), inspected.mime, file.sha256);
       if (!uploaded.ok) fail('Fallo la subida: ' + explain(uploaded) + ' (no se ha gastado nada)');
       const url = uploaded.data && uploaded.data.url;
       if (!url) fail('La subida no devolvio URL (no se ha gastado nada).');
-      imageUrls.push(url);
-      request = updateAssistantRequest(request, { image_urls: imageUrls });
+      attachmentUrls.push(url);
+      request = updateAssistantRequest(request, { attachment_urls: attachmentUrls });
     }
   }
-  const recoveringTransport = request.state === 'sending' || request.state === 'ambiguous';
   request = updateAssistantRequest(request, {
     state: 'sending',
     confirmed_at: request.confirmed_at || new Date().toISOString(),
-    send_attempts: Number(request.send_attempts || 0) + 1,
   });
   const payload = {
     assistant_id: request.assistant_id,
     model_id: request.model_id,
     message: request.message,
     history: request.history,
-    image_urls: imageUrls,
+    attachments: attachmentUrls,
     client_request_id: request.request_id,
   };
-  const response = await assistantPost(payload);
+  let response = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    request = updateAssistantRequest(request, { send_attempts: Number(request.send_attempts || 0) + 1 });
+    response = await assistantPost(payload);
+    const retrySame = !response.ok && response.raw && response.raw.retry_same_request === true;
+    if (!retrySame || attempt === 2) break;
+    if (response.kind === 'rate_limited') {
+      const seconds = Number.isFinite(response.retryAfterSeconds) ? Math.max(1, Math.ceil(response.retryAfterSeconds)) : 60;
+      out('AILAB ha limitado temporalmente el mensaje. Esperando ' + seconds + ' s antes del unico reintento autorizado…');
+      await sleep(seconds * 1000);
+    } else {
+      out('El proveedor rechazo el primer intento sin cobrar. Reintentando una vez dentro del plan ya autorizado…');
+    }
+  }
   if (!response.ok) {
     const serverCode = response.raw && response.raw.error_code;
-    const serverNeedsReview = ['ambiguous_upstream', 'ambiguous_response', 'ambiguous_internal'].includes(serverCode)
+    const serverNeedsReview = ['ambiguous_upstream', 'ambiguous_internal', 'ambiguous_previous'].includes(serverCode)
       || response.kind === 'ambiguous_submit';
     if (serverNeedsReview) {
       updateAssistantRequest(request, { state: 'needs_review', last_error: explain(response) });
       fail(explain(response) + ' No vuelvas a enviarla: revisa la operacion pendiente en la cuenta o con administracion.');
     }
-    const transportUnknown = response.kind === 'network' || response.kind === 'timeout';
-    if (transportUnknown && !recoveringTransport) {
+    if (response.kind === 'network' || response.kind === 'timeout') {
       updateAssistantRequest(request, { state: 'ambiguous', last_error: explain(response) });
-      fail(explain(response) + ' Puedes repetir UNA vez este mismo assistant-submit para recuperar la respuesta idempotente; no prepares otra peticion.');
-    }
-    if (transportUnknown) {
-      updateAssistantRequest(request, { state: 'needs_review', last_error: explain(response) });
-      fail(explain(response) + ' El intento de recuperacion tampoco pudo confirmarse. No vuelvas a enviar: revisa la operacion pendiente.');
+      fail(explain(response) + ' Ejecuta una sola vez el mismo assistant-submit para recuperar una respuesta ya guardada; no prepares otra peticion.');
     }
     updateAssistantRequest(request, { state: 'failed', last_error: explain(response) });
     fail(explain(response));
@@ -305,8 +339,8 @@ async function cmdAssistantSubmit(requestId, opts) {
   const raw = response.raw || {};
   const answer = raw.message && typeof raw.message.content === 'string' ? raw.message.content : '';
   if (!answer) {
-    updateAssistantRequest(request, { state: 'ambiguous', last_error: 'Respuesta sin texto.' });
-    fail('El servidor no devolvio texto. Repite el mismo assistant-submit; no prepares otra peticion.');
+    updateAssistantRequest(request, { state: 'failed', last_error: 'Respuesta sin texto.' });
+    fail('El servidor no devolvio texto utilizable y no se ha cargado el resultado.');
   }
   updateAssistantRequest(request, { state: 'completed', response: raw, completed_at: new Date().toISOString() });
   if (request.session_id) {
@@ -453,7 +487,8 @@ async function cmdPrepare(cat, name, opts) {
     out('AVISO: el saldo no cubre la estimacion. Recarga en: ' + CUENTA_URL);
   }
   out('Manifiesto: ' + manifest.manifest_id + ' (caduca en 15 min)');
-  out('Para ejecutar tras la confirmacion del usuario: node scripts/ailab.mjs submit ' + manifest.manifest_id + ' --confirmed');
+  out('Para ejecutar despues de la confirmacion unica del plan: node scripts/ailab.mjs submit ' + manifest.manifest_id + ' --confirmed');
+  out('Si el usuario ya autorizo el flujo completo, ejecutalo ahora sin volver a preguntar.');
 }
 
 async function cmdSubmit(cat, manifestId, opts) {
@@ -655,7 +690,7 @@ async function main() {
   if (!cmd || cmd === 'help') {
     out('AILAB CLI v' + CLI_VERSION + ' · Playground y asistentes desde Claude Code');
     out('Base: ' + BASE_URL);
-    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · assistants · assistant-prepare <asistente> --model <modelo> --message <texto> · assistant-submit <request_id> --confirmed');
+    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
   if (cmd === 'login') return cmdLogin();

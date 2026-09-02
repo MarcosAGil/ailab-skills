@@ -6,9 +6,10 @@ import crypto from 'node:crypto';
 import { ASSISTANTS_URL, CLI_VERSION, CONFIG_DIR, ensureConfigDir } from './config.mjs';
 import { stableStringify } from './catalog.mjs';
 
-const TOP_KEYS = new Set(['schema_version', 'catalog_version', 'min_cli_version', 'credits_per_message', 'default_model', 'assistants', 'models']);
-const ASSISTANT_KEYS = new Set(['label', 'description', 'prompt_version', 'prompt_sha256']);
-const MODEL_KEYS = new Set(['label', 'vendor', 'accepts_images']);
+const TOP_KEYS = new Set(['schema_version', 'catalog_version', 'min_cli_version', 'billing', 'default_model', 'assistants', 'models']);
+const BILLING_KEYS = new Set(['type', 'max_authorized_credits']);
+const ASSISTANT_KEYS = new Set(['label', 'description', 'prompt_version', 'prompt_sha256', 'estimated_credits', 'max_authorized_credits']);
+const MODEL_KEYS = new Set(['label', 'vendor', 'accepts_images', 'accepts_audio', 'accepts_video']);
 
 function parseSemver(value) {
   const m = /^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?$/.exec(String(value || ''));
@@ -34,10 +35,13 @@ function rejectExtra(value, allowed, where) {
 export function validateAssistantsCatalog(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Catalogo de asistentes invalido.');
   rejectExtra(value, TOP_KEYS, 'raiz');
-  if (value.schema_version !== 1) throw new Error('Version de schema de asistentes incompatible.');
+  if (value.schema_version !== 2) throw new Error('Version de schema de asistentes incompatible.');
   if (!parseSemver(value.catalog_version) || !parseSemver(value.min_cli_version)) throw new Error('Version del catalogo de asistentes no valida.');
   if (!semverGte(CLI_VERSION, value.min_cli_version)) throw new Error('Actualiza AILAB para usar los asistentes (necesita CLI ' + value.min_cli_version + ').');
-  if (!Number.isInteger(value.credits_per_message) || value.credits_per_message < 1 || value.credits_per_message > 10000) throw new Error('Precio de asistentes no valido.');
+  if (!value.billing || typeof value.billing !== 'object' || Array.isArray(value.billing)) throw new Error('Falta la facturacion de asistentes.');
+  rejectExtra(value.billing, BILLING_KEYS, 'billing');
+  if (value.billing.type !== 'actual_usage') throw new Error('Tipo de facturacion de asistentes no valido.');
+  if (!Number.isInteger(value.billing.max_authorized_credits) || value.billing.max_authorized_credits < 1 || value.billing.max_authorized_credits > 10000) throw new Error('Maximo autorizado de asistentes no valido.');
   if (!value.assistants || typeof value.assistants !== 'object' || Array.isArray(value.assistants)) throw new Error('Faltan asistentes.');
   if (!value.models || typeof value.models !== 'object' || Array.isArray(value.models)) throw new Error('Faltan modelos de asistente.');
   if (!value.models[value.default_model]) throw new Error('El modelo por defecto no existe.');
@@ -47,12 +51,16 @@ export function validateAssistantsCatalog(value) {
     if (typeof item.label !== 'string' || !item.label.trim() || item.label.length > 100) throw new Error('Nombre no valido en ' + id + '.');
     if (typeof item.description !== 'string' || item.description.length > 500) throw new Error('Descripcion no valida en ' + id + '.');
     if (item.prompt_sha256 !== null && !/^[0-9a-f]{64}$/.test(String(item.prompt_sha256))) throw new Error('Hash de prompt no valido en ' + id + '.');
+    if (!Number.isInteger(item.estimated_credits) || item.estimated_credits < 1 || item.estimated_credits > value.billing.max_authorized_credits) throw new Error('Estimacion no valida en ' + id + '.');
+    if (!Number.isInteger(item.max_authorized_credits) || item.max_authorized_credits < item.estimated_credits || item.max_authorized_credits > value.billing.max_authorized_credits) throw new Error('Maximo autorizado no valido en ' + id + '.');
   }
   for (const [id, item] of Object.entries(value.models)) {
     if (!/^[a-z0-9][a-z0-9-]{1,79}$/.test(id) || !item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Modelo de asistente no valido: ' + id + '.');
     rejectExtra(item, MODEL_KEYS, 'models.' + id);
     if (typeof item.label !== 'string' || !item.label.trim() || typeof item.vendor !== 'string') throw new Error('Metadatos no validos en ' + id + '.');
     if (typeof item.accepts_images !== 'boolean') throw new Error('accepts_images no valido en ' + id + '.');
+    if (typeof item.accepts_audio !== 'boolean') throw new Error('accepts_audio no valido en ' + id + '.');
+    if (typeof item.accepts_video !== 'boolean') throw new Error('accepts_video no valido en ' + id + '.');
   }
   return value;
 }
@@ -131,7 +139,7 @@ export function resolveAssistantModel(catalog, value) {
 export function assistantContractHash(catalog, assistantId, modelId) {
   const item = {
     schema_version: catalog.schema_version,
-    credits_per_message: catalog.credits_per_message,
+    billing: catalog.billing,
     assistant_id: assistantId,
     assistant: catalog.assistants[assistantId] || null,
     model_id: modelId,

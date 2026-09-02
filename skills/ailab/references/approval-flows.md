@@ -24,6 +24,11 @@ Interpreta `sí`, `adelante`, `hazlo` o una respuesta equivalente como autorizac
 para `ejecutar completo` cuando el encargo original ya pedía generar el resultado.
 No vuelvas a pedir que el usuario elija entre las mismas opciones.
 
+Si el usuario responde al plan reduciendo alcance o coste y añade una orden como
+`ejecuta`, `haz primero cinco` o `dale`, esa respuesta aprueba el plan corregido.
+Aplica la corrección, recalcula internamente y continúa sin formular otra pregunta,
+siempre que el nuevo máximo no supere el ya mostrado.
+
 ## Alcance de la autorización
 
 Una confirmación de `ejecutar completo` autoriza, durante el encargo actual:
@@ -35,6 +40,9 @@ Una confirmación de `ejecutar completo` autoriza, durante el encargo actual:
    gasto;
 5. un único reintento seguro de un paso que haya fallado de forma definitiva y sin
    cargo, o que el servidor confirme como reembolsado.
+
+La CLI puede efectuar por sí misma ese único reintento sin cargo. Su mensaje técnico
+no abre un plan nuevo y no requiere otro `sí`.
 
 La autorización se vincula al objetivo y al máximo total, no a los UUID internos.
 Si un intento falla con certeza y es necesario crear otro `request_id` o
@@ -56,6 +64,10 @@ Solicita una nueva confirmación solo si ocurre al menos una de estas condicione
 - el estado es `ambiguous` o `needs_review`;
 - el archivo cambió desde la aprobación;
 - el fallo requiere modificar sustancialmente el encargo, no solo repetirlo.
+
+Las operaciones antiguas que `doctor` muestre abiertas no bloquean globalmente un
+encargo nuevo. Solo detienen la repetición de la misma petición cuando su UUID o sus
+archivos coinciden y el servidor no puede descartar un doble cobro.
 
 No reintentes automáticamente una denegación de contenido con la misma petición.
 No reintentes más de una vez. Un timeout o pérdida de respuesta se recupera con el
