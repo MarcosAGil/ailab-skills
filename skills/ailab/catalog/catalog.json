@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.7.1",
+  "catalog_version": "1.8.0",
   "min_cli_version": "2.1.0",
   "models": {
     "avatar-photo-video": {
@@ -3158,6 +3158,63 @@
       "status": "active",
       "tier": "hub",
       "vendor": "Recraft"
+    },
+    "sam-audio": {
+      "aliases": [
+        "sam audio",
+        "separar audio",
+        "separacion de audio",
+        "audio separation"
+      ],
+      "description": "Separa de una mezcla el sonido descrito por texto y devuelve la pista aislada junto al audio restante.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "block_seconds": 30,
+        "credit_usd": 0.005,
+        "kind": "duration_blocks",
+        "margin_multiplier": 1.02,
+        "minimum_credits": 11,
+        "note": "cada bloque iniciado de 30 segundos",
+        "round_up": true,
+        "seconds_param": "duration_seconds",
+        "usd_per_block": 0.05
+      },
+      "expensive": false,
+      "id": "sam-audio",
+      "label": "SAM Audio",
+      "min_cli_version": "2.1.12",
+      "modes": [
+        "text-guided"
+      ],
+      "output": "audio",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "help": "Audio MP3, WAV o FLAC de hasta 50 MB.",
+          "required": true,
+          "type": "file"
+        },
+        "duration_seconds": {
+          "help": "Duracion medida localmente y verificada de nuevo por el servidor.",
+          "internal": true,
+          "max": 3600,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "prompt": {
+          "help": "Describe solo el sonido que quieres aislar, por ejemplo: Isolate the main human speaking voice.",
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "section": "other",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "SAM Audio"
     },
     "seed-audio": {
       "aliases": [

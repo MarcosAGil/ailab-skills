@@ -8,7 +8,7 @@ import { apiPost, servicePost, assistantPost, taskLookup, explain } from './lib/
 import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, estimateCredits, modelContractHash, stableStringify } from './lib/catalog.mjs';
 import { refreshAssistantsCatalog, resolveAssistant, resolveAssistantModel, assistantContractHash } from './lib/assistants.mjs';
 import { createAssistantRequest, loadAssistantRequest, updateAssistantRequest, loadSession, createSession, saveSession, assistantRequestIntact } from './lib/assistant-requests.mjs';
-import { inspectFile, rehashMatches } from './lib/files.mjs';
+import { inspectFile, inspectPricingMetadata, rehashMatches } from './lib/files.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './lib/manifest.mjs';
 import { resolveOutputDir, downloadTo, saveTextTo } from './lib/output.mjs';
 import { uploadPath } from './lib/http.mjs';
@@ -44,6 +44,7 @@ const UPLOAD_EXT = {
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
   'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
   'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav',
+  'audio/flac': 'flac', 'audio/x-flac': 'flac',
   'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a',
 };
 function uploadName(prefix, mime) {
@@ -333,6 +334,7 @@ function cmdInfo(cat, name) {
   out(m.description || '');
   out('Parametros:');
   for (const [k, s] of Object.entries(m.params || {})) {
+    if (s.internal) continue;
     const bits = [s.type];
     if (s.values) bits.push(s.values.join('|'));
     if (s.min !== undefined) bits.push('min ' + s.min);
@@ -343,10 +345,27 @@ function cmdInfo(cat, name) {
   out('Estimacion: ' + JSON.stringify(m.estimate));
 }
 
+function deriveInternalParams(model, given) {
+  const derived = { ...given };
+  if (model.id === 'sam-audio') {
+    const value = derived.audio_url;
+    if (Array.isArray(value)) fail('--audio_url solo admite un archivo.');
+    if (value === undefined || value === true || value === '') return derived;
+    const metadata = inspectPricingMetadata(String(value));
+    if (!metadata.ok || metadata.class !== 'audio' || !Number.isFinite(metadata.duration)) {
+      fail(metadata.error || 'No se pudo medir la duración del audio.');
+    }
+    if (metadata.duration > 3600) fail('SAM Audio admite audios de hasta 60 minutos.');
+    derived.duration_seconds = Math.round(metadata.duration * 100) / 100;
+  }
+  return derived;
+}
+
 function cmdValidate(cat, name, opts) {
   const hit = resolveModel(cat, name);
   if (!hit) fail('Modelo no encontrado: ' + name);
-  const given = { ...opts }; delete given.output; delete given.confirmed;
+  let given = { ...opts }; delete given.output; delete given.confirmed;
+  given = deriveInternalParams(hit.model, given);
   const v = validateParams(hit.model, given);
   if (!v.ok) fail('Parametros no validos:\n  - ' + v.errors.join('\n  - '));
   for (const [param, paths] of Object.entries(v.fileParams)) {
@@ -388,8 +407,9 @@ async function cmdPrepare(cat, name, opts) {
   const usable = modelUsable(m);
   if (!usable.ok) fail(usable.reason);
 
-  const given = { ...opts };
+  let given = { ...opts };
   delete given.output; delete given.confirmed;
+  given = deriveInternalParams(m, given);
   const v = validateParams(m, given);
   if (!v.ok) fail('Parametros no validos:\n  - ' + v.errors.join('\n  - '));
 

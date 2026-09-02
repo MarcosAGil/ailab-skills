@@ -10,10 +10,10 @@ export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'la
 
 const TOP_KEYS = new Set(['catalog_version', 'min_cli_version', 'models', 'server_contract_version']);
 const MODEL_KEYS = new Set(['aliases', 'description', 'driver', 'enabled', 'estimate', 'expensive', 'id', 'label', 'min_cli_version', 'modes', 'output', 'params', 'section', 'status', 'tier', 'vendor']);
-const PARAM_KEYS = new Set(['accept', 'default', 'help', 'max', 'max_len', 'min', 'required', 'required_when', 'type', 'values']);
-const ESTIMATE_KEYS = new Set(['approximate', 'audio_param', 'auto_duration_param', 'auto_duration_seconds', 'basic_credit_per_input', 'basic_credits', 'by_param', 'characters_param', 'characters_params', 'column_param', 'credits', 'credits_by_value', 'credits_matrix', 'credits_per_1000', 'credits_per_file', 'credits_per_second', 'credits_per_unit', 'credits_with_audio', 'credits_with_files', 'credits_with_video', 'credits_with_video_matrix', 'duration_by_mode', 'files_param', 'high_credits', 'kind', 'layers_max_credits', 'matrix_mode', 'minimum_credits', 'mode_param', 'note', 'promo', 'quality_param', 'row_param', 'seconds_param', 'units_param', 'video_param']);
+const PARAM_KEYS = new Set(['accept', 'default', 'help', 'internal', 'max', 'max_len', 'min', 'required', 'required_when', 'type', 'values']);
+const ESTIMATE_KEYS = new Set(['approximate', 'audio_param', 'auto_duration_param', 'auto_duration_seconds', 'basic_credit_per_input', 'basic_credits', 'block_seconds', 'by_param', 'characters_param', 'characters_params', 'column_param', 'credit_usd', 'credits', 'credits_by_value', 'credits_matrix', 'credits_per_1000', 'credits_per_file', 'credits_per_second', 'credits_per_unit', 'credits_with_audio', 'credits_with_files', 'credits_with_video', 'credits_with_video_matrix', 'duration_by_mode', 'files_param', 'high_credits', 'kind', 'layers_max_credits', 'margin_multiplier', 'matrix_mode', 'minimum_credits', 'mode_param', 'note', 'promo', 'quality_param', 'round_up', 'row_param', 'seconds_param', 'units_param', 'usd_per_block', 'video_param']);
 const PROMO_KEYS = new Set(['label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
-const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars']);
+const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars', 'duration_blocks']);
 const PARAM_TYPES = new Set(['string', 'string[]', 'enum', 'int', 'number', 'bool', 'file', 'file[]']);
 const OUTPUT_TYPES = new Set(['image', 'multi-image', 'video', 'audio', 'text']);
 
@@ -366,6 +366,19 @@ export function estimateCredits(model, params, now = Date.now()) {
     };
   }
   if (e.kind === 'flat_credits') return { credits: Math.ceil(e.credits), approximate: !!e.approximate, note: e.note || '' };
+  if (e.kind === 'duration_blocks') {
+    const seconds = Number(params[e.seconds_param] || 0);
+    const blockSeconds = Number(e.block_seconds || 30);
+    const unitUsd = Number(e.usd_per_block || 0);
+    const margin = Number(e.margin_multiplier || 1);
+    const creditUsd = Number(e.credit_usd || 0.005);
+    if (![seconds, blockSeconds, unitUsd, margin, creditUsd].every(Number.isFinite) || seconds <= 0 || blockSeconds <= 0 || unitUsd <= 0 || margin <= 0 || creditUsd <= 0) {
+      return { credits: null, approximate: true, note: 'duración pendiente' };
+    }
+    const blocks = Math.ceil(seconds / blockSeconds);
+    const credits = Math.max(Number(e.minimum_credits || 1), Math.ceil(blocks * unitUsd * margin / creditUsd));
+    return { credits, approximate: !!e.approximate, note: blocks + ' bloque(s) iniciado(s) de ' + blockSeconds + ' s' };
+  }
   if (e.kind === 'per_second_table') {
     const key = params[e.by_param];
     const hasVideo = e.video_param && Array.isArray(params[e.video_param]) && params[e.video_param].length > 0;

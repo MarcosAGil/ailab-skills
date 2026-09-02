@@ -26,7 +26,7 @@ export async function check(model, taskRef) {
   if (!n.ok) return { status: 'error', normalized: n };
   const d = n.data || {};
   if (String(d.status).toUpperCase() === 'COMPLETED') {
-    const urls = [d.image, d.audio].filter(Boolean);
+    const urls = [d.target, d.residual, d.image, d.audio].filter(Boolean);
     return urls.length ? { status: 'success', urls } : { status: 'fail', error: 'Completado pero sin URL de resultado.' };
   }
   return { status: 'pending' };

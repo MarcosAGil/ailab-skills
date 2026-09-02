@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 import { CONFIG_DIR, RELEASE_MANIFEST_URL, SKILL_ROOT, UPDATE_CHANNEL, ensureConfigDir } from './config.mjs';
 
 export const BOOTSTRAP_VERSION = '1.0.0';
-export const BUNDLED_RUNTIME_VERSION = '2.1.11';
+export const BUNDLED_RUNTIME_VERSION = '2.1.12';
 export const UPDATE_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAVjnUJTcIxxRRvRTo83RpaCI7eaPwTg5KIz65p49UZs0=
 -----END PUBLIC KEY-----`;

@@ -19,6 +19,7 @@ export function sniffMime(buf) {
   if (buf.length >= 3 && buf.slice(0, 3).toString('ascii') === 'ID3') return 'audio/mpeg';
   if (buf.length >= 2 && buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0) return 'audio/mpeg';
   if (buf.length >= 12 && buf.slice(0, 4).toString('ascii') === 'RIFF' && buf.slice(8, 12).toString('ascii') === 'WAVE') return 'audio/wav';
+  if (buf.length >= 4 && buf.slice(0, 4).toString('ascii') === 'fLaC') return 'audio/flac';
   return null;
 }
 
@@ -187,6 +188,88 @@ function mp4Duration(absolute) {
   }
 }
 
+function audioDuration(absolute, mime) {
+  const stat = fs.statSync(absolute);
+  if (mime === 'audio/wav') {
+    const fd = fs.openSync(absolute, 'r');
+    try {
+      const head = Buffer.alloc(12);
+      if (fs.readSync(fd, head, 0, 12, 0) !== 12 || head.subarray(0, 4).toString('ascii') !== 'RIFF' || head.subarray(8, 12).toString('ascii') !== 'WAVE') return null;
+      let offset = 12, byteRate = 0, dataBytes = 0;
+      while (offset + 8 <= stat.size) {
+        const chunk = Buffer.alloc(8);
+        if (fs.readSync(fd, chunk, 0, 8, offset) !== 8) break;
+        const id = chunk.subarray(0, 4).toString('ascii');
+        const size = chunk.readUInt32LE(4);
+        if (size > stat.size || offset + 8 + size > stat.size) return null;
+        if (id === 'fmt ' && size >= 12) {
+          const fmt = Buffer.alloc(12);
+          if (fs.readSync(fd, fmt, 0, 12, offset + 8) !== 12) return null;
+          byteRate = fmt.readUInt32LE(8);
+        } else if (id === 'data') dataBytes = size;
+        if (byteRate > 0 && dataBytes > 0) break;
+        offset += 8 + size + (size % 2);
+      }
+      const duration = byteRate > 0 && dataBytes > 0 ? dataBytes / byteRate : 0;
+      return Number.isFinite(duration) && duration > 0 ? duration : null;
+    } finally { fs.closeSync(fd); }
+  }
+  if (mime === 'audio/flac') {
+    const fd = fs.openSync(absolute, 'r');
+    try {
+      const head = Buffer.alloc(42);
+      if (fs.readSync(fd, head, 0, 42, 0) !== 42 || head.subarray(0, 4).toString('ascii') !== 'fLaC' || (head[4] & 0x7f) !== 0) return null;
+      const sampleRate = (head[18] << 12) | (head[19] << 4) | (head[20] >> 4);
+      const totalSamples = Number(BigInt(head[21] & 0x0f) << 32n | BigInt(head.readUInt32BE(22)));
+      const duration = sampleRate > 0 ? totalSamples / sampleRate : 0;
+      return Number.isFinite(duration) && duration > 0 ? duration : null;
+    } finally { fs.closeSync(fd); }
+  }
+  if (mime === 'audio/mpeg') {
+    const bytes = Buffer.alloc(Math.min(stat.size, 262144));
+    const fd = fs.openSync(absolute, 'r');
+    try { fs.readSync(fd, bytes, 0, bytes.length, 0); } finally { fs.closeSync(fd); }
+    let offset = 0;
+    if (bytes.length >= 10 && bytes.subarray(0, 3).toString('ascii') === 'ID3') {
+      offset = 10 + ((bytes[6] & 0x7f) << 21) + ((bytes[7] & 0x7f) << 14) + ((bytes[8] & 0x7f) << 7) + (bytes[9] & 0x7f);
+      if ((bytes[5] & 0x10) !== 0) offset += 10;
+    }
+    let frameOffset = -1, header = 0;
+    for (let i = Math.max(0, offset); i + 4 <= bytes.length; i++) {
+      if (bytes[i] !== 0xff || (bytes[i + 1] & 0xe0) !== 0xe0) continue;
+      const value = bytes.readUInt32BE(i);
+      const versionBits = (value >>> 19) & 3, layerBits = (value >>> 17) & 3;
+      const bitrateIndex = (value >>> 12) & 15, sampleIndex = (value >>> 10) & 3;
+      if (versionBits === 1 || layerBits !== 1 || bitrateIndex < 1 || bitrateIndex > 14 || sampleIndex > 2) continue;
+      frameOffset = i; header = value; break;
+    }
+    if (frameOffset < 0) return null;
+    const versionBits = (header >>> 19) & 3, bitrateIndex = (header >>> 12) & 15;
+    const sampleIndex = (header >>> 10) & 3, channelMode = (header >>> 6) & 3;
+    let sampleRate = [44100, 48000, 32000][sampleIndex];
+    if (versionBits === 2) sampleRate /= 2; else if (versionBits === 0) sampleRate /= 4;
+    const bitrate = (versionBits === 3
+      ? [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]
+      : [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160])[bitrateIndex] * 1000;
+    const samplesPerFrame = versionBits === 3 ? 1152 : 576;
+    const sideInfo = versionBits === 3 ? (channelMode === 3 ? 17 : 32) : (channelMode === 3 ? 9 : 17);
+    const xing = frameOffset + 4 + sideInfo;
+    if (xing + 12 <= bytes.length && ['Xing', 'Info'].includes(bytes.subarray(xing, xing + 4).toString('ascii')) && (bytes.readUInt32BE(xing + 4) & 1)) {
+      const duration = bytes.readUInt32BE(xing + 8) * samplesPerFrame / sampleRate;
+      if (Number.isFinite(duration) && duration > 0) return duration;
+    }
+    let id3v1Bytes = 0;
+    if (stat.size >= 128) {
+      const tail = Buffer.alloc(3); const tailFd = fs.openSync(absolute, 'r');
+      try { fs.readSync(tailFd, tail, 0, 3, stat.size - 128); } finally { fs.closeSync(tailFd); }
+      if (tail.toString('ascii') === 'TAG') id3v1Bytes = 128;
+    }
+    const duration = bitrate > 0 ? Math.max(0, stat.size - frameOffset - id3v1Bytes) * 8 / bitrate : 0;
+    return Number.isFinite(duration) && duration > 0 ? duration : null;
+  }
+  return null;
+}
+
 // Metadatos mínimos y deterministas usados para presupuestar H3 Max antes de
 // autorizar gasto. El servidor vuelve a medirlos y es siempre la autoridad.
 export function inspectPricingMetadata(path_) {
@@ -201,6 +284,11 @@ export function inspectPricingMetadata(path_) {
     if (inspected.class === 'video' && inspected.mime === 'video/mp4') {
       const duration = mp4Duration(inspected.path);
       if (!Number.isFinite(duration) || duration <= 0) return { ok: false, error: 'No se pudo leer la duración MP4 de ' + path_ + '.' };
+      return { ...inspected, duration };
+    }
+    if (inspected.class === 'audio' && ['audio/mpeg', 'audio/wav', 'audio/flac'].includes(inspected.mime)) {
+      const duration = audioDuration(inspected.path, inspected.mime);
+      if (!Number.isFinite(duration) || duration <= 0) return { ok: false, error: 'No se pudo leer la duración del audio ' + path_ + '.' };
       return { ...inspected, duration };
     }
     return inspected;
