@@ -6,7 +6,7 @@
   "description": "Repositorio público oficial de las skills de AILAB.",
   "scripts": {
     "validate": "node tools/validate.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node tools/test.mjs",
     "check": "npm run validate && npm test",
     "package:ailab": "node tools/package.mjs ailab",
     "package:vervideo": "node tools/package.mjs vervideo"
