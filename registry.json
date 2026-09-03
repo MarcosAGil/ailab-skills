@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-02",
+  "updated_at": "2026-09-03",
   "skills": [
     {
       "id": "ailab",
@@ -18,10 +18,10 @@
     {
       "id": "vervideo",
       "name": "Ver vídeo",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "channel": "beta",
       "path": "skills/vervideo",
-      "description": "Análisis exhaustivo de vídeos locales con Gemini vía OpenRouter.",
+      "description": "Análisis de vídeos locales o públicos en modos completo y mini mediante OpenRouter.",
       "minimum_python": "3.9",
       "clients": [
         "claude-code",
@@ -30,10 +30,10 @@
       "self_test": {
         "command": "python3",
         "args": [
-          "scripts/vervideo.py",
+          "scripts/completo.py",
           "--help"
         ],
-        "expect": "Analiza un vídeo"
+        "expect": "Analiza un video completo"
       }
     }
   ]

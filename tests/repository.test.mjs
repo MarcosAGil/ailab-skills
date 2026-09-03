@@ -14,7 +14,7 @@ test('el registro público y todas las skills son válidos', () => {
   assert.equal(result.registry.schema_version, 1);
   assert.deepEqual(result.registry.skills.map((skill) => skill.id), ['ailab', 'vervideo']);
   assert.ok(result.results[0].files > 10);
-  assert.equal(result.results.find((skill) => skill.id === 'vervideo').files, 3);
+  assert.equal(result.results.find((skill) => skill.id === 'vervideo').files, 8);
 });
 
 test('el instalador copia y verifica vervideo sin red ni API key', (t) => {
@@ -27,9 +27,20 @@ test('el instalador copia y verifica vervideo sin red ni API key', (t) => {
     timeout: 30000,
   });
   assert.equal(installed.status, 0, installed.stderr || installed.stdout);
-  assert.match(installed.stdout, /Instalada vervideo 1\.0\.0/);
+  assert.match(installed.stdout, /Instalada vervideo 2\.0\.0/);
   assert.ok(fs.existsSync(path.join(destination, 'vervideo', 'SKILL.md')));
-  assert.ok(fs.existsSync(path.join(destination, 'vervideo', 'scripts', 'vervideo.py')));
+  for (const script of ['common.py', 'completo.py', 'frames.py', 'mini.py', 'report.py', 'transcribe.py']) {
+    assert.ok(fs.existsSync(path.join(destination, 'vervideo', 'scripts', script)), script);
+  }
+  assert.equal(fs.existsSync(path.join(destination, 'vervideo', 'scripts', 'vervideo.py')), false);
+
+  const miniHelp = spawnSync('python3', [path.join(destination, 'vervideo', 'scripts', 'mini.py'), '--help'], {
+    encoding: 'utf8',
+    env: { PATH: process.env.PATH },
+    timeout: 30000,
+  });
+  assert.equal(miniHelp.status, 0, miniHelp.stderr || miniHelp.stdout);
+  assert.match(miniHelp.stdout, /Modo mini de \/vervideo/);
 });
 
 test('el instalador copia y verifica AILAB de forma aislada', (t) => {
@@ -116,7 +127,7 @@ test('el paquete de vervideo es reproducible, autocontenido y no contiene secret
   });
   const first = build();
   assert.equal(first.status, 0, first.stderr || first.stdout);
-  const archive = path.join(destination, 'vervideo-skill-v1.0.0-beta.zip');
+  const archive = path.join(destination, 'vervideo-skill-v2.0.0-beta.zip');
   const firstBytes = fs.readFileSync(archive);
   const second = build();
   assert.equal(second.status, 0, second.stderr || second.stdout);
@@ -128,7 +139,12 @@ test('el paquete de vervideo es reproducible, autocontenido y no contiene secret
   assert.deepEqual(entries, [
     'vervideo/SKILL.md',
     'vervideo/package.json',
-    'vervideo/scripts/vervideo.py',
+    'vervideo/scripts/common.py',
+    'vervideo/scripts/completo.py',
+    'vervideo/scripts/frames.py',
+    'vervideo/scripts/mini.py',
+    'vervideo/scripts/report.py',
+    'vervideo/scripts/transcribe.py',
   ]);
 
   const strings = spawnSync('unzip', ['-p', archive], { encoding: 'utf8' });

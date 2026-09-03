@@ -15,7 +15,7 @@ cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 | Skill | Estado | Descripción |
 |---|---|---|
 | `ailab` | Beta | Playground, modelos generativos y asistentes de AILAB. |
-| `vervideo` | Beta | Análisis detallado de vídeos locales con Gemini vía OpenRouter. |
+| `vervideo` | Beta | Análisis completo o editorial de vídeos locales y URLs públicas. |
 
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
 es independiente y vive dentro de `skills/<id>/`.
@@ -25,7 +25,7 @@ es independiente y vive dentro de `skills/<id>/`.
 - Node.js 18.17 o posterior.
 - Para `ailab`: una cuenta de AILAB habilitada y créditos para las operaciones de pago.
 - Para `vervideo`: Python 3.9 o posterior, una API key propia de OpenRouter y
-  `ffmpeg`/`ffprobe` cuando el vídeo necesite compresión.
+  `ffmpeg`, `ffprobe` y `yt-dlp` para procesar vídeo, audio y URLs públicas.
 
 ## Instalación
 
@@ -81,6 +81,10 @@ lo guarda fuera del repositorio con permisos restringidos.
 Para `vervideo`, configura personalmente `OPENROUTER_API_KEY` en
 `~/.config/openrouter/.env` con permisos `600`. La clave no se guarda dentro de
 la skill ni se incluye en sus paquetes.
+
+`vervideo` ofrece dos modos: `completo` envía el vídeo entero a Gemini para un
+análisis narrativo exhaustivo; `mini` extrae escenas, examina el hook y genera
+un informe editorial con transcripción y métricas de montaje.
 
 ## Actualizaciones
 
