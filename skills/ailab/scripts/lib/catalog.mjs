@@ -466,7 +466,8 @@ export function estimateCredits(model, params, now = Date.now()) {
   if (e.kind === 'unit_credits') {
     const units = Number(params[e.units_param] || 0);
     const credits = Math.max(Number(e.minimum_credits || 0), units * Number(e.credits_per_unit || 0));
-    return { credits: Number.isFinite(credits) && credits > 0 ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
+    const rounded = Number.isFinite(credits) ? Number(credits.toFixed(4)) : credits;
+    return { credits: Number.isFinite(rounded) && rounded > 0 ? Math.ceil(rounded) : null, approximate: !!e.approximate, note: e.note || '' };
   }
   if (e.kind === 'per_1000_chars') {
     const characterParams = Array.isArray(e.characters_params) ? e.characters_params : [e.characters_param];

@@ -272,7 +272,7 @@ function audioDuration(absolute, mime) {
     const duration = bitrate > 0 ? Math.max(0, stat.size - frameOffset - id3v1Bytes) * 8 / bitrate : 0;
     return Number.isFinite(duration) && duration > 0 ? duration : null;
   }
-  if (['audio/mp4', 'video/mp4'].includes(mime)) return mp4Duration(absolute);
+  if (['audio/mp4', 'video/mp4', 'video/quicktime'].includes(mime)) return mp4Duration(absolute);
   if (mime === 'audio/ogg') {
     const headSize = Math.min(stat.size, 65536);
     const tailSize = Math.min(stat.size, 262144);
@@ -332,7 +332,7 @@ export function inspectPricingMetadata(path_) {
       if (!dimensions || dimensions.width < 1 || dimensions.height < 1) return { ok: false, error: 'No se pudieron leer las dimensiones de ' + path_ + '.' };
       return { ...inspected, ...dimensions, pixels: dimensions.width * dimensions.height };
     }
-    if (inspected.class === 'video' && inspected.mime === 'video/mp4') {
+    if (inspected.class === 'video' && ['video/mp4', 'video/quicktime'].includes(inspected.mime)) {
       const duration = mp4Duration(inspected.path);
       if (!Number.isFinite(duration) || duration <= 0) return { ok: false, error: 'No se pudo leer la duración MP4 de ' + path_ + '.' };
       return { ...inspected, duration };

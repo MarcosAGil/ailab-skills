@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.9.0",
+  "catalog_version": "1.10.0",
   "min_cli_version": "2.1.0",
   "models": {
     "avatar-photo-video": {
@@ -283,37 +283,47 @@
     "eleven-audio-isolation": {
       "aliases": [
         "audio isolation",
-        "aislar voz"
+        "aislar voz",
+        "voice isolator",
+        "limpiar voz"
       ],
-      "description": "Aisla la voz y reduce ruido de fondo en un audio.",
-      "driver": "jobs-v1",
+      "description": "Aisla la voz de ruido, ambiente y música en un archivo de audio o vídeo.",
+      "driver": "eleven-v1",
       "enabled": true,
       "estimate": {
-        "approximate": true,
-        "credits_per_unit": 0.22,
+        "approximate": false,
+        "credits_per_unit": 0.17,
         "kind": "unit_credits",
         "minimum_credits": 1,
+        "note": "1.000 caracteres de cuota por minuto, margen AILAB del 2% y redondeo final al crédito superior.",
+        "round_up": true,
         "units_param": "duration_seconds"
       },
       "expensive": false,
       "id": "eleven-audio-isolation",
-      "label": "ElevenLabs Audio Isolation",
-      "min_cli_version": "1.0.0",
+      "label": "Voice Isolator",
+      "min_cli_version": "2.2.1",
       "output": "audio",
       "params": {
         "audio_url": {
-          "accept": "audio",
+          "accept": [
+            "audio",
+            "video"
+          ],
+          "help": "Audio de hasta 150 MB o vídeo de hasta 200 MB. Máximo 1 hora.",
           "required": true,
           "type": "file"
         },
         "duration_seconds": {
-          "max": 7200,
-          "min": 1,
+          "help": "Duración real medida automáticamente y verificada por el servidor.",
+          "internal": true,
+          "max": 3600,
+          "min": 0.1,
           "required": true,
           "type": "number"
         }
       },
-      "section": "voice",
+      "section": "other",
       "status": "active",
       "tier": "hub",
       "vendor": "ElevenLabs"
