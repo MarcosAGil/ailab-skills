@@ -1,0 +1,8 @@
+{
+  "name": "@ailab-skills/ugc-ailab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "UGC con Gemini Omni y pistas de ambiente y voz mediante AILAB.",
+  "engines": { "node": ">=18.17" }
+}

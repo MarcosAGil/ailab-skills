@@ -16,6 +16,7 @@ cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 |---|---|---|
 | `ailab` | Beta | Playground, modelos generativos y asistentes de AILAB. |
 | `vervideo` | Beta | Análisis completo o editorial de vídeos locales y URLs públicas. |
+| `ugc-ailab` | Beta | Guion y referencias → Gemini Omni → ambiente SAM y voz ElevenLabs, con pistas separadas. Requiere `ailab`. |
 
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
 es independiente y vive dentro de `skills/<id>/`.
@@ -26,6 +27,8 @@ es independiente y vive dentro de `skills/<id>/`.
 - Para `ailab`: una cuenta de AILAB habilitada y créditos para las operaciones de pago.
 - Para `vervideo`: Python 3.9 o posterior, una API key propia de OpenRouter y
   `ffmpeg`, `ffprobe` y `yt-dlp` para procesar vídeo, audio y URLs públicas.
+- Para `ugc-ailab`: la skill `ailab` instalada y configurada, además de `ffmpeg`
+  y `ffprobe`. Utiliza la cuenta y créditos de AILAB, sin claves adicionales.
 
 ## Instalación
 
@@ -62,6 +65,19 @@ node tools/install.mjs vervideo --target claude
 
 El instalador valida el registro, rechaza enlaces simbólicos, realiza una copia
 atómica y ejecuta el autodiagnóstico de la skill antes de conservarla.
+
+Para instalar el workflow UGC junto a su dependencia en Codex:
+
+```bash
+node tools/install.mjs ailab ugc-ailab --target codex
+```
+
+Invoca `$ugc-ailab` y aporta guion, formato, referencias visuales y dirección del
+vídeo. Prepara un plan único para Video Prompter, Gemini Omni Flash 1.1, SAM Audio,
+Voice Isolator y Voice Changer. Entrega el vídeo original, ambiente y voz separados;
+no incluye montaje ni upscale. Cristina es la voz predeterminada, resuelta desde
+el catálogo disponible. El autodiagnóstico de instalación comprueba el helper,
+no la disponibilidad de la cuenta, los proveedores o los binarios de vídeo.
 
 ## Primer uso
 

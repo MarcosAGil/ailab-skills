@@ -1,0 +1,4 @@
+interface:
+  display_name: "UGC AILAB"
+  short_description: "Vídeo UGC con ambiente y voz consistente"
+  default_prompt: "Usa $ugc-ailab con mi guion, formato, referencias y dirección para generar el vídeo y separar ambiente y voz."

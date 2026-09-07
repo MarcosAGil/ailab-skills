@@ -35,6 +35,21 @@
         ],
         "expect": "Analiza un video completo"
       }
+    },
+    {
+      "id": "ugc-ailab",
+      "name": "UGC AILAB",
+      "version": "1.0.0",
+      "channel": "beta",
+      "path": "skills/ugc-ailab",
+      "description": "Vídeo UGC con Gemini Omni y pistas separadas de ambiente y voz mediante AILAB.",
+      "minimum_node": "18.17.0",
+      "clients": ["claude-code", "codex"],
+      "self_test": {
+        "command": "node",
+        "args": ["scripts/extract-audio.mjs", "--help"],
+        "expect": "Extrae audio original para UGC AILAB"
+      }
     }
   ]
 }
