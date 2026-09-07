@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const CLI_VERSION = '2.2.1';
+export const CLI_VERSION = '2.2.2';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // En la instalación completa este módulo vive en scripts/lib/. En las releases
@@ -20,11 +20,11 @@ export const SKILL_ROOT = path.basename(HERE) === 'lib'
 const legacyBaseOverride = process.env.PG_BASE_URL || '';
 const baseOverride = process.env.AILAB_BASE_URL || legacyBaseOverride;
 export const BASE_URL = (baseOverride || 'https://ailendra.com/ailab/').replace(/\/+$/, '') + '/';
-// Hasta que todos los gateways especializados se hayan migrado y verificado en
-// AILAB, las generaciones siguen entrando por el backend probado de The Hub. La
-// wallet compartida hace que cuenta, saldo y ledger sigan siendo los mismos.
-export const GENERATION_BASE_URL = (process.env.AILAB_GENERATION_BASE_URL || legacyBaseOverride
-  || 'https://ailendra.com/thehub/playground/').replace(/\/+$/, '') + '/';
+// El catálogo y los gateways deben pertenecer a la misma plataforma: AILAB
+// traduce los IDs públicos a los contratos actuales de cada proveedor. La wallet
+// sigue siendo compartida; no hay fallback automático al backend legacy.
+export const GENERATION_BASE_URL = (process.env.AILAB_GENERATION_BASE_URL || BASE_URL)
+  .replace(/\/+$/, '') + '/';
 
 // El token se comparte con la skill anterior. El resto del estado usa un namespace
 // propio para que ambas instalaciones puedan convivir sin mezclar manifiestos.
@@ -36,9 +36,7 @@ export const CREDENTIALS_DIR = process.env.AILAB_CREDENTIALS_DIR || process.env.
 export const OUTPUT_DIR = process.env.AILAB_OUTPUT_DIR || process.env.PG_OUTPUT_DIR || path.join(os.homedir(), 'Downloads', 'AILAB');
 
 export const CATALOG_PATH = process.env.AILAB_CATALOG_PATH || process.env.PG_CATALOG_PATH || path.join(SKILL_ROOT, 'catalog', 'catalog.json');
-// AILAB publica una copia generada del registro canónico. Las generaciones aún
-// entran por The Hub durante la convivencia, pero el catálogo 2.x no comparte URL
-// con la skill legacy y por tanto no puede romper instalaciones antiguas.
+// Catálogo versionado de AILAB, independiente de la URL de la skill legacy.
 export const CATALOG_URL = process.env.AILAB_CATALOG_URL || process.env.PG_CATALOG_URL
   || BASE_URL + 'api/v1/skill/catalog.json';
 export const SERVER_CONTRACT_VERSION = '2';
