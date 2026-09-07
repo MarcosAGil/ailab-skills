@@ -27,7 +27,7 @@ es independiente y vive dentro de `skills/<id>/`.
 - Para `ailab`: una cuenta de AILAB habilitada y créditos para las operaciones de pago.
 - Para `vervideo`: Python 3.9 o posterior, una API key propia de OpenRouter y
   `ffmpeg`, `ffprobe` y `yt-dlp` para procesar vídeo, audio y URLs públicas.
-- Para `ugc-ailab`: la skill `ailab` instalada y configurada, además de `ffmpeg`
+- Para `ugc-ailab`: la skill `ailab` instalada y configurada (runtime 2.2.3 o posterior), además de `ffmpeg`
   y `ffprobe`. Utiliza la cuenta y créditos de AILAB, sin claves adicionales.
 
 ## Instalación

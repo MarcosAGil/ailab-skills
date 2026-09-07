@@ -281,9 +281,11 @@ async function cmdAssistantSubmit(requestId, opts) {
   await requireSession();
 
   let attachmentUrls = Array.isArray(request.attachment_urls) ? request.attachment_urls.slice() : [];
-  if (!attachmentUrls.length && Array.isArray(request.files) && request.files.length) {
-    for (const file of request.files) {
+  if (Array.isArray(request.files) && request.files.length) {
+    if (attachmentUrls.length > request.files.length) fail('La lista de adjuntos no coincide con el plan. Vuelve a preparar.');
+    for (const [index, file] of request.files.entries()) {
       if (!rehashMatches(file)) fail('El archivo cambio despues de preparar: ' + file.path + '. Vuelve a preparar.');
+      if (index < attachmentUrls.length) continue;
       const inspected = inspectFile(file.path, file.kind);
       if (!inspected.ok) fail(inspected.error);
       out('Subiendo ' + file.path + '…');
@@ -385,18 +387,19 @@ function cmdInfo(cat, name) {
 
 function deriveInternalParams(model, given) {
   const derived = { ...given };
-  if (model.id === 'sam-audio' || model.id === 'resemble-audio-enhancement') {
+  if (['sam-audio', 'resemble-audio-enhancement', 'eleven-audio-isolation'].includes(model.id)) {
     const value = derived.audio_url;
     if (Array.isArray(value)) fail('--audio_url solo admite un archivo.');
     if (value === undefined || value === true || value === '') return derived;
     const metadata = inspectPricingMetadata(String(value));
-    const allowedClass = model.id === 'resemble-audio-enhancement'
-      ? (metadata.class === 'audio' || metadata.mime === 'video/mp4')
-      : metadata.class === 'audio';
+    const allowedClass = metadata.class === 'audio'
+      || (model.id === 'resemble-audio-enhancement' && metadata.mime === 'video/mp4')
+      || (model.id === 'eleven-audio-isolation' && metadata.class === 'video');
     if (!metadata.ok || !allowedClass || !Number.isFinite(metadata.duration)) {
       fail(metadata.error || 'No se pudo medir la duración del audio.');
     }
     if (model.id === 'sam-audio' && metadata.duration > 3600) fail('SAM Audio admite audios de hasta 60 minutos.');
+    if (model.id === 'eleven-audio-isolation' && metadata.duration > 3600) fail('Voice Isolator admite archivos de hasta 60 minutos.');
     derived.duration_seconds = Math.round(metadata.duration * 100) / 100;
   }
   return derived;

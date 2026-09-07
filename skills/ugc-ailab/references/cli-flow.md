@@ -8,6 +8,7 @@ Los símbolos `<...>` son datos reales del encargo, no argumentos literales.
 ## Consultas sin generación
 
 ```bash
+node <ailab-dir>/scripts/ailab.mjs self-test
 node <ailab-dir>/scripts/ailab.mjs assistants
 node <ailab-dir>/scripts/ailab.mjs info gemini-omni-flash-1-1
 node <ailab-dir>/scripts/ailab.mjs info sam-audio
@@ -17,14 +18,15 @@ node <ailab-dir>/scripts/ailab.mjs voices eleven
 node <ailab-dir>/scripts/ailab.mjs balance
 ```
 
+Usa runtime 2.2.3 o posterior: mide automáticamente el audio de Voice Isolator.
 El catálogo del servidor es la autoridad. No pases `--model` al asistente ni
-elijas los modelos Lite/Plus mencionados en la interfaz del transcript: la CLI
+elijas los modelos Lite/Plus de la interfaz web: la CLI
 AILAB resuelve su modelo conversacional fijo.
 
 ## Video Prompter
 
 Escribe el brief en un archivo UTF-8 y usa `--message-file` para evitar problemas
-de quoting. Incluye: formato, diálogo literal, dirección, duración, 9:16, 1080p,
+de quoting. Incluye: formato, diálogo literal, dirección, duración, aspecto y resolución aprobados,
 modo reference y la lista numerada con el papel de cada imagen. Pide que entregue
 solo el prompt final, con tiempos realizables y sin añadir otros pasos de pago.
 
@@ -49,7 +51,7 @@ node <ailab-dir>/scripts/ailab.mjs prepare gemini-omni-flash-1-1 \
 node <ailab-dir>/scripts/ailab.mjs submit <manifest_id> --confirmed --output <run>/video
 ```
 
-Sustituye 10 por la duración aprobada. Para prompts largos/multilínea, usa un
+Sustituye 10, 9:16 y 1080p por los valores aprobados. Para prompts largos/multilínea, usa un
 proceso con un array de argumentos (por ejemplo `spawnSync` de Node leyendo el
 archivo UTF-8), sin shell. No inventes `--prompt-file`: no forma parte de este
 contrato. Guarda el prompt exacto y utiliza ese texto como argumento `--prompt`.
@@ -79,7 +81,8 @@ los resultados. No pases manualmente parámetros `internal` de SAM/Voice Isolato
 La limpieza adicional de Voice Changer queda desactivada porque ya hay una etapa
 dedicada de aislamiento; respeta el contrato vigente y el plan aprobado.
 
-La CLI descarga todos los outputs y muestra `Guardado:`. Usa esas rutas reales;
+La CLI descarga todos los outputs y muestra `Guardado:` (o `Recuperado del servidor:`
+al recuperar una tarea sin recibo local). Usa esas rutas reales;
 no adivines nombres. En el adaptador `labs-queue-v1` conocido, el orden de SAM es
 `target` y después `residual`, pero los valores ausentes se eliminan de la lista:
 UN archivo no permite deducir cuál es. Verifica que ambos outputs hayan terminado

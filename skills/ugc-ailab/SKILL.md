@@ -31,12 +31,14 @@ este flujo. No los añadas salvo petición del usuario.
 
 ## Dependencias y entradas
 
-Necesita la skill `ailab` instalada en el mismo directorio padre, Node.js 18.17+
+Necesita la skill `ailab` con runtime 2.2.3 o posterior instalada en el mismo directorio padre, Node.js 18.17+
 y `ffmpeg`/`ffprobe` en PATH. Lee `<ailab-dir>/SKILL.md` y
 `<ailab-dir>/references/approval-flows.md` antes de operar. Usa exclusivamente
 `node <ailab-dir>/scripts/ailab.mjs` para asistentes y modelos de pago. No copies
 su runtime ni accedas a configuraciones privadas. Si falta AILAB, indica que es
 una dependencia necesaria antes de generar; no recurras a proveedores directos.
+Comprueba la versión que imprime `self-test` antes del plan: versiones anteriores no calculan automáticamente
+la duración de Voice Isolator. Usa el actualizador oficial de AILAB si hace falta.
 
 El usuario solo tiene que aportar:
 
@@ -65,6 +67,8 @@ Usa EXACTAMENTE la misma lista de archivos y el mismo orden en Video Prompter y
 Gemini. No inventes ni generes imágenes que falten. Si las imágenes aportadas
 cubren varios papeles, descríbelo sin exigir tres archivos artificialmente.
 Comprueba que la lista cabe en ambos contratos; no omitas adjuntos para el asistente.
+Actualmente el asistente admite hasta seis adjuntos en total, aunque Gemini admita
+siete imágenes: en este flujo manda el límite menor.
 
 ## Preparar un único plan
 
@@ -84,7 +88,7 @@ Nunca guardes tokens ni URLs firmadas en ese registro.
 Prepara el mensaje del asistente, sin enviarlo todavía. Presenta un solo plan
 que incluya Video Prompter, Gemini, SAM, Voice Isolator y Voice Changer: referencias
 en orden, guion, duración, resolución, voz/ID, coste de cada paso y máximo total.
-Calcula usando los contratos vigentes; no uses precios del transcript ni de esta
+Calcula usando los contratos vigentes; no uses precios de ejemplos ni de esta
 skill. Para las etapas cuyo audio aún no existe, estima con la duración máxima
 prevista y las reglas de redondeo/mínimos del contrato. No prepares usando archivos
 ficticios. Distingue estimaciones de reservas máximas; el máximo del asistente puede
@@ -110,8 +114,8 @@ el máximo, detente antes del nuevo gasto. No anuncies precios fijos universales
    Extrae el prompt final sin reescribirlo ni incluir explicaciones auxiliares.
    Si contradice el encargo, no lo envíes a Gemini; informa de la discrepancia y
    resuelve la corrección dentro del alcance y presupuesto autorizado.
-3. Prepara **`gemini-omni-flash-1-1`** con `mode=reference`, `aspect_ratio=9:16`,
-   `resolution=1080p`, duración aprobada y las mismas referencias ordenadas.
+3. Prepara **`gemini-omni-flash-1-1`** con `mode=reference`, aspecto, resolución y
+   duración aprobados (por defecto `9:16`, `1080p`) y las mismas referencias ordenadas.
    La primera imagen guía la composición inicial dentro de `image_urls`: NO
    cambies a `mode=frames` ni mezcles `first_frame_url` con estas referencias.
    El audio original debe contener el diálogo y los sonidos de la escena.
@@ -140,7 +144,7 @@ Abre dos ramas lógicas INDEPENDIENTES; pueden ejecutarse secuencialmente:
 **Ambiente — `sam-audio`**
 
 - Entrada: `audio-original.wav` completo, no la salida de Voice Isolator.
-- Prompt recomendado para este flujo (no es una cita del preset del transcript):
+- Prompt recomendado para este flujo:
   `Isolate all human speech from the foreground speaker, including spoken words,
   breaths and vocalizations. Exclude traffic, wind, room tone, footsteps,
   clothing rustle and all other non-vocal environmental sounds.`
@@ -166,8 +170,8 @@ Abre dos ramas lógicas INDEPENDIENTES; pueden ejecutarse secuencialmente:
 
 Actualiza `workflow.json` en cada etapa. Al reanudar, usa los IDs y archivos reales
 registrados; no repitas etapas cobradas que ya terminaron. `status` recupera tareas
-y descargas. Aplica los límites de reintento y estados ambiguos de AILAB. El ejemplo
-del directo repitiendo SAM no autoriza iteraciones de pago. Si una rama queda
+y descargas. Aplica los límites de reintento y estados ambiguos de AILAB.
+Una repetición de SAM no está incluida por defecto en el plan. Si una rama queda
 bloqueada, conserva sus resultados y completa la otra si sigue dentro del plan.
 
 Entrega con rutas absolutas y previsualización disponible:
