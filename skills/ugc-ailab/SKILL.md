@@ -74,6 +74,15 @@ Comprueba que la lista cabe en ambos contratos; no omitas adjuntos para el asist
 Actualmente el asistente admite hasta seis adjuntos en total, aunque Gemini admita
 siete imágenes: en este flujo manda el límite menor.
 
+## Si solo pide un prompt
+
+Usa únicamente Video Prompter con su brief y referencias. Consulta el contrato
+del modelo de destino para escribir un prompt compatible, pero no prepares su
+generación ni las etapas de audio. No necesitas resolver Cristina ni comprobar
+ffmpeg/ffprobe. Informa del coste del Prompter y ejecútalo bajo esa petición.
+Entrega el prompt exacto y detente. Las secciones siguientes describen el workflow
+completo, no se aplican a un encargo limitado al prompt.
+
 ## Preparar un único plan
 
 Lee [references/cli-flow.md](references/cli-flow.md) para los comandos de cada paso.

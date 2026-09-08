@@ -196,8 +196,10 @@ update-check · update --confirmed · rollback --confirmed
   reintento automático con la misma petición, sin pedir otra confirmación.
 - Timeout de transporte en un asistente: permite como máximo la recuperación
   idempotente que indique la CLI con el mismo ID.
-- Estado `ambiguous` o `needs_review`: detente y remite al historial o a
-  administración. No vuelvas a enviar.
+- Estado `ambiguous` o `needs_review`: detén nuevos envíos de esa operación.
+  Consulta su estado con el ID real disponible. Sin task_id, usa solo la vía
+  idempotente que documente la CLI; si no existe, remite a historial/administración.
+  No inventes otra petición ni extrapoles el retry de asistentes a un modelo.
 - HTTP 429: respeta el tiempo exacto que indique la CLI y realiza como máximo un
   único reintento. Nunca lances bucles, procesos en segundo plano ni reintentos
   periódicos: pueden prolongar el bloqueo del alojamiento.
@@ -205,5 +207,6 @@ update-check · update --confirmed · rollback --confirmed
   extensión manualmente.
 - Presupuesto de preparación distinto al de envío: actualiza y vuelve a preparar
   el mismo paso solo si fue rechazado antes del cargo. No pidas más saldo ni una
-  nueva aprobación para arreglar un error interno de cotización. Si persiste,
+  nueva aprobación para arreglar un error interno de cotización, salvo que la
+  cotización válida supere un techo explícito del usuario. Si persiste,
   informa de la discrepancia sin manipular máximos ni reenviar en bucle.
