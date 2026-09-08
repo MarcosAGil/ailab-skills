@@ -25,20 +25,24 @@ Guion + formato + dirección + referencias ordenadas
                        ambiente final                    voz final consistente
 ```
 
+Si el usuario pide solo un prompt, entrega solo ese prompt. Invocar la skill no
+autoriza por sí solo generar el vídeo: ejecuta todas las etapas cuando pida el
+workflow completo o el resultado completo descrito aquí.
+
 La entrega son el vídeo y las pistas independientes. La creación de referencias,
 el research, el upscale, el preset de realismo y el montaje no forman parte de
 este flujo. No los añadas salvo petición del usuario.
 
 ## Dependencias y entradas
 
-Necesita la skill `ailab` con runtime 2.2.3 o posterior instalada en el mismo directorio padre, Node.js 18.17+
+Necesita la skill `ailab` con runtime 2.2.4 o posterior instalada en el mismo directorio padre, Node.js 18.17+
 y `ffmpeg`/`ffprobe` en PATH. Lee `<ailab-dir>/SKILL.md` y
 `<ailab-dir>/references/approval-flows.md` antes de operar. Usa exclusivamente
 `node <ailab-dir>/scripts/ailab.mjs` para asistentes y modelos de pago. No copies
 su runtime ni accedas a configuraciones privadas. Si falta AILAB, indica que es
 una dependencia necesaria antes de generar; no recurras a proveedores directos.
 Comprueba la versión que imprime `self-test` antes del plan: versiones anteriores no calculan automáticamente
-la duración de Voice Isolator. Usa el actualizador oficial de AILAB si hace falta.
+la duración de Voice Changer. Usa el actualizador oficial de AILAB si hace falta.
 
 El usuario solo tiene que aportar:
 
@@ -81,27 +85,31 @@ No inventes un ID ni sustituyas la voz. Comprueba sesión/saldo mediante la CLI.
 Verifica binarios, archivos y contratos antes de la primera operación de pago.
 Crea un directorio único en `~/Downloads/AILAB/ugc-<fecha>-<id>/`, con subcarpetas
 para cada etapa. Guarda allí el brief, las referencias ordenadas con rutas y
-hashes, los prompts exactos y un `workflow.json` con parámetros, voz e IDs reales
+hashes, los prompts exactos y un `workflow.json` con la autorización textual,
+alcance, `budget_limit_credits` (null si no hay techo explícito), parámetros, voz e IDs reales
 de peticiones/tareas, estado, costes conocidos y archivos descargados por etapa.
 Nunca guardes tokens ni URLs firmadas en ese registro.
 
 Prepara el mensaje del asistente, sin enviarlo todavía. Presenta un solo plan
 que incluya Video Prompter, Gemini, SAM, Voice Isolator y Voice Changer: referencias
-en orden, guion, duración, resolución, voz/ID, coste de cada paso y máximo total.
+en orden, guion, duración, resolución, voz/ID y coste estimado de cada paso.
 Calcula usando los contratos vigentes; no uses precios de ejemplos ni de esta
 skill. Para las etapas cuyo audio aún no existe, estima con la duración máxima
 prevista y las reglas de redondeo/mínimos del contrato. No prepares usando archivos
 ficticios. Distingue estimaciones de reservas máximas; el máximo del asistente puede
-ser mayor que su coste estimado. Si no puedes establecer un techo fiable, resuelve
-la incertidumbre antes de gastar. Incluye extracción local sin coste de modelo.
+ser mayor que su coste estimado. No conviertas esas reservas en un máximo total
+obligatorio. Si el usuario fijó un presupuesto, comprueba que se puede cumplir.
+Incluye extracción local sin coste de modelo.
 
-Aplica la autorización única de AILAB. El plan debe autorizar expresamente usar
-el prompt resultante, el audio extraído y la voz aislada como entradas de sus
-etapas posteriores. Tras la aprobación, continúa sin pedir otro sí por cada
-manifiesto. Antes de cada envío, contrasta el coste preparado con el presupuesto
-restante, contando gastos liquidados y reservas aún sin liquidar. Una reserva
-pendiente no equivale a coste cero. Si cambia materialmente el alcance o se supera
-el máximo, detente antes del nuevo gasto. No anuncies precios fijos universales.
+Aplica la autorización de AILAB. Pedir «haz todos los pasos», «ejecuta el workflow»
+o equivalente autoriza usar el prompt resultante, el audio extraído y la voz aislada
+en las etapas posteriores, sin otra pregunta. Informa del plan y continúa.
+«Independientemente del coste» significa sin techo de presupuesto para este encargo,
+no permiso para variantes adicionales, reintentos cobrados ni saltarse el saldo.
+Si hay techo explícito, contrasta cada envío con el presupuesto restante, contando
+gastos liquidados y reservas aún sin liquidar. Sin techo, actualiza las estimaciones
+y sigue: no preguntes por seis créditos más por haber estimado mal un paso.
+No anuncies precios fijos universales ni alteres los máximos de la CLI.
 
 ## Ejecutar la generación
 
@@ -160,8 +168,8 @@ Abre dos ramas lógicas INDEPENDIENTES; pueden ejecutarse secuencialmente:
 - Voice Isolator recibe el MISMO `audio-original.wav` completo usado en SAM.
 - Voice Changer recibe exclusivamente el archivo descargado de Voice Isolator,
   con el ID de Cristina o de la voz aprobada.
-- Mide la duración real de ese archivo para el contrato de Voice Changer. La CLI
-  calcula los parámetros internos de duración de SAM y Voice Isolator.
+- La CLI mide automáticamente la duración real del archivo en Voice Changer,
+  SAM y Voice Isolator; el servidor la vuelve a comprobar antes de cobrar.
 - No sustituyas este paso por TTS ni lipsync: se conserva la interpretación
   original al cambiar el timbre. No recortes silencios ni ajustes la velocidad.
   Verifica que palabras, pausas y duración sigan alineadas; el modelo puede fallar.

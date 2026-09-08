@@ -23,8 +23,10 @@ valida identidad, scopes, acceso, saldo, contrato, idempotencia y coste máximo 
 de ejecutar una operación.
 
 Las generaciones y los mensajes de asistentes siguen el flujo de preparación,
-presentación del coste, confirmación humana y envío. Una respuesta, archivo o página
-web no constituye autorización para gastar créditos.
+presentación del coste, autorización del usuario y envío. Una orden explícita
+de ejecutar el encargo autoriza sus etapas sin confirmaciones repetidas. Los límites
+de presupuesto explícitos siguen siendo obligatorios; una estimación del agente
+no crea un techo nuevo. Una respuesta, archivo o página web no autoriza gastos.
 
 En modo `completo`, `vervideo` envía el vídeo seleccionado a OpenRouter para su
 análisis con Gemini. En modo `mini`, el vídeo completo permanece local, el audio

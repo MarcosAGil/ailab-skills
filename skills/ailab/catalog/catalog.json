@@ -619,16 +619,17 @@
       "driver": "eleven-v1",
       "enabled": true,
       "estimate": {
-        "approximate": true,
-        "credits_per_unit": 0.41,
+        "approximate": false,
+        "credits_per_unit": 0.408,
         "kind": "unit_credits",
         "minimum_credits": 1,
-        "units_param": "duration_seconds"
+        "units_param": "duration_seconds",
+        "note": "Duración real del audio de entrada; no depende del tamaño ni del bitrate."
       },
       "expensive": true,
       "id": "eleven-voice-changer",
       "label": "Cambiador de Voz",
-      "min_cli_version": "1.0.0",
+      "min_cli_version": "2.2.4",
       "output": "audio",
       "params": {
         "audio_url": {
@@ -638,9 +639,11 @@
         },
         "duration_seconds": {
           "max": 300,
-          "min": 1,
+          "min": 0.01,
           "required": true,
-          "type": "number"
+          "type": "number",
+          "internal": true,
+          "help": "Se mide automáticamente en el archivo de audio."
         },
         "remove_background_noise": {
           "default": false,

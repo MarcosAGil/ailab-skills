@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-07",
+  "updated_at": "2026-09-08",
   "skills": [
     {
       "id": "ailab",
       "name": "AILAB",
-      "version": "2.2.3",
+      "version": "2.2.4",
       "channel": "beta",
       "path": "skills/ailab",
       "description": "Playground y asistentes de AILAB desde agentes de código.",
@@ -39,7 +39,7 @@
     {
       "id": "ugc-ailab",
       "name": "UGC AILAB",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "channel": "beta",
       "path": "skills/ugc-ailab",
       "description": "Vídeo UGC con Gemini Omni y pistas separadas de ambiente y voz mediante AILAB.",

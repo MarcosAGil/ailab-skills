@@ -18,7 +18,7 @@ node <ailab-dir>/scripts/ailab.mjs voices eleven
 node <ailab-dir>/scripts/ailab.mjs balance
 ```
 
-Usa runtime 2.2.3 o posterior: mide automáticamente el audio de Voice Isolator.
+Usa runtime 2.2.4 o posterior: mide automáticamente el audio de Voice Isolator y Voice Changer.
 El catálogo del servidor es la autoridad. No pases `--model` al asistente ni
 elijas los modelos Lite/Plus de la interfaz web: la CLI
 AILAB resuelve su modelo conversacional fijo.
@@ -72,12 +72,12 @@ node <ailab-dir>/scripts/ailab.mjs submit <isolator_manifest_id> --confirmed --o
 
 node <ailab-dir>/scripts/ailab.mjs prepare eleven-voice-changer \
   --audio_url <voz-aislada-descargada> --voice_id <id-real-aprobado> \
-  --duration_seconds <duracion-real-voz-aislada> --remove_background_noise false
+  --remove_background_noise false
 node <ailab-dir>/scripts/ailab.mjs submit <changer_manifest_id> --confirmed --output <run>/voice
 ```
 
 Usa `ffprobe -v error -show_format -show_streams -of json <archivo>` para medir
-los resultados. No pases manualmente parámetros `internal` de SAM/Voice Isolator.
+los resultados. No pases manualmente parámetros `internal` de SAM/Voice Isolator/Voice Changer.
 La limpieza adicional de Voice Changer queda desactivada porque ya hay una etapa
 dedicada de aislamiento; respeta el contrato vigente y el plan aprobado.
 

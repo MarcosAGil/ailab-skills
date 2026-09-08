@@ -34,7 +34,7 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
   const audioFiles = {};
   for (const [index, kind] of ['target', 'residual', 'isolated', 'voice'].entries()) {
     audioFiles[kind] = fixture(`${kind}.wav`, ['-f', 'lavfi', '-i',
-      `sine=frequency=${500 + index * 200}:sample_rate=48000:duration=4`, '-c:a', 'pcm_s16le']);
+      `sine=frequency=${500 + index * 200}:sample_rate=48000:duration=${kind === 'isolated' ? 10 : 4}`, '-c:a', 'pcm_s16le']);
   }
   const assets = { 'video.mp4': video, ...Object.fromEntries(Object.entries(audioFiles).map(([name, file]) => [name + '.wav', file])) };
   const uploads = [];
@@ -114,8 +114,12 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
       if (url.pathname.endsWith('/elevenlabs-gateway.php')) {
         submissions.push(body);
         const isolate = body.model === 'eleven-audio-isolation';
+        if (!isolate) {
+          assert.equal(body.input.duration_seconds, 10, 'La CLI debe medir la voz aislada, no copiar la duracion del video.');
+          assert.equal(body.max_credits_authorized, 5, '10 segundos cuestan 5 cr aunque sean WAV sin comprimir.');
+        }
         return gateway(res, { taskId: isolate ? 'mock-isolator' : 'mock-changer',
-          audio: base + (isolate ? 'assets/isolated.wav' : 'assets/voice.wav'), credits: isolate ? 1 : 2 });
+          audio: base + (isolate ? 'assets/isolated.wav' : 'assets/voice.wav'), credits: isolate ? 1 : 5 });
       }
       json(res, { error: 'Unexpected request: ' + req.url }, 404);
     } catch (error) { json(res, { error: error.message }, 500); }
@@ -132,7 +136,7 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
     AILAB_TASK_ENDPOINT: base + 'api/v1/skill/task.php', AILAB_CATALOG_PATH: path.join(root, 'skills/ailab/catalog/catalog.json'),
     AILAB_CONFIG_DIR: path.join(temp, 'config'), AILAB_CREDENTIALS_DIR: credentials };
   const run = async (...args) => (await execute(process.execPath, [cli, ...args], { env, timeout: 30000 })).stdout;
-  assert.match(await run('self-test'), /SELF_TEST_OK 2\.2\.3/);
+  assert.match(await run('self-test'), /SELF_TEST_OK 2\.2\.4/);
   const filesFrom = output => [...output.matchAll(/(?:Guardado|Recuperado del servidor): (.+) \(/g)].map(match => match[1]);
   const brief = path.join(temp, 'brief.txt');
   fs.writeFileSync(brief, 'Testimonial, diálogo literal "Hola", cámara estática, 4 segundos, 9:16, 1080p.');
@@ -172,9 +176,10 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
   const isolated = await generate('eleven-audio-isolation', ['--audio_url', originalAudio], 'isolator');
   assert.match(isolated.plan, /duration_seconds: 4/);
   assert.match(isolated.output, /Coste real: 1 cr/);
-  const changed = await generate('eleven-voice-changer', ['--audio_url', isolated.files[0], '--voice_id', 'test-voice-id',
-    '--duration_seconds', '4', '--remove_background_noise', 'false'], 'voice');
-  assert.match(changed.output, /Coste real: 2 cr/);
+  const changed = await generate('eleven-voice-changer', ['--audio_url', isolated.files[0], '--voice_id', 'dNjJKg63Fr5AXwIdkATa',
+    '--remove_background_noise', 'false'], 'voice');
+  assert.match(changed.plan, /duration_seconds: 10/);
+  assert.match(changed.output, /Coste real: 5 cr/);
   assert.equal(submissions.length, 4);
   assert.deepEqual(submissions[0].input.image_urls, originals.map(file => base + 'uploads/' + sha(fs.readFileSync(file))));
   const attached = assistantCalls[0].attachments;
@@ -185,7 +190,7 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
   assert.notEqual(submissions[2].input.audio_url, submissions[3].input.audio_url);
   assert.equal(submissions[3].input.audio_url, base + 'uploads/' + sha(fs.readFileSync(isolated.files[0])));
   assert.equal(submissions[3].input.remove_background_noise, false);
-  assert.deepEqual(submissions.map(item => item.max_credits_authorized), [65, 11, 1, 2]);
+  assert.deepEqual(submissions.map(item => item.max_credits_authorized), [65, 11, 1, 5]);
   assert.equal(new Set(submissions.map(item => item.client_request_id)).size, 4);
   await assert.rejects(run('submit', generated.manifest, '--confirmed'), /ya se ejecuto/);
   const recovered = await execute(process.execPath, [cli, 'status', 'fal:mock-sam', '--output', path.join(temp, 'recovered')], {

@@ -56,7 +56,7 @@ test('la CLI usa el modelo fijo y reintenta una respuesta inválida sin otra con
   const cli = path.join(ROOT, 'skills', 'ailab', 'scripts', 'ailab.mjs');
   const prepared = await execFileAsync(process.execPath, [cli, 'assistant-prepare', 'image-prompter', '--model', 'claude-sonnet-4-6', '--message', 'Mejora este prompt.'], { env });
   assert.match(prepared.stdout, /Modelo fijo: Gemini 3\.5 Flash Lite · OpenRouter · Priority/);
-  assert.match(prepared.stdout, /confirmacion unica del plan/);
+  assert.match(prepared.stdout, /dentro de la autorizacion del encargo/);
   const requestId = /Peticion: ([0-9a-f-]{36})/.exec(prepared.stdout)?.[1];
   assert.ok(requestId);
 

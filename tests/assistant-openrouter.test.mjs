@@ -24,10 +24,11 @@ test('la skill fija OpenRouter multimodal y no permite enrutar por el modelo sol
 });
 
 test('un único sí autoriza Prompter y generación sin preguntas intermedias', () => {
-  assert.match(instructions, /solicita una sola\s+confirmación/);
+  assert.match(instructions, /Una orden explícita de ejecutarlo ya lo autoriza/);
   assert.match(instructions, /sin solicitar otra\s+confirmación/);
-  assert.match(approval, /esa respuesta aprueba el plan corregido/);
-  assert.match(approval, /La CLI puede efectuar por sí misma ese único reintento sin cargo/);
+  assert.match(approval, /Sin techo explícito/);
+  assert.match(approval, /permite un único reintento del mismo paso sin otra confirmación/);
+  assert.match(approval, /Nunca edites el manifiesto/);
   assert.match(runtime, /Si el usuario ya autorizo el flujo completo, ejecutalo ahora sin volver a preguntar/);
 });
 

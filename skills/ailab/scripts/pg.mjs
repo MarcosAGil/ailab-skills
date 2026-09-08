@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Runtime publico de AILAB para Claude Code.
-// Flujo seguro: prepare (sin gasto) -> confirmacion humana -> submit.
+// Flujo seguro: prepare (sin gasto) -> autorizacion del encargo -> submit.
 // Sin keys maestras ni contrasenas guardadas; usa tokens de dispositivo revocables.
 import { CLI_VERSION, BASE_URL, CUENTA_URL } from './lib/config.mjs';
 import { login, promptVisible, promptHidden, readCookie, readToken, saveToken, clearToken, clearCookie, openDevicePage, cookieAuthEnabled } from './lib/auth.mjs';
@@ -261,15 +261,15 @@ async function cmdAssistantPrepare(name, opts) {
   out('Maximo autorizado temporalmente: ' + hit.assistant.max_authorized_credits + ' cr · saldo actual: ' + me.balance + ' cr.');
   if (session) out('Sesion: ' + session.session_id);
   out('Peticion: ' + request.request_id + ' (caduca en 15 min)');
-  out('Para enviar despues de la confirmacion unica del plan: node scripts/ailab.mjs assistant-submit ' + request.request_id + ' --confirmed');
+  out('Para enviar dentro de la autorizacion del encargo: node scripts/ailab.mjs assistant-submit ' + request.request_id + ' --confirmed');
   out('Si el usuario ya autorizo el flujo completo, ejecutalo ahora sin volver a preguntar.');
 }
 
 async function cmdAssistantSubmit(requestId, opts) {
-  if (!opts.confirmed) fail('Falta la confirmacion. Este mensaje gasta creditos: usa --confirmed solo despues de que el usuario acepte el plan.');
+  if (!opts.confirmed) fail('Falta la confirmacion. Este mensaje gasta creditos: usa --confirmed solo con autorizacion del usuario para este encargo.');
   let request = loadAssistantRequest(requestId);
   if (!request) fail('Peticion de asistente no encontrada: ' + requestId);
-  if (!assistantRequestIntact(request)) fail('La peticion local cambio despues de prepare. Vuelve a preparar y confirmar.');
+  if (!assistantRequestIntact(request)) fail('La peticion local cambio despues de prepare. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   if (request.state === 'completed') fail('La peticion ya se completo. Crea una nueva.');
   if (!['prepared', 'sending', 'ambiguous'].includes(request.state)) fail('La peticion no se puede enviar desde el estado ' + request.state + '.');
   if (request.state === 'prepared' && (!request.expires_at || Date.now() > Date.parse(request.expires_at))) fail('La peticion ha caducado. Vuelve a preparar el mensaje.');
@@ -277,7 +277,7 @@ async function cmdAssistantSubmit(requestId, opts) {
   const catalog = await refreshAssistantsCatalog({ maxAgeMs: 5 * 60 * 1000, requireNetwork: true });
   if (!catalog.assistants[request.assistant_id] || !catalog.models[request.model_id]) fail('El asistente o el modelo ya no esta disponible. Vuelve a preparar.');
   const currentHash = assistantContractHash(catalog, request.assistant_id, request.model_id);
-  if (currentHash !== request.contract_hash) fail('El contrato o el precio del asistente cambio. Vuelve a preparar y confirmar.');
+  if (currentHash !== request.contract_hash) fail('El contrato o el precio del asistente cambio. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   await requireSession();
 
   let attachmentUrls = Array.isArray(request.attachment_urls) ? request.attachment_urls.slice() : [];
@@ -387,7 +387,7 @@ function cmdInfo(cat, name) {
 
 function deriveInternalParams(model, given) {
   const derived = { ...given };
-  if (['sam-audio', 'resemble-audio-enhancement', 'eleven-audio-isolation'].includes(model.id)) {
+  if (['sam-audio', 'resemble-audio-enhancement', 'eleven-audio-isolation', 'eleven-voice-changer'].includes(model.id)) {
     const value = derived.audio_url;
     if (Array.isArray(value)) fail('--audio_url solo admite un archivo.');
     if (value === undefined || value === true || value === '') return derived;
@@ -400,6 +400,7 @@ function deriveInternalParams(model, given) {
     }
     if (model.id === 'sam-audio' && metadata.duration > 3600) fail('SAM Audio admite audios de hasta 60 minutos.');
     if (model.id === 'eleven-audio-isolation' && metadata.duration > 3600) fail('Voice Isolator admite archivos de hasta 60 minutos.');
+    if (model.id === 'eleven-voice-changer' && metadata.duration > 300.01) fail('Voice Changer admite audios de hasta 5 minutos.');
     derived.duration_seconds = Math.round(metadata.duration * 100) / 100;
   }
   return derived;
@@ -490,7 +491,7 @@ async function cmdPrepare(cat, name, opts) {
     out('AVISO: el saldo no cubre la estimacion. Recarga en: ' + CUENTA_URL);
   }
   out('Manifiesto: ' + manifest.manifest_id + ' (caduca en 15 min)');
-  out('Para ejecutar despues de la confirmacion unica del plan: node scripts/ailab.mjs submit ' + manifest.manifest_id + ' --confirmed');
+  out('Para ejecutar dentro de la autorizacion del encargo: node scripts/ailab.mjs submit ' + manifest.manifest_id + ' --confirmed');
   out('Si el usuario ya autorizo el flujo completo, ejecutalo ahora sin volver a preguntar.');
 }
 
@@ -499,7 +500,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   if (!m0) fail('Manifiesto no encontrado: ' + manifestId);
   if (m0.submitted_task) fail('Ese manifiesto ya se ejecuto (tarea ' + m0.submitted_task + '). Crea uno nuevo con prepare.');
   if (manifestExpired(m0)) fail('El manifiesto ha caducado (15 min). Vuelve a ejecutar prepare.');
-  if (!opts.confirmed) fail('Falta la confirmacion. Este comando gasta creditos: ejecuta submit con --confirmed SOLO despues de que el usuario haya dicho que si al plan.');
+  if (!opts.confirmed) fail('Falta la confirmacion. Este comando gasta creditos: ejecuta submit con --confirmed SOLO con autorizacion del usuario para este encargo.');
 
   const hit = resolveModel(cat, m0.model);
   if (!hit) fail('El modelo del manifiesto ya no existe en el catalogo.');
@@ -507,12 +508,12 @@ async function cmdSubmit(cat, manifestId, opts) {
   const usable = modelUsable(model);
   if (!usable.ok) fail(usable.reason);
   if (!m0.model_contract_hash || m0.model_contract_hash !== modelContractHash(hit.id, model)) {
-    fail('El contrato o el precio de este modelo cambio desde el prepare. Vuelve a preparar y confirmar.');
+    fail('El contrato o el precio de este modelo cambio desde el prepare. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   }
 
   const paramsHash = crypto.createHash('sha256').update(stableStringify(m0.params || {})).digest('hex');
   if (!m0.params_hash || paramsHash !== m0.params_hash) {
-    fail('Los parametros del manifiesto cambiaron despues de prepare. Vuelve a preparar y confirmar.');
+    fail('Los parametros del manifiesto cambiaron despues de prepare. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   }
 
   const frozenFiles = Array.isArray(m0.files) ? m0.files : [];
@@ -527,7 +528,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   }
   const validatedAgain = validateParams(model, givenAgain);
   if (!validatedAgain.ok || stableStringify(validatedAgain.params) !== stableStringify(m0.params || {})) {
-    fail('El manifiesto ya no supera la validacion del modelo. Vuelve a preparar y confirmar.');
+    fail('El manifiesto ya no supera la validacion del modelo. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   }
   const estimateAgain = estimateCredits(model, { ...validatedAgain.params, ...validatedAgain.fileParams });
   if (estimateAgain.credits !== m0.estimated_credits || estimateAgain.credits !== m0.max_credits_authorized) {

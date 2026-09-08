@@ -26,7 +26,7 @@ test('UGC se instala y empaqueta con sus recursos sin acceso a cuenta', t => {
     encoding: 'utf8', env: { ...process.env, AILAB_DIST_DIR: temp }, timeout: 30000,
   });
   assert.equal(pack.status, 0, pack.stderr);
-  const listing = exec('unzip', ['-Z1', path.join(temp, 'ugc-ailab-skill-v1.0.0-beta.zip')]);
+  const listing = exec('unzip', ['-Z1', path.join(temp, 'ugc-ailab-skill-v1.0.1-beta.zip')]);
   assert.equal(listing.status, 0, listing.stderr);
   assert.ok(listing.stdout.trim().split('\n').every(name => name.startsWith('ugc-ailab/')));
 });

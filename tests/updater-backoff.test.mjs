@@ -16,7 +16,7 @@ test('una instalación fallida entra en cooldown y no se relanza en cada comando
   let installRequests = 0;
   const envelope = {
     signed: {
-      version: '2.2.0',
+      version: '99.0.0',
       minimum_supported_runtime: '2.1.0',
     },
   };
