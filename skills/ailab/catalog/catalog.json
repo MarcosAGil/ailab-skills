@@ -1,7 +1,103 @@
 {
-  "catalog_version": "1.10.0",
+  "catalog_version": "1.14.0",
   "min_cli_version": "2.1.0",
   "models": {
+    "gpt-image-2-5": {
+      "id": "gpt-image-2-5",
+      "label": "GPT Image 2.5",
+      "description": "Genera y edita imágenes con Flare o Sunburst, de 1K a 4K y hasta 16 referencias. Ambas versiones tienen la misma tarifa estimada.",
+      "section": "image",
+      "vendor": "OpenAI",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.1.0",
+      "aliases": [
+        "gpt image 2.5",
+        "gpt image 2 5",
+        "gpt 2.5 flare",
+        "gpt 2.5 sunburst"
+      ],
+      "modes": [
+        "t2i",
+        "i2i"
+      ],
+      "params": {
+        "version": {
+          "type": "enum",
+          "values": [
+            "flare",
+            "sunburst"
+          ],
+          "default": "flare",
+          "help": "Flare y Sunburst son dos versiones del mismo modelo. Misma tarifa estimada por resolución."
+        },
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 16,
+          "required_when": {
+            "mode": "i2i"
+          },
+          "help": "Solo en imagen a imagen: de 1 a 16 imágenes JPEG, PNG o WebP, hasta 30 MB cada una. En texto a imagen no adjuntes referencias."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "21:9",
+            "27:16",
+            "16:27",
+            "9:8",
+            "8:9"
+          ],
+          "default": "auto"
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "default": "1K"
+        }
+      },
+      "estimate": {
+        "kind": "param_table",
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 7,
+          "2K": 11,
+          "4K": 17
+        },
+        "approximate": true,
+        "note": "Tarifa provisional comprobada el 09/09/2026: igual para Flare y Sunburst, con o sin referencias. Se liquida según el consumo real al terminar."
+      }
+    },
     "avatar-photo-video": {
       "aliases": [
         "avatar photo",

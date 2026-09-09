@@ -21,6 +21,12 @@ cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
 es independiente y vive dentro de `skills/<id>/`.
 
+La versión 2.2.5 incorpora **GPT Image 2.5** al catálogo: un único modelo
+`gpt-image-2-5`, con `version=flare|sunburst` y `mode=t2i|i2i`. Admite 1K, 2K,
+4K y hasta 16 referencias. El precio provisional se consulta al preparar la
+operación; no se necesitan claves de KIE. Las instalaciones compatibles también
+descubren el modelo al refrescar el catálogo remoto.
+
 ## Requisitos
 
 - Node.js 18.17 o posterior.
