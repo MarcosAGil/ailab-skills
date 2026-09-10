@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "title": "Skills y automatización",
+  "description": "Lleva AILAB a tu agente. Instala una skill y trabaja con tus archivos, tus modelos y tus workflows.",
+  "help": {
+    "installation": "Instala primero Git y Node.js 18.17 o posterior. Los comandos de instalación funcionan desde una terminal en Windows, macOS y Linux. La primera instalación clona el repositorio oficial. Si ya tienes esa carpeta, entra en ella, ejecuta git pull --ff-only y vuelve a ejecutar el instalador. No se deben sobrescribir modificaciones locales sin revisarlas.",
+    "activation": "Tras instalar, abre una conversación nueva en Claude Code o Codex e invoca la skill por su nombre. La disponibilidad puede requerir reiniciar el agente. Si has descargado un ZIP, extráelo y coloca la carpeta de la skill, con SKILL.md directamente dentro, en la carpeta skills de tu cliente.",
+    "updates": "AILAB actualiza su catálogo de modelos y comprueba las actualizaciones firmadas de su runtime. Los cambios de SKILL.md y las otras skills requieren actualizar el repositorio y ejecutar de nuevo el instalador. El instalador conserva las credenciales guardadas fuera de las skills. Descargar una skill no instala un servicio que actualice todas tus skills continuamente.",
+    "security": "Las descargas son públicas y no contienen claves. Descargar no concede acceso ni créditos. Nunca pegues contraseñas ni tokens en el chat. AILAB se conecta a tu cuenta mediante un token personal y revocable. Ver vídeo utiliza tu propia cuenta de OpenRouter. El asistente de esta página orienta: no instala, no accede a tus archivos y no ejecuta generaciones."
+  },
+  "skills": [
+    {
+      "id": "ailab",
+      "category": "Generación",
+      "icon": "layers",
+      "summary": "Todo el Playground desde tu agente: genera, consulta tus tareas y descarga los resultados sin salir de tu proyecto.",
+      "features": ["Imagen, vídeo, voz, música, upscale y utilidades", "Image, Video y Audio Prompter con documentación de AILAB", "Precios, recuperación de tareas y archivos ordenados"],
+      "requirements": ["Node.js 18.17 o posterior", "Cuenta de AILAB con acceso activo", "Créditos para las operaciones de pago"],
+      "billing": "Utiliza tus créditos de AILAB. Consulta el coste antes de generar.",
+      "setup": "En tu cuenta de AILAB crea un token personal para agentes. Ejecuta el comando login en tu terminal e introdúcelo cuando lo solicite de forma oculta; después ejecuta doctor. No pegues el token en el chat.",
+      "example": "Usa $ailab para generar una imagen 16:9 con GPT Image 2.5 a partir de esta referencia. Guarda la imagen y el prompt en mi proyecto.",
+      "install_ids": ["ailab"],
+      "workflow": "El agente consulta el catálogo y contrato del modelo, prepara el coste, ejecuta lo autorizado y recupera los resultados. La generación se realiza en los proveedores de AILAB, no en tu ordenador. El catálogo remoto es la fuente de modelos, parámetros, precios y disponibilidad."
+    },
+    {
+      "id": "ugc-ailab",
+      "category": "Workflow UGC",
+      "icon": "workflow",
+      "summary": "De tu guion y referencias a un vídeo UGC con las pistas de voz y ambiente separadas, listo para montar.",
+      "features": ["Video Prompter y Gemini Omni Flash 1.1", "Ambiente con SAM Audio y voz con ElevenLabs", "Vídeo, pistas, prompts y registro por carpetas"],
+      "requirements": ["Skill AILAB instalada y configurada (2.2.4 o posterior)", "Node.js 18.17 o posterior, FFmpeg y FFprobe", "Cuenta y créditos de AILAB"],
+      "billing": "Utiliza tus créditos de AILAB por cada etapa. No requiere claves adicionales.",
+      "setup": "El comando instala UGC AILAB y su dependencia AILAB. Configura primero el acceso de AILAB con login y doctor. Comprueba que ffmpeg y ffprobe están disponibles en tu terminal.",
+      "example": "Usa $ugc-ailab con este guion y estas referencias. Quiero un vídeo vertical de 10 segundos y las pistas de voz y ambiente por separado.",
+      "install_ids": ["ailab", "ugc-ailab"],
+      "workflow": "Video Prompter prepara la dirección. Gemini Omni genera el vídeo. FFmpeg extrae localmente el audio original. SAM Audio separa ambiente; Voice Isolator aísla la voz y Voice Changer cambia su timbre. No monta ni sustituye el audio del vídeo automáticamente, y no incluye upscale. Si solo pides un prompt, no autoriza generar un vídeo."
+    },
+    {
+      "id": "vervideo",
+      "category": "Análisis",
+      "icon": "scan",
+      "summary": "Analiza un vídeo que ya existe: entiende su estética, el guion, los planos, el sonido y el ritmo de montaje.",
+      "features": ["Modo completo: análisis del vídeo entero", "Modo mini: escenas, hook y transcripción", "Informe en Markdown con referencias temporales"],
+      "requirements": ["Python 3.9 o posterior", "FFmpeg, FFprobe y yt-dlp", "API key propia de OpenRouter con saldo"],
+      "billing": "Se cobra en tu propia cuenta de OpenRouter, no en los créditos de AILAB.",
+      "setup": "Configura personalmente OPENROUTER_API_KEY fuera de la skill, en ~/.config/openrouter/.env, con permisos restringidos. No introduzcas la clave en este chat. Para el instalador del repositorio también necesitas Node.js 18.17 o posterior. En Windows debes tener python3 disponible en el terminal.",
+      "example": "Usa $vervideo en modo completo para analizar la cámara, la luz y el sonido de este vídeo. Guarda el informe junto al archivo.",
+      "install_ids": ["vervideo"],
+      "workflow": "Completo comprime si hace falta y envía el vídeo a OpenRouter para analizarlo. Mini extrae escenas y el hook localmente, transcribe el audio mediante OpenRouter y el agente compone un informe editorial. Solo descarga URLs públicas; no elude accesos privados. No genera vídeos. Los modelos y requisitos vigentes están en el SKILL.md de la versión instalada."
+    }
+  ]
+}

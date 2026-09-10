@@ -113,6 +113,22 @@ export function validateRepository() {
     ids.add(skill.id);
     results.push({ id: skill.id, ...validateSkill(skill) });
   }
+  const marketplace = readJson('marketplace.json');
+  if (marketplace.schema_version !== 1 || !Array.isArray(marketplace.skills)
+    || marketplace.skills.length !== registry.skills.length) fail('marketplace.json no coincide con registry.json.');
+  const marketIds = new Set();
+  for (const item of marketplace.skills) {
+    if (!ids.has(item.id) || marketIds.has(item.id)) fail('Skill ausente o duplicada en marketplace.json.');
+    marketIds.add(item.id);
+    for (const field of ['category','summary','billing','setup','example','workflow']) {
+      if (typeof item[field] !== 'string' || !item[field].trim()) fail(`Falta ${field} en ${item.id}.`);
+    }
+    for (const field of ['features','requirements','install_ids']) {
+      if (!Array.isArray(item[field]) || !item[field].length || item[field].some(s=>typeof s!=='string'||!s)) fail(`Campo ${field} inválido en ${item.id}.`);
+    }
+    if (!item.install_ids.every(id=>ids.has(id))) fail(`Dependencia desconocida en ${item.id}.`);
+  }
+  for (const pattern of SECRET_PATTERNS) if (pattern.test(JSON.stringify(marketplace))) fail('Posible secreto en marketplace.json.');
   return { registry, results };
 }
 

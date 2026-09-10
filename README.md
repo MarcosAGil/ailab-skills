@@ -21,6 +21,12 @@ cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
 es independiente y vive dentro de `skills/<id>/`.
 
+La sección **Skills y automatización** de [AILAB](https://ailendra.com/ailab/skills.html)
+utiliza [`marketplace.json`](marketplace.json) para sus fichas y la documentación de
+su asistente de instalación. Las versiones proceden de `registry.json`; el despliegue
+de AILAB publica una copia validada junto a los ZIP, sin depender de GitHub al abrir
+la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza AILAB.
+
 La versión 2.2.5 incorpora **GPT Image 2.5** al catálogo: un único modelo
 `gpt-image-2-5`, con `version=flare|sunburst` y `mode=t2i|i2i`. Admite 1K, 2K,
 4K y hasta 16 referencias. El precio provisional se consulta al preparar la
