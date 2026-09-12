@@ -135,12 +135,22 @@ function atomicJson(file, value) {
 export function loadCatalog() {
   const cached = path.join(CONFIG_DIR, 'catalog.json');
   const explicit = process.env.AILAB_CATALOG_PATH || process.env.PG_CATALOG_PATH;
-  const source = explicit ? CATALOG_PATH : (fs.existsSync(cached) ? cached : CATALOG_PATH);
-  try { return parseCatalogFile(source); }
-  catch (e) {
-    if (!explicit && source === cached && fs.existsSync(CATALOG_PATH)) return parseCatalogFile(CATALOG_PATH);
-    throw e;
+  if (explicit) return parseCatalogFile(CATALOG_PATH);
+  let bundled = null;
+  let cachedCatalog = null;
+  let cachedError = null;
+  if (fs.existsSync(CATALOG_PATH)) bundled = parseCatalogFile(CATALOG_PATH);
+  if (fs.existsSync(cached)) {
+    try { cachedCatalog = parseCatalogFile(cached); }
+    catch (error) { cachedError = error; }
   }
+  if (bundled && cachedCatalog) {
+    return semverGte(cachedCatalog.catalog_version, bundled.catalog_version) ? cachedCatalog : bundled;
+  }
+  if (cachedCatalog) return cachedCatalog;
+  if (bundled) return bundled;
+  if (cachedError) throw cachedError;
+  throw new Error('Catalogo no encontrado.');
 }
 
 export function catalogCompatible(cat) {

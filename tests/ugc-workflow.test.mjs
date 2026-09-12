@@ -136,7 +136,7 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
     AILAB_TASK_ENDPOINT: base + 'api/v1/skill/task.php', AILAB_CATALOG_PATH: path.join(root, 'skills/ailab/catalog/catalog.json'),
     AILAB_CONFIG_DIR: path.join(temp, 'config'), AILAB_CREDENTIALS_DIR: credentials };
   const run = async (...args) => (await execute(process.execPath, [cli, ...args], { env, timeout: 30000 })).stdout;
-  assert.match(await run('self-test'), /SELF_TEST_OK 2\.2\.6/);
+  assert.match(await run('self-test'), /SELF_TEST_OK 2\.2\.7/);
   const filesFrom = output => [...output.matchAll(/(?:Guardado|Recuperado del servidor): (.+) \(/g)].map(match => match[1]);
   const brief = path.join(temp, 'brief.txt');
   fs.writeFileSync(brief, 'Testimonial, diálogo literal "Hola", cámara estática, 4 segundos, 9:16, 1080p.');
