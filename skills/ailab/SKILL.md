@@ -80,6 +80,10 @@ el gateway de AILAB. La CLI mide con `ffprobe` dimensiones, duración y fotogram
 del MP4, o dimensiones y megapíxeles de la imagen, y rechaza límites antes de
 subir. No pases `frame_count` ni `output_megapixels`: son mediciones internas.
 
+Para `lipsync-veed-v2`, adjunta un vídeo con el rostro y el audio que debe
+sincronizarse. La duración se mide localmente a partir del vídeo y el coste se
+calcula a 14 créditos por segundo, con un mínimo de 14; no inventes ese valor.
+
 Muestra de forma breve modelo, parámetros, archivos, estimación, reserva y saldo.
 El máximo del manifiesto protege esa petición, no impone un presupuesto al flujo.
 Con la autorización del encargo, ejecuta:

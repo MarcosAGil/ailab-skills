@@ -389,6 +389,19 @@ function cmdInfo(cat, name) {
 
 function deriveInternalParams(model, given) {
   const derived = { ...given };
+  if (model.id === 'lipsync-veed-v2') {
+    const value = derived.video_url;
+    if (Array.isArray(value)) fail('--video_url solo admite un archivo.');
+    if (value === undefined || value === true || value === '') return derived;
+    const metadata = inspectPricingMetadata(String(value));
+    if (!metadata.ok || metadata.class !== 'video' || !Number.isFinite(metadata.duration)) {
+      fail(metadata.error || 'No se pudo medir la duración real del vídeo.');
+    }
+    if (metadata.duration < 1 || metadata.duration > 1800) {
+      fail('VEED Lipsync v2 admite vídeos de entre 1 segundo y 30 minutos.');
+    }
+    derived.duration_sec = Math.round(metadata.duration * 100) / 100;
+  }
   if (['sam-audio', 'resemble-audio-enhancement', 'eleven-audio-isolation', 'eleven-voice-changer'].includes(model.id)) {
     const value = derived.audio_url;
     if (Array.isArray(value)) fail('--audio_url solo admite un archivo.');

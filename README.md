@@ -27,12 +27,13 @@ su asistente de instalación. Las versiones proceden de `registry.json`; el desp
 de AILAB publica una copia validada junto a los ZIP, sin depender de GitHub al abrir
 la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza AILAB.
 
-La versión 2.2.6 incorpora **GPT Image 2.5** y los cuatro modelos Topaz al catálogo.
+La versión 2.2.6 incorpora **GPT Image 2.5**, los cuatro modelos Topaz y
+**VEED Lipsync v2** al catálogo.
 Topaz se ejecuta mediante el gateway seguro de AILAB y mide localmente los metadatos
 necesarios para cotizar antes de subir archivos. Un único modelo
 `gpt-image-2-5`, con `version=flare|sunburst` y `mode=t2i|i2i`. Admite 1K, 2K,
 4K y hasta 16 referencias. El precio provisional se consulta al preparar la
-operación; no se necesitan claves de KIE. Las instalaciones compatibles también
+operación; no se necesitan claves de proveedor. Las instalaciones compatibles también
 descubren el modelo al refrescar el catálogo remoto.
 
 ## Requisitos

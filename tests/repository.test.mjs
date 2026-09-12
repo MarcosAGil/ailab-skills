@@ -69,7 +69,7 @@ test('la skill empaquetada supera su autodiagnóstico sin red de actualización'
     timeout: 30000,
   });
   assert.equal(checked.status, 0, checked.stderr || checked.stdout);
-  assert.match(checked.stdout, /SELF_TEST_OK 2\.2\.6 · 58 modelos/);
+  assert.match(checked.stdout, /SELF_TEST_OK 2\.2\.6 · 59 modelos/);
 });
 
 test('Seedance conserva 20.000 caracteres en 2.0 y admite 30.000 en 2.5', () => {

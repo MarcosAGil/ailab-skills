@@ -2,142 +2,6 @@
   "catalog_version": "1.15.0",
   "min_cli_version": "2.1.0",
   "models": {
-    "topaz-bloom-2": {
-      "id": "topaz-bloom-2",
-      "label": "Bloom 2",
-      "description": "Upscale creativo de imagen con detalle generativo, control de identidad, color, grano y prompt opcional.",
-      "section": "upscale",
-      "vendor": "Topaz Labs",
-      "tier": "hub",
-      "output": "image",
-      "status": "active",
-      "enabled": true,
-      "expensive": true,
-      "driver": "topaz-v1",
-      "min_cli_version": "2.2.6",
-      "modes": [],
-      "params": {
-        "image_url": { "type": "file", "accept": "image", "required": true, "help": "JPG, PNG o WebP de hasta 30 MB." },
-        "prompt": { "type": "string", "max_len": 2000, "help": "Opcional: describe el detalle y el acabado que quieres reforzar." },
-        "upscale_factor": { "type": "enum", "values": ["2", "4", "6"], "default": "2" },
-        "creativity": { "type": "int", "min": 1, "max": 9, "default": 3, "help": "1 conserva más; 9 reinventa más detalle." },
-        "color_preservation": { "type": "bool", "default": true },
-        "face_enhancement": { "type": "bool", "default": false },
-        "grain": { "type": "bool", "default": false },
-        "grain_model": { "type": "enum", "values": ["silver", "gaussian", "grey"], "default": "silver" },
-        "grain_density": { "type": "number", "min": 0, "max": 1, "default": 0.5 },
-        "grain_size": { "type": "number", "min": 1, "max": 5, "default": 1 },
-        "grain_strength": { "type": "number", "min": 0, "max": 1, "default": 0.5 },
-        "seed": { "type": "int", "min": 0, "max": 2147483647, "default": 2 },
-        "output_megapixels": { "type": "number", "required": true, "internal": true }
-      },
-      "estimate": {
-        "kind": "topaz_image",
-        "megapixels_param": "output_megapixels",
-        "ailab_credits_per_provider_credit": 14.28,
-        "provider_credits_by_max_megapixels": { "1": 1, "4": 2, "8": 4, "16": 8, "24": 12, "32": 16, "40": 20, "50": 25, "64": 32, "100": 50 },
-        "approximate": false,
-        "note": "Cálculo exacto por el tramo de megapíxeles de salida; el servidor vuelve a medir la imagen."
-      }
-    },
-    "topaz-wonder-3-5": {
-      "id": "topaz-wonder-3-5",
-      "label": "Wonder 3.5",
-      "description": "Mejora generativa equilibrada para recuperar claridad y textura con tres intensidades de detalle.",
-      "section": "upscale",
-      "vendor": "Topaz Labs",
-      "tier": "hub",
-      "output": "image",
-      "status": "active",
-      "enabled": true,
-      "expensive": true,
-      "driver": "topaz-v1",
-      "min_cli_version": "2.2.6",
-      "modes": [],
-      "params": {
-        "image_url": { "type": "file", "accept": "image", "required": true, "help": "JPG, PNG o WebP de hasta 30 MB." },
-        "upscale_factor": { "type": "enum", "values": ["2", "4", "6"], "default": "2" },
-        "enhancement_strength": { "type": "enum", "values": ["low", "medium", "high"], "default": "high" },
-        "face_enhancement": { "type": "bool", "default": false },
-        "grain": { "type": "bool", "default": false },
-        "grain_model": { "type": "enum", "values": ["silver", "gaussian", "grey"], "default": "silver" },
-        "grain_density": { "type": "number", "min": 0, "max": 1, "default": 0.5 },
-        "grain_size": { "type": "number", "min": 1, "max": 5, "default": 1 },
-        "grain_strength": { "type": "number", "min": 0, "max": 1, "default": 0.5 },
-        "output_megapixels": { "type": "number", "required": true, "internal": true }
-      },
-      "estimate": {
-        "kind": "topaz_image",
-        "megapixels_param": "output_megapixels",
-        "ailab_credits_per_provider_credit": 14.28,
-        "provider_credits_by_max_megapixels": { "1": 1, "4": 1, "8": 1, "16": 2, "24": 3, "32": 4, "40": 5, "50": 7, "64": 8, "100": 13 },
-        "approximate": false,
-        "note": "Cálculo exacto por el tramo de megapíxeles de salida; el servidor vuelve a medir la imagen."
-      }
-    },
-    "topaz-astra-precise-2-6": {
-      "id": "topaz-astra-precise-2-6",
-      "label": "Astra Precise 2.6",
-      "description": "Upscale preciso de vídeo para recuperar caras, materiales, texto y detalle con estabilidad temporal.",
-      "section": "upscale",
-      "vendor": "Topaz Labs",
-      "tier": "hub",
-      "output": "video",
-      "status": "active",
-      "enabled": true,
-      "expensive": true,
-      "driver": "topaz-v1",
-      "min_cli_version": "2.2.6",
-      "modes": [],
-      "params": {
-        "video_url": { "type": "file", "accept": "video", "required": true, "help": "Vídeo MP4 de hasta 200 MB. El servidor mide resolución y fotogramas." },
-        "output_resolution": { "type": "enum", "values": ["1080p", "4K"], "default": "1080p" },
-        "sharpness": { "type": "number", "min": 1, "max": 5, "default": 5, "help": "1 aplica menos nitidez; 5 aplica más." },
-        "frame_count": { "type": "int", "required": true, "internal": true }
-      },
-      "estimate": {
-        "kind": "topaz_video",
-        "frames_param": "frame_count",
-        "resolution_param": "output_resolution",
-        "ailab_credits_per_provider_credit": 14.28,
-        "frames_per_provider_credit": { "1080p": 26.0417, "4K": 11.9179 },
-        "approximate": false,
-        "note": "Cálculo exacto por número de fotogramas y resolución de salida."
-      }
-    },
-    "topaz-astra-creative-2": {
-      "id": "topaz-astra-creative-2",
-      "label": "Astra Creative 2",
-      "description": "Upscale creativo de vídeo con detalle generativo, prompt y controles de creatividad, realismo y nitidez.",
-      "section": "upscale",
-      "vendor": "Topaz Labs",
-      "tier": "hub",
-      "output": "video",
-      "status": "active",
-      "enabled": true,
-      "expensive": true,
-      "driver": "topaz-v1",
-      "min_cli_version": "2.2.6",
-      "modes": [],
-      "params": {
-        "video_url": { "type": "file", "accept": "video", "required": true, "help": "Vídeo MP4 de hasta 200 MB. Con prompt admite hasta 450 fotogramas." },
-        "prompt": { "type": "string", "max_len": 2000, "help": "Opcional: describe texturas, detalle y acabado visual." },
-        "output_resolution": { "type": "enum", "values": ["1080p", "4K"], "default": "1080p" },
-        "creativity": { "type": "number", "min": 0, "max": 1, "default": 0.4 },
-        "realism": { "type": "number", "min": 0, "max": 1, "default": 0.5 },
-        "sharp": { "type": "number", "min": 0, "max": 1, "default": 0.5 },
-        "frame_count": { "type": "int", "required": true, "internal": true }
-      },
-      "estimate": {
-        "kind": "topaz_video",
-        "frames_param": "frame_count",
-        "resolution_param": "output_resolution",
-        "ailab_credits_per_provider_credit": 14.28,
-        "frames_per_provider_credit": { "1080p": 10, "4K": 6 },
-        "approximate": false,
-        "note": "Cálculo exacto por número de fotogramas y resolución de salida. Con prompt: máximo 450 fotogramas."
-      }
-    },
     "gpt-image-2-5": {
       "id": "gpt-image-2-5",
       "label": "GPT Image 2.5",
@@ -2638,6 +2502,53 @@
       "tier": "hub",
       "vendor": "Sync"
     },
+    "lipsync-veed-v2": {
+      "aliases": [
+        "veed lipsync",
+        "lipsync veed"
+      ],
+      "description": "Lipsync de calidad de produccion, sin ajustes: sube video y audio y listo.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 14,
+        "kind": "unit_credits",
+        "minimum_credits": 14,
+        "round_up": true,
+        "unit_label": "cr/s",
+        "unit_name": "Duración",
+        "units_param": "duration_sec"
+      },
+      "expensive": true,
+      "id": "lipsync-veed-v2",
+      "label": "VEED Lipsync v2",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "required": true,
+          "type": "file"
+        },
+        "duration_sec": {
+          "internal": true,
+          "max": 1800,
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "video_url": {
+          "accept": "video",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "lipsync",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "VEED"
+    },
     "midjourney": {
       "aliases": [
         "mj"
@@ -4313,6 +4224,146 @@
       "status": "active",
       "tier": "hub",
       "vendor": "AiLendra Labs"
+    },
+    "topaz-bloom-2": {
+      "id": "topaz-bloom-2",
+      "label": "Bloom 2",
+      "description": "Upscale creativo de imagen con detalle generativo, control de identidad, color, grano y prompt opcional.",
+      "section": "upscale",
+      "vendor": "Topaz Labs",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "topaz-v1",
+      "min_cli_version": "2.2.6",
+      "aliases": ["bloom", "bloom 2", "topaz bloom"],
+      "modes": [],
+      "params": {
+        "image_url": { "type": "file", "accept": "image", "required": true, "help": "JPG, PNG o WebP de hasta 30 MB." },
+        "prompt": { "type": "string", "max_len": 2000, "help": "Opcional: describe el detalle y el acabado que quieres reforzar. No cambies la escena." },
+        "upscale_factor": { "type": "enum", "values": ["2", "4", "6"], "default": "2" },
+        "creativity": { "type": "int", "min": 1, "max": 9, "default": 3, "help": "1 conserva más; 9 reinventa más detalle." },
+        "color_preservation": { "type": "bool", "default": true, "help": "Conserva los colores de la imagen original." },
+        "face_enhancement": { "type": "bool", "default": false, "help": "Actívalo solo si necesitas recuperar rostros pequeños o degradados." },
+        "grain": { "type": "bool", "default": false },
+        "grain_model": { "type": "enum", "values": ["silver", "gaussian", "grey"], "default": "silver" },
+        "grain_density": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "grain_size": { "type": "number", "min": 1, "max": 5, "step": 0.5, "default": 1 },
+        "grain_strength": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "seed": { "type": "int", "min": 0, "max": 2147483647, "default": 2 },
+        "output_megapixels": { "type": "number", "required": true, "internal": true }
+      },
+      "estimate": {
+        "kind": "topaz_image",
+        "megapixels_param": "output_megapixels",
+        "ailab_credits_per_provider_credit": 14.28,
+        "provider_credits_by_max_megapixels": { "1": 1, "4": 2, "8": 4, "16": 8, "24": 12, "32": 16, "40": 20, "50": 25, "64": 32, "100": 50 },
+        "approximate": false,
+        "note": "Cálculo exacto por el tramo de megapíxeles de salida; el servidor vuelve a medir la imagen."
+      }
+    },
+    "topaz-wonder-3-5": {
+      "id": "topaz-wonder-3-5",
+      "label": "Wonder 3.5",
+      "description": "Mejora generativa equilibrada para recuperar claridad y textura con tres intensidades de detalle.",
+      "section": "upscale",
+      "vendor": "Topaz Labs",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "topaz-v1",
+      "min_cli_version": "2.2.6",
+      "aliases": ["wonder", "wonder 3.5", "topaz wonder"],
+      "modes": [],
+      "params": {
+        "image_url": { "type": "file", "accept": "image", "required": true, "help": "JPG, PNG o WebP de hasta 30 MB." },
+        "upscale_factor": { "type": "enum", "values": ["2", "4", "6"], "default": "2" },
+        "enhancement_strength": { "type": "enum", "values": ["low", "medium", "high"], "default": "high", "help": "Controla cuánto detalle nuevo recupera el modelo." },
+        "face_enhancement": { "type": "bool", "default": false, "help": "Actívalo solo si necesitas recuperar rostros pequeños o degradados." },
+        "grain": { "type": "bool", "default": false },
+        "grain_model": { "type": "enum", "values": ["silver", "gaussian", "grey"], "default": "silver" },
+        "grain_density": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "grain_size": { "type": "number", "min": 1, "max": 5, "step": 0.5, "default": 1 },
+        "grain_strength": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "output_megapixels": { "type": "number", "required": true, "internal": true }
+      },
+      "estimate": {
+        "kind": "topaz_image",
+        "megapixels_param": "output_megapixels",
+        "ailab_credits_per_provider_credit": 14.28,
+        "provider_credits_by_max_megapixels": { "1": 1, "4": 1, "8": 1, "16": 2, "24": 3, "32": 4, "40": 5, "50": 7, "64": 8, "100": 13 },
+        "approximate": false,
+        "note": "Cálculo exacto por el tramo de megapíxeles de salida; el servidor vuelve a medir la imagen."
+      }
+    },
+    "topaz-astra-precise-2-6": {
+      "id": "topaz-astra-precise-2-6",
+      "label": "Astra Precise 2.6",
+      "description": "Upscale preciso de vídeo para recuperar caras, materiales, texto y detalle con estabilidad temporal.",
+      "section": "upscale",
+      "vendor": "Topaz Labs",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "topaz-v1",
+      "min_cli_version": "2.2.6",
+      "aliases": ["astra precise", "precise 2.6", "starlight precise 2.6"],
+      "modes": [],
+      "params": {
+        "video_url": { "type": "file", "accept": "video", "required": true, "help": "Vídeo MP4 de hasta 200 MB. El servidor mide resolución y fotogramas." },
+        "output_resolution": { "type": "enum", "values": ["1080p", "4K"], "default": "1080p" },
+        "sharpness": { "type": "number", "min": 1, "max": 5, "step": 0.25, "default": 5, "help": "1 aplica menos nitidez · 5 aplica más. Baja el valor para un acabado más suave." },
+        "frame_count": { "type": "int", "required": true, "internal": true }
+      },
+      "estimate": {
+        "kind": "topaz_video",
+        "frames_param": "frame_count",
+        "resolution_param": "output_resolution",
+        "ailab_credits_per_provider_credit": 14.28,
+        "frames_per_provider_credit": { "1080p": 26.0417, "4K": 11.9179 },
+        "approximate": false,
+        "note": "Cálculo exacto por número de fotogramas y resolución de salida."
+      }
+    },
+    "topaz-astra-creative-2": {
+      "id": "topaz-astra-creative-2",
+      "label": "Astra Creative 2",
+      "description": "Upscale creativo de vídeo con detalle generativo, prompt y controles de creatividad, realismo y nitidez.",
+      "section": "upscale",
+      "vendor": "Topaz Labs",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "topaz-v1",
+      "min_cli_version": "2.2.6",
+      "aliases": ["astra creative", "astra 2", "creative 2"],
+      "modes": [],
+      "params": {
+        "video_url": { "type": "file", "accept": "video", "required": true, "help": "Vídeo MP4 de hasta 200 MB. Con prompt admite hasta 450 fotogramas." },
+        "prompt": { "type": "string", "max_len": 2000, "help": "Opcional: describe texturas, detalle y acabado visual. No pidas movimientos nuevos." },
+        "output_resolution": { "type": "enum", "values": ["1080p", "4K"], "default": "1080p" },
+        "creativity": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "help": "Más alto permite reconstruir más detalle." },
+        "realism": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "sharp": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "help": "0 suaviza, 0,5 conserva y 1 aumenta la nitidez previa." },
+        "frame_count": { "type": "int", "required": true, "internal": true }
+      },
+      "estimate": {
+        "kind": "topaz_video",
+        "frames_param": "frame_count",
+        "resolution_param": "output_resolution",
+        "ailab_credits_per_provider_credit": 14.28,
+        "frames_per_provider_credit": { "1080p": 10, "4K": 6 },
+        "approximate": false,
+        "note": "Cálculo exacto por número de fotogramas y resolución de salida. Con prompt: máximo 450 fotogramas."
+      }
     },
     "suno": {
       "aliases": [
