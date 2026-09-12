@@ -27,7 +27,7 @@ su asistente de instalación. Las versiones proceden de `registry.json`; el desp
 de AILAB publica una copia validada junto a los ZIP, sin depender de GitHub al abrir
 la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza AILAB.
 
-La versión 2.2.7 incorpora **GPT Image 2.5**, los cuatro modelos Topaz y
+La versión 2.2.8 incorpora **GPT Image 2.5**, los cuatro modelos Topaz y
 **VEED Lipsync v2** al catálogo.
 Topaz se ejecuta mediante el gateway seguro de AILAB y mide localmente los metadatos
 necesarios para cotizar antes de subir archivos. Un único modelo
