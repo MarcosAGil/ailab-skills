@@ -29,6 +29,16 @@ export async function check(model, taskRef) {
     const urls = [d.target, d.residual, d.image, d.audio].filter(Boolean);
     return urls.length ? { status: 'success', urls } : { status: 'fail', error: 'Completado pero sin URL de resultado.' };
   }
+  // Solo una respuesta aceptada por el gateway con uno de estos estados
+  // confirma que la tarea termino. Los estados desconocidos siguen en cola,
+  // mientras que los errores de transporte/negocio ya salen arriba como error.
+  const status = String(d.status || '').trim().toUpperCase();
+  if (['FAILED', 'ERROR', 'CANCELLED'].includes(status)) {
+    return {
+      status: 'fail',
+      error: n.message || d.error || d.errorMessage || d.failMsg || 'La generacion fallo (sin cargo).',
+    };
+  }
   return { status: 'pending' };
 }
 

@@ -9,6 +9,25 @@ import { estimateCredits, validateCatalogShape } from '../skills/ailab/scripts/l
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync('skills/ailab/catalog/catalog.json', 'utf8')));
 const model = catalog.models['lipsync-veed-v2'];
 
+// Importa el adapter con una ruta de credenciales vacia. Las pruebas usan fetch
+// mock y nunca deben consultar credenciales reales del entorno del desarrollador.
+const adapterEnv = {
+  AILAB_BASE_URL: process.env.AILAB_BASE_URL,
+  AILAB_GENERATION_BASE_URL: process.env.AILAB_GENERATION_BASE_URL,
+  AILAB_CREDENTIALS_DIR: process.env.AILAB_CREDENTIALS_DIR,
+};
+const adapterTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-veed-adapter-'));
+fs.mkdirSync(path.join(adapterTemp, 'credentials'), { recursive: true, mode: 0o700 });
+process.env.AILAB_BASE_URL = 'https://ailendra.invalid/ailab/';
+process.env.AILAB_GENERATION_BASE_URL = 'https://ailendra.invalid/ailab/';
+process.env.AILAB_CREDENTIALS_DIR = path.join(adapterTemp, 'credentials');
+const queueAdapter = await import('../skills/ailab/scripts/adapters/labs-queue-v1.mjs');
+for (const [key, value] of Object.entries(adapterEnv)) {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+}
+test.after(() => fs.rmSync(adapterTemp, { recursive: true, force: true }));
+
 test('VEED Lipsync publica un contrato remoto sin duración manual', () => {
   assert.equal(model.driver, 'labs-queue-v1');
   assert.equal(model.params.video_url.required, true);
@@ -45,5 +64,44 @@ test('la CLI mide el vídeo y calcula VEED antes de autorizar', (t) => {
     assert.match(checked.stdout, /estimacion ~28 cr/);
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('fal-gateway distingue estados pendientes, exito y fallo terminal', async () => {
+  const originalFetch = globalThis.fetch;
+  const taskRef = { providerRequestId: 'mock-request' };
+  const media = 'https://media.invalid/veed.mp4';
+  const accepted = (data, msg = '') => Response.json({ code: 200, msg, data });
+  try {
+    for (const status of ['IN_QUEUE', 'IN_PROGRESS']) {
+      globalThis.fetch = async () => accepted({ status });
+      assert.deepEqual(await queueAdapter.check(model, taskRef), { status: 'pending' });
+    }
+
+    globalThis.fetch = async () => accepted({ status: 'COMPLETED', target: media });
+    assert.deepEqual(await queueAdapter.check(model, taskRef), { status: 'success', urls: [media] });
+
+    for (const status of ['FAILED', 'ERROR', 'CANCELLED']) {
+      const message = 'La generación falló. No se te ha cobrado.';
+      globalThis.fetch = async () => accepted({ status }, message);
+      assert.deepEqual(await queueAdapter.check(model, taskRef), { status: 'fail', error: message });
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('fal-gateway conserva como error un fallo transitorio del backend', async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => Response.json(
+      { code: 503, msg: 'Servicio temporalmente no disponible.', data: { status: 'FAILED' } },
+      { status: 503 },
+    );
+    const result = await queueAdapter.check(model, { providerRequestId: 'mock-request' });
+    assert.equal(result.status, 'error');
+    assert.equal(result.normalized.businessCode, 503);
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });
