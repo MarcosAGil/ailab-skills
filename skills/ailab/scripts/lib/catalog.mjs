@@ -6,14 +6,14 @@ import crypto from 'node:crypto';
 import { CATALOG_PATH, CATALOG_URL, CLI_VERSION, CONFIG_DIR, SERVER_CONTRACT_VERSION, ensureConfigDir } from './config.mjs';
 import { inspectPricingMetadata } from './files.mjs';
 
-export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1'];
+export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1'];
 
 const TOP_KEYS = new Set(['catalog_version', 'min_cli_version', 'models', 'server_contract_version']);
 const MODEL_KEYS = new Set(['aliases', 'description', 'driver', 'enabled', 'estimate', 'expensive', 'id', 'label', 'min_cli_version', 'modes', 'output', 'params', 'section', 'status', 'tier', 'vendor']);
 const PARAM_KEYS = new Set(['accept', 'default', 'help', 'internal', 'max', 'max_len', 'min', 'required', 'required_when', 'type', 'values']);
-const ESTIMATE_KEYS = new Set(['approximate', 'audio_param', 'auto_duration_param', 'auto_duration_seconds', 'basic_credit_per_input', 'basic_credits', 'block_seconds', 'by_param', 'characters_param', 'characters_params', 'column_param', 'credit_usd', 'credits', 'credits_by_value', 'credits_matrix', 'credits_per_1000', 'credits_per_file', 'credits_per_second', 'credits_per_unit', 'credits_with_audio', 'credits_with_files', 'credits_with_video', 'credits_with_video_matrix', 'duration_by_mode', 'files_param', 'high_credits', 'kind', 'layers_max_credits', 'margin_multiplier', 'matrix_mode', 'minimum_credits', 'mode_param', 'note', 'promo', 'quality_param', 'round_up', 'row_param', 'seconds_param', 'units_param', 'usd_per_block', 'video_param']);
+const ESTIMATE_KEYS = new Set(['ailab_credits_per_provider_credit', 'approximate', 'audio_param', 'auto_duration_param', 'auto_duration_seconds', 'basic_credit_per_input', 'basic_credits', 'block_seconds', 'by_param', 'characters_param', 'characters_params', 'column_param', 'credit_usd', 'credits', 'credits_by_value', 'credits_matrix', 'credits_per_1000', 'credits_per_file', 'credits_per_second', 'credits_per_unit', 'credits_with_audio', 'credits_with_files', 'credits_with_video', 'credits_with_video_matrix', 'duration_by_mode', 'files_param', 'frames_param', 'frames_per_provider_credit', 'high_credits', 'kind', 'layers_max_credits', 'margin_multiplier', 'matrix_mode', 'megapixels_param', 'minimum_credits', 'mode_param', 'note', 'promo', 'provider_credits_by_max_megapixels', 'quality_param', 'resolution_param', 'round_up', 'row_param', 'seconds_param', 'units_param', 'usd_per_block', 'video_param']);
 const PROMO_KEYS = new Set(['label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
-const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars', 'duration_blocks']);
+const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars', 'duration_blocks', 'topaz_image', 'topaz_video']);
 const PARAM_TYPES = new Set(['string', 'string[]', 'enum', 'int', 'number', 'bool', 'file', 'file[]']);
 const OUTPUT_TYPES = new Set(['image', 'multi-image', 'video', 'audio', 'text']);
 
@@ -299,6 +299,20 @@ export function validateParams(model, given) {
     const present = spec.type === 'file' || spec.type === 'file[]' ? !!(fileParams[key] && fileParams[key].length) : params[key] !== undefined;
     if (active && !present) errors.push('Falta el parametro --' + key + ' cuando ' + Object.entries(spec.required_when).map(([k,v]) => '--' + k + '=' + v).join(', ') + '.');
   }
+  if (model.driver === 'topaz-v1') {
+    const frames = Number(params.frame_count);
+    const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : '';
+    if (model.id === 'topaz-astra-creative-2' && prompt && Number.isSafeInteger(frames) && frames > 450) {
+      errors.push('Con prompt, Astra Creative admite hasta 450 fotogramas.');
+    }
+    if (model.id === 'topaz-astra-creative-2' && !prompt && Number.isSafeInteger(frames) && frames > 9000) {
+      errors.push('Astra Creative admite hasta 9.000 fotogramas sin prompt.');
+    }
+    const megapixels = Number(params.output_megapixels);
+    if (model.output === 'image' && Number.isFinite(megapixels) && megapixels > 100) {
+      errors.push('La salida supera los 100 megapíxeles. Reduce el factor.');
+    }
+  }
   return { ok: errors.length === 0, errors, params, fileParams };
 }
 
@@ -328,6 +342,33 @@ function effectiveMatrix(estimate, field, previousField, now = Date.now()) {
 
 export function estimateCredits(model, params, now = Date.now()) {
   const e = model.estimate || {};
+  if (e.kind === 'topaz_image') {
+    const megapixels = Number(params[e.megapixels_param]);
+    const tiers = e.provider_credits_by_max_megapixels || {};
+    if (!Number.isFinite(megapixels) || megapixels <= 0) return { credits: null, approximate: false, note: 'megapíxeles de salida pendientes' };
+    let providerCredits = null;
+    for (const maximum of Object.keys(tiers).map(Number).sort((a, b) => a - b)) {
+      if (megapixels <= maximum + 0.000001) {
+        providerCredits = Number(tiers[String(maximum)] ?? tiers[maximum]);
+        break;
+      }
+    }
+    if (!Number.isFinite(providerCredits) || providerCredits <= 0) return { credits: null, approximate: false, note: 'La salida supera los 100 megapíxeles.' };
+    const multiplier = Number(e.ailab_credits_per_provider_credit);
+    if (!Number.isFinite(multiplier) || multiplier <= 0) return { credits: null, approximate: false, note: 'cotización Topaz no disponible' };
+    return { credits: Math.ceil(providerCredits * multiplier), approximate: !!e.approximate, note: e.note || '' };
+  }
+  if (e.kind === 'topaz_video') {
+    const frames = Number(params[e.frames_param]);
+    const resolution = String(params[e.resolution_param] || '');
+    const perCredit = Number(e.frames_per_provider_credit && e.frames_per_provider_credit[resolution]);
+    const multiplier = Number(e.ailab_credits_per_provider_credit);
+    if (!Number.isSafeInteger(frames) || frames <= 0 || !Number.isFinite(perCredit) || perCredit <= 0 || !Number.isFinite(multiplier) || multiplier <= 0) {
+      return { credits: null, approximate: false, note: 'fotogramas de entrada pendientes' };
+    }
+    const providerCredits = Math.ceil(frames / perCredit);
+    return { credits: Math.ceil(providerCredits * multiplier), approximate: !!e.approximate, note: e.note || '' };
+  }
   // El catálogo conserva `mixed_mode` para que runtimes antiguos sigan
   // pudiendo cargarlo. Desde 2.1.11 H3 Max autoriza el coste real local en vez
   // del máximo teórico de 1.300 cr; el servidor vuelve a medir y decide.

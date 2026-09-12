@@ -74,6 +74,12 @@ original por `--upscale_factor`: usa `--output_resolution 1080p` hasta 1920 px,
 `2K` hasta 2560 px y `4K` por encima. No asumas 1080p ni preguntes al usuario por
 estos metadatos: mídelo localmente y muestra el tramo calculado en el plan.
 
+Los cuatro modelos Topaz (`topaz-bloom-2`, `topaz-wonder-3-5`,
+`topaz-astra-precise-2-6` y `topaz-astra-creative-2`) se ejecutan únicamente por
+el gateway de AILAB. La CLI mide con `ffprobe` dimensiones, duración y fotogramas
+del MP4, o dimensiones y megapíxeles de la imagen, y rechaza límites antes de
+subir. No pases `frame_count` ni `output_megapixels`: son mediciones internas.
+
 Muestra de forma breve modelo, parámetros, archivos, estimación, reserva y saldo.
 El máximo del manifiesto protege esa petición, no impone un presupuesto al flujo.
 Con la autorización del encargo, ejecuta:

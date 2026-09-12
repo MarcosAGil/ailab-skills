@@ -8,7 +8,7 @@ import { apiPost, servicePost, assistantPost, taskLookup, explain } from './lib/
 import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, estimateCredits, modelContractHash, stableStringify } from './lib/catalog.mjs';
 import { refreshAssistantsCatalog, resolveAssistant, resolveAssistantModel, assistantContractHash } from './lib/assistants.mjs';
 import { createAssistantRequest, loadAssistantRequest, updateAssistantRequest, loadSession, createSession, saveSession, assistantRequestIntact } from './lib/assistant-requests.mjs';
-import { inspectFile, inspectPricingMetadata, rehashMatches } from './lib/files.mjs';
+import { inspectFile, inspectPricingMetadata, inspectVideoMetadata, rehashMatches } from './lib/files.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './lib/manifest.mjs';
 import { resolveOutputDir, downloadTo, saveTextTo } from './lib/output.mjs';
 import { uploadPath } from './lib/http.mjs';
@@ -23,6 +23,7 @@ import * as sunoV1 from './adapters/suno-v1.mjs';
 import * as heygenV1 from './adapters/heygen-v1.mjs';
 import * as jobsTextV1 from './adapters/jobs-text-v1.mjs';
 import * as resembleV1 from './adapters/resemble-v1.mjs';
+import * as topazV1 from './adapters/topaz-v1.mjs';
 import { saveTaskReceipt, loadTaskReceipt, completeTaskReceipt } from './lib/tasks.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -39,6 +40,7 @@ const ADAPTERS = {
   'heygen-v1': heygenV1,
   'jobs-text-v1': jobsTextV1,
   'resemble-v1': resembleV1,
+  'topaz-v1': topazV1,
 };
 const POLL_MS = 5000;
 const TIMEOUT_MS = { image: 10 * 60 * 1000, video: 45 * 60 * 1000, audio: 15 * 60 * 1000, text: 15 * 60 * 1000 };
@@ -403,6 +405,37 @@ function deriveInternalParams(model, given) {
     if (model.id === 'eleven-voice-changer' && metadata.duration > 300.01) fail('Voice Changer admite audios de hasta 5 minutos.');
     derived.duration_seconds = Math.round(metadata.duration * 100) / 100;
   }
+  if (model.driver === 'topaz-v1') {
+    const mediaParam = model.output === 'image' ? 'image_url' : 'video_url';
+    const value = derived[mediaParam];
+    if (Array.isArray(value)) fail('--' + mediaParam + ' solo admite un archivo.');
+    if (value === undefined || value === true || value === '') return derived;
+    const expectedClass = model.output === 'image' ? 'image' : 'video';
+    const inspected = inspectFile(String(value), expectedClass);
+    if (!inspected.ok) fail(inspected.error);
+    const metadata = expectedClass === 'image'
+      ? inspectPricingMetadata(inspected.path)
+      : { ...inspected, ...inspectVideoMetadata(inspected.path) };
+    if (!metadata.ok || metadata.class !== expectedClass || (expectedClass === 'video' && metadata.mime !== 'video/mp4')) {
+      fail(metadata.error || 'No se pudieron medir los metadatos del archivo Topaz.');
+    }
+    if (expectedClass === 'image') {
+      const factor = Number(derived.upscale_factor === undefined ? 2 : derived.upscale_factor);
+      if (!Number.isFinite(factor) || ![2, 4, 6].includes(factor)) fail('--upscale_factor debe ser 2, 4 o 6.');
+      const outputWidth = Math.round(metadata.width * factor);
+      const outputHeight = Math.round(metadata.height * factor);
+      derived.output_megapixels = outputWidth * outputHeight / 1000000;
+    } else {
+      derived.frame_count = metadata.frame_count;
+      const prompt = String(derived.prompt || '').trim();
+      if (model.id === 'topaz-astra-creative-2' && prompt && metadata.frame_count > 450) {
+        fail('Con prompt, Astra Creative admite hasta 450 fotogramas. Acorta el vídeo o deja el prompt vacío.');
+      }
+      if (model.id === 'topaz-astra-creative-2' && !prompt && metadata.frame_count > 9000) {
+        fail('Astra Creative admite hasta 9.000 fotogramas sin prompt.');
+      }
+    }
+  }
   return derived;
 }
 
@@ -464,7 +497,15 @@ async function cmdPrepare(cat, name, opts) {
     for (const p of paths) {
       const insp = inspectFile(p, accept);
       if (!insp.ok) fail(insp.error);
-      files.push({ ...insp, param });
+      let measured = insp;
+      if (m.driver === 'topaz-v1') {
+        const metadata = m.output === 'image'
+          ? inspectPricingMetadata(insp.path)
+          : { ...insp, ...inspectVideoMetadata(insp.path) };
+        if (!metadata.ok) fail(metadata.error || 'No se pudieron medir los metadatos del archivo Topaz.');
+        measured = { ...insp, ...metadata };
+      }
+      files.push({ ...measured, param });
     }
   }
 
@@ -680,6 +721,7 @@ async function cmdStatus(cat, taskId, opts) {
     if (model.driver === 'labs-queue-v1') providerRequestId = providerRequestId.replace(/^fal:/, '');
     if (model.driver === 'labs-queue-multi-v1') providerRequestId = providerRequestId.replace(/^apimart:/, '');
     if (model.driver === 'heygen-v1') providerRequestId = providerRequestId.replace(/^heygen:/, '');
+    if (model.driver === 'topaz-v1') providerRequestId = providerRequestId.replace(/^topaz:/, '');
     taskRef = { serverTaskId: String(taskId), providerRequestId, costTaskId: String(taskId) };
     saveTaskReceipt(meta.model_id, taskRef);
     out('Tarea recuperada desde la wallet compartida: ' + meta.model_id + '.');

@@ -2,6 +2,7 @@
 // sha256 y limites por tipo. Se usa en prepare y se re-verifica en submit.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 
 const LIMITS = { image: 30 * 1024 * 1024, video: 200 * 1024 * 1024, audio: 150 * 1024 * 1024 };
 
@@ -346,4 +347,62 @@ export function inspectPricingMetadata(path_) {
   } catch {
     return { ok: false, error: 'No se pudieron leer los metadatos de ' + path_ + '.' };
   }
+}
+
+// Metadata para proveedores que cobran por fotograma. ffprobe es el equivalente
+// local del lector de MP4 del servidor: no se acepta una duración o frame count
+// proporcionados por el usuario. Se cuenta el stream de vídeo completo cuando el
+// contenedor no publica nb_frames en su cabecera.
+export function inspectVideoMetadata(path_) {
+  const absolute = String(path_);
+  const probe = (args) => {
+    try {
+      const result = spawnSync('ffprobe', ['-v', 'error', ...args, '-of', 'json', absolute], {
+        encoding: 'utf8',
+        maxBuffer: 1024 * 1024,
+        windowsHide: true,
+      });
+      if (result.error || result.status !== 0 || !result.stdout) return null;
+      return JSON.parse(result.stdout);
+    } catch { return null; }
+  };
+  const entries = ['stream=width,height,nb_frames,r_frame_rate,avg_frame_rate,duration', 'format=duration'];
+  let data = probe(['-select_streams', 'v:0', '-show_entries', entries.join(':')]);
+  if (!data) return { ok: false, error: 'No se pudo medir el vídeo MP4. Instala ffprobe o exporta un MP4 válido.' };
+  const stream = Array.isArray(data.streams) ? data.streams[0] : null;
+  const format = data.format || {};
+  const number = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  const width = number(stream && stream.width);
+  const height = number(stream && stream.height);
+  const duration = number((stream && stream.duration) ?? format.duration);
+  let frameCount = number(stream && (stream.nb_frames ?? stream.nb_read_frames));
+  if (!Number.isSafeInteger(frameCount) || frameCount <= 0) {
+    data = probe(['-select_streams', 'v:0', '-count_frames', '-show_entries', 'stream=nb_read_frames']);
+    const counted = number(data && data.streams && data.streams[0] && data.streams[0].nb_read_frames);
+    frameCount = counted;
+  }
+  const rateText = String((stream && (stream.avg_frame_rate || stream.r_frame_rate)) || '');
+  let frameRate = null;
+  const rate = /^([0-9]+(?:\.[0-9]+)?)\/([0-9]+(?:\.[0-9]+)?)$/.exec(rateText);
+  if (rate && Number(rate[2]) > 0) frameRate = Number(rate[1]) / Number(rate[2]);
+  if (!Number.isFinite(frameRate) || frameRate <= 0) {
+    const inferred = Number.isFinite(frameCount) && Number.isFinite(duration) && duration > 0 ? frameCount / duration : NaN;
+    frameRate = Number.isFinite(inferred) && inferred > 0 ? inferred : null;
+  }
+  if (!Number.isSafeInteger(frameCount) || frameCount <= 0 || !Number.isFinite(width) || width < 1
+      || !Number.isFinite(height) || height < 1 || !Number.isFinite(duration) || duration <= 0
+      || !Number.isFinite(frameRate) || frameRate <= 0) {
+    return { ok: false, error: 'No se pudieron leer duración, dimensiones y fotogramas del MP4.' };
+  }
+  return {
+    ok: true,
+    width: Math.round(width),
+    height: Math.round(height),
+    duration,
+    frame_count: frameCount,
+    frame_rate: frameRate,
+  };
 }

@@ -32,7 +32,7 @@ globalThis.fetch = async (url, init) => {
   const endpoint = parsed.pathname;
   let data;
   if (failure) return Response.json({ code: 400, msg: 'Model not supported' });
-  if (endpoint.endsWith('/api.php')) return Response.json({ ok: true, credits: 100, costs: { mock: 7, 'fal:mock': 7, 'apimart:mock': 7, 'heygen:mock': 7 } });
+  if (endpoint.endsWith('/api.php')) return Response.json({ ok: true, credits: 100, costs: { mock: 7, 'fal:mock': 7, 'apimart:mock': 7, 'heygen:mock': 7, 'topaz:mock': 7 } });
   if (endpoint.endsWith('/upload.php')) return Response.json({ ok: true, url: 'https://media.invalid/reference.png' });
   if (endpoint.endsWith('/assistant.php') || endpoint.endsWith('/task.php')) return Response.json({ ok: true });
   if (endpoint.endsWith('/gateway.php')) {
@@ -45,7 +45,7 @@ globalThis.fetch = async (url, init) => {
       data = { taskId: 'mock' };
     }
   } else {
-    assert.match(endpoint, /\/api\/wallet\/(fal|apimart|heygen|elevenlabs|resemble)-gateway\.php$/);
+    assert.match(endpoint, /\/api\/wallet\/(fal|apimart|heygen|elevenlabs|resemble|topaz)-gateway\.php$/);
     data = parsed.searchParams.get('action') === 'status'
       ? { status: 'COMPLETED', image: media, audio: media, video_url: media, images: [media] }
       : { request_id: 'mock', video_id: 'mock', task_id: 'mock', taskId: 'mock', audio: media, credits: 7 };
