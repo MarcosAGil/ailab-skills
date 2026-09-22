@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.15.0",
+  "catalog_version": "1.16.0",
   "min_cli_version": "2.1.0",
   "models": {
     "gpt-image-2-5": {
@@ -3762,7 +3762,7 @@
         "seedance 2.5",
         "seedance2.5"
       ],
-      "description": "Texto, imagen o referencias a video con audio nativo, hasta 30 segundos y resolucion 480p, 720p o 1080p.",
+      "description": "Texto, imagen, referencias o edición de vídeo con audio nativo, hasta 30 segundos y resolución 480p, 720p o 1080p.",
       "driver": "jobs-v1",
       "enabled": true,
       "estimate": {
@@ -3793,6 +3793,10 @@
           "until": "2026-09-17T06:00:00Z"
         },
         "seconds_param": "duration",
+        "mode_param": "mode",
+        "duration_by_mode": {
+          "edit": 30
+        },
         "video_param": "reference_video_urls"
       },
       "expensive": true,
@@ -3802,13 +3806,14 @@
       "modes": [
         "t2v",
         "i2v",
-        "ref"
+        "ref",
+        "edit"
       ],
       "output": "video",
       "params": {
         "aspect_ratio": {
           "default": "adaptive",
-          "help": "En modo i2v se fuerza adaptive porque KIE no admite ratios fijos con First Frame.",
+          "help": "En modos i2v y edit se fuerza adaptive porque KIE no admite ratios fijos con First Frame y la edición conserva el formato del vídeo original.",
           "type": "enum",
           "values": [
             "adaptive",
@@ -3826,7 +3831,7 @@
         },
         "duration": {
           "default": 5,
-          "help": "Entre 4 y 30 segundos; usa --auto_duration true para que el modelo decida",
+          "help": "Entre 4 y 30 segundos; usa --auto_duration true para que el modelo decida. En modo edit la duración es automática y conserva la del vídeo original.",
           "max": 30,
           "min": 4,
           "type": "int"
@@ -3852,7 +3857,8 @@
           "values": [
             "t2v",
             "i2v",
-            "ref"
+            "ref",
+            "edit"
           ]
         },
         "prompt": {
@@ -3874,6 +3880,9 @@
         "reference_video_urls": {
           "accept": "video",
           "max": 1,
+          "required_when": {
+            "mode": "edit"
+          },
           "type": "file[]"
         },
         "resolution": {
