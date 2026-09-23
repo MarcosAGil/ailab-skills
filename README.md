@@ -27,6 +27,10 @@ su asistente de instalación. Las versiones proceden de `registry.json`; el desp
 de AILAB publica una copia validada junto a los ZIP, sin depender de GitHub al abrir
 la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza AILAB.
 
+La versión 2.3.1 corrige la lectura de cotizaciones de Higgsfield: la skill ahora
+extrae el precio del sobre `{ok, code, msg, data}` que devuelve AILAB, conservando
+la compatibilidad con las respuestas planas anteriores.
+
 La versión 2.2.9 incorpora **GPT Image 2.5**, los cuatro modelos Topaz y
 **VEED Lipsync v2** al catálogo.
 Topaz se ejecuta mediante el gateway seguro de AILAB y mide localmente los metadatos
