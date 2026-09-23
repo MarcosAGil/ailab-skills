@@ -30,8 +30,8 @@ const json = (res, body, status = 200) => {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
 };
-// Los endpoints de skill responden con la forma del gateway {code, data}.
-const gateway = (res, data) => json(res, { code: 200, data });
+// Higgsfield devuelve el sobre doble del endpoint real: {ok, code, msg, data}.
+const gateway = (res, data, msg = 'Presupuesto calculado.') => json(res, { ok: true, code: 200, msg, data });
 
 async function harness(t, { balance = 1000 } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-higgsfield-flow-'));
@@ -72,8 +72,8 @@ async function harness(t, { balance = 1000 } = {}) {
             expires_at: FUTURE(),
           });
         }
-        if (action === 'create') return gateway(res, { taskId: TASK_ID, request_id: TASK_ID });
-        if (action === 'status') return gateway(res, { status: 'COMPLETED', urls: [base + 'assets/soul-2.png'] });
+        if (action === 'create') return gateway(res, { taskId: TASK_ID, request_id: TASK_ID }, 'Tarea creada.');
+        if (action === 'status') return gateway(res, { status: 'COMPLETED', urls: [base + 'assets/soul-2.png'] }, 'Estado consultado.');
         return json(res, { code: 400, msg: 'unknown action' }, 400);
       }
       json(res, { error: 'unexpected request ' + req.url }, 404);

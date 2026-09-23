@@ -32,9 +32,15 @@ export function normalize(httpStatus, body, contentType) {
     return { ok: false, kind: 'invalid_response', httpStatus, businessCode: null, message: 'Respuesta no valida del servidor (' + (contentType || 'sin content-type') + ').', data: null, raw: body };
   }
   // api.php: {ok, error, ...} · gateways: {code, msg, data}
+  // El sobre doble del servidor ({ok, code, msg, data}) tambien llega aqui: se
+  // respeta la forma antigua (data = cuerpo plano, para api.php y uploads) y
+  // cuando data es un objeto se entrega ESE objeto, que es donde los adapters
+  // buscan sus campos. El cuerpo completo sigue en raw para el codigo que ya
+  // leia response.raw (saldo, costes, error_code, retry_same_request).
   if (typeof body.ok === 'boolean') {
     const ok = body.ok && httpStatus < 400;
-    return { ok, kind: ok ? 'ok' : kindFor(httpStatus, null), httpStatus, businessCode: null, message: body.error || '', data: body, raw: body };
+    const nested = body.data && typeof body.data === 'object' && !Array.isArray(body.data) ? body.data : null;
+    return { ok, kind: ok ? 'ok' : kindFor(httpStatus, null), httpStatus, businessCode: null, message: body.error || '', data: nested || body, raw: body };
   }
   if (typeof body.code === 'number') {
     const ok = body.code === 200 && httpStatus >= 200 && httpStatus < 400;
