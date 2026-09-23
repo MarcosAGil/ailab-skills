@@ -181,6 +181,24 @@ export async function servicePost(relativePath, body) {
   });
 }
 
+// GET del contrato de la skill (api/skill/*.php): algunos endpoints exigen el
+// estado por query string y no por POST. La query se codifica aqui para que
+// ningun adapter componga URLs a mano.
+export async function serviceGet(relativePath, query) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query || {})) {
+    if (value === undefined || value === null || value === '') continue;
+    params.append(key, String(value));
+  }
+  const suffix = params.toString();
+  const path = relativePath.replace(/^\/+/, '');
+  if (!suffix) return doFetch(GENERATION_BASE_URL + path, { method: 'GET', headers: { ...authHeaders() } });
+  return doFetch(GENERATION_BASE_URL + path + (path.includes('?') ? '&' : '?') + suffix, {
+    method: 'GET',
+    headers: { ...authHeaders() },
+  });
+}
+
 export async function assistantPost(body) {
   return doFetch(ASSISTANT_ENDPOINT, {
     method: 'POST',

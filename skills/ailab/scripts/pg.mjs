@@ -5,7 +5,7 @@
 import { CLI_VERSION, BASE_URL, CUENTA_URL } from './lib/config.mjs';
 import { login, promptVisible, promptHidden, readCookie, readToken, saveToken, clearToken, clearCookie, openDevicePage, cookieAuthEnabled } from './lib/auth.mjs';
 import { apiPost, servicePost, assistantPost, taskLookup, explain } from './lib/http.mjs';
-import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, estimateCredits, modelContractHash, stableStringify } from './lib/catalog.mjs';
+import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, estimateCredits, modelContractHash, requiresServerQuote, stableStringify } from './lib/catalog.mjs';
 import { refreshAssistantsCatalog, resolveAssistant, resolveAssistantModel, assistantContractHash } from './lib/assistants.mjs';
 import { createAssistantRequest, loadAssistantRequest, updateAssistantRequest, loadSession, createSession, saveSession, assistantRequestIntact } from './lib/assistant-requests.mjs';
 import { inspectFile, inspectPricingMetadata, inspectVideoMetadata, rehashMatches } from './lib/files.mjs';
@@ -24,6 +24,7 @@ import * as heygenV1 from './adapters/heygen-v1.mjs';
 import * as jobsTextV1 from './adapters/jobs-text-v1.mjs';
 import * as resembleV1 from './adapters/resemble-v1.mjs';
 import * as topazV1 from './adapters/topaz-v1.mjs';
+import * as higgsfieldV1 from './adapters/higgsfield-v1.mjs';
 import { saveTaskReceipt, loadTaskReceipt, completeTaskReceipt } from './lib/tasks.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -41,6 +42,7 @@ const ADAPTERS = {
   'jobs-text-v1': jobsTextV1,
   'resemble-v1': resembleV1,
   'topaz-v1': topazV1,
+  'higgsfield-v1': higgsfieldV1,
 };
 const POLL_MS = 5000;
 const TIMEOUT_MS = { image: 10 * 60 * 1000, video: 45 * 60 * 1000, audio: 15 * 60 * 1000, text: 15 * 60 * 1000 };
@@ -455,7 +457,7 @@ function deriveInternalParams(model, given) {
 function cmdValidate(cat, name, opts) {
   const hit = resolveModel(cat, name);
   if (!hit) fail('Modelo no encontrado: ' + name);
-  let given = { ...opts }; delete given.output; delete given.confirmed;
+  let given = { ...opts }; delete given.output; delete given.confirmed; delete given['max-credits'];
   given = deriveInternalParams(hit.model, given);
   const v = validateParams(hit.model, given);
   if (!v.ok) fail('Parametros no validos:\n  - ' + v.errors.join('\n  - '));
@@ -464,7 +466,9 @@ function cmdValidate(cat, name, opts) {
     for (const p of paths) { const inspected = inspectFile(p, accept); if (!inspected.ok) fail(inspected.error); }
   }
   const est = estimateCredits(hit.model, { ...v.params, ...v.fileParams });
-  out('OK ' + hit.model.label + ': parametros validos · estimacion ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr') + ' · sin gasto.');
+  out('OK ' + hit.model.label + ': parametros validos · '
+    + (est.server_quote ? 'el coste lo cotiza el servidor en prepare' : 'estimacion ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr'))
+    + ' · sin gasto.');
 }
 
 async function cmdDoctor(cat) {
@@ -491,6 +495,56 @@ async function cmdDoctor(cat) {
   if (checks.some((ok) => !ok)) process.exitCode = 1;
 }
 
+// Techo de creditos fijado por el usuario con --max-credits (opcional).
+function creditCeiling(opts) {
+  const value = singleOpt(opts, 'max-credits');
+  if (value === undefined) return null;
+  if (value === true) fail('--max-credits necesita un numero de creditos.');
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) fail('--max-credits debe ser un numero de creditos mayor que cero.');
+  return n;
+}
+
+// Sube los archivos congelados en el manifiesto reutilizando las subidas que
+// siguen vigentes. `persist` recibe la lista acumulada tras cada subida nueva.
+async function uploadFrozenFiles(frozenFiles, cachedUploads, persist) {
+  const uploadedByParam = {};
+  const savedUploads = [];
+  const cached = Array.isArray(cachedUploads) ? cachedUploads : [];
+  for (let index = 0; index < frozenFiles.length; index++) {
+    const f = frozenFiles[index];
+    const previous = cached[index];
+    const matches = previous && previous.param === f.param && previous.path === f.path
+      && previous.sha256 === f.sha256 && typeof previous.url === 'string';
+    const expiry = matches && typeof previous.expires_at === 'string'
+      ? Date.parse(previous.expires_at.replace(' ', 'T') + (previous.expires_at.includes('T') ? '' : 'Z'))
+      : NaN;
+    if (matches && Number.isFinite(expiry) && expiry > Date.now() + 60 * 1000) {
+      (uploadedByParam[f.param] = uploadedByParam[f.param] || []).push(previous.url);
+      savedUploads.push(previous);
+      out('Reutilizando la subida verificada de ' + f.path + '…');
+      continue;
+    }
+    const insp = inspectFile(f.path, null);
+    if (!insp.ok) fail(insp.error);
+    out('Subiendo ' + f.path + '…');
+    const up = await uploadPath(insp.path, uploadName('input', insp.mime), insp.mime, f.sha256);
+    if (!up.ok) fail('Fallo la subida de ' + f.path + ': ' + explain(up) + ' (no se ha gastado nada)');
+    const url = up.data && up.data.url;
+    if (!url) fail('La subida no devolvio URL (no se ha gastado nada).');
+    (uploadedByParam[f.param] = uploadedByParam[f.param] || []).push(url);
+    savedUploads.push({
+      param: f.param,
+      path: f.path,
+      sha256: f.sha256,
+      url,
+      expires_at: up.data && up.data.expires_at ? String(up.data.expires_at) : '',
+    });
+    if (persist) persist(savedUploads);
+  }
+  return { uploadedByParam, savedUploads };
+}
+
 async function cmdPrepare(cat, name, opts) {
   const hit = resolveModel(cat, name);
   if (!hit) fail('Modelo no encontrado: ' + name);
@@ -499,7 +553,7 @@ async function cmdPrepare(cat, name, opts) {
   if (!usable.ok) fail(usable.reason);
 
   let given = { ...opts };
-  delete given.output; delete given.confirmed;
+  delete given.output; delete given.confirmed; delete given['max-credits'];
   given = deriveInternalParams(m, given);
   const v = validateParams(m, given);
   if (!v.ok) fail('Parametros no validos:\n  - ' + v.errors.join('\n  - '));
@@ -522,8 +576,46 @@ async function cmdPrepare(cat, name, opts) {
     }
   }
 
+  const ceiling = creditCeiling(opts);
+  const serverQuote = requiresServerQuote(m);
   const est = estimateCredits(m, { ...v.params, ...v.fileParams });
   const me = await requireSession();
+
+  // Higgsfield: los archivos suben ANTES de cotizar porque el servidor mide el
+  // video y las referencias para fijar el coste. Subir no gasta creditos.
+  let uploads = { uploadedByParam: {}, savedUploads: [] };
+  let quote = null;
+  if (serverQuote) {
+    uploads = await uploadFrozenFiles(files, [], null);
+    const adapter = ADAPTERS[m.driver];
+    const payload = adapter.buildPayload(m, v.params, uploads.uploadedByParam);
+    const clientRequestId = crypto.randomUUID();
+    const asked = await adapter.quote(m, payload, {
+      client_request_id: clientRequestId,
+      max_credits_authorized: ceiling === null ? undefined : ceiling,
+    });
+    if (!asked.ok) fail('La cotizacion del servidor no se pudo obtener: ' + explain(asked.normalized) + ' (no se ha gastado nada)');
+    quote = { ...asked.quote, client_request_id: clientRequestId };
+    // quote.estimated_credits es el coste real cotizado (lo que se aprueba);
+    // quote.max_credits_authorized es solo el techo de seguridad del servidor.
+    const quoteCeiling = Number(quote.max_credits_authorized);
+    if (!Number.isFinite(quoteCeiling) || quoteCeiling <= 0) {
+      fail('El servidor no devolvio un maximo autorizado valido para la cotizacion (no se ha gastado nada).');
+    }
+    const quoteActual = Number(quote.estimated_credits);
+    if (!Number.isFinite(quoteActual) || quoteActual <= 0) {
+      fail('El servidor no devolvio un coste cotizado valido para la cotizacion (no se ha gastado nada).');
+    }
+    if (quoteActual > quoteCeiling) {
+      fail('El coste cotizado (' + quoteActual + ' cr) supera el techo de seguridad de la propia cotizacion (' + quoteCeiling + ' cr). No se ha enviado nada.');
+    }
+    if (!Number.isFinite(Date.parse(String(quote.expires_at || '')))) {
+      fail('El servidor no devolvio una caducidad valida para la cotizacion (no se ha gastado nada).');
+    }
+    if (ceiling !== null && quoteActual > ceiling) {
+      fail('La cotizacion del servidor (' + quoteActual + ' cr) supera el maximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+    }
+  }
 
   const manifest = createManifest({
     modelId: hit.id,
@@ -531,18 +623,45 @@ async function cmdPrepare(cat, name, opts) {
     modelContractHash: modelContractHash(hit.id, m),
     params: v.params,
     files,
-    estimate: { ...est, expensive: m.expensive },
+    estimate: serverQuote
+      ? { credits: Number(quote.estimated_credits), note: est.note, expensive: m.expensive }
+      : { ...est, expensive: m.expensive },
   });
+  if (serverQuote) {
+    // La cotizacion queda congelada en el manifiesto: submit no puede enviar
+    // nada sin ella, con un importe aprobado distinto ni una vez caducada.
+    // quote_max_credits es el importe real aprobado (coste cotizado); el techo
+    // de seguridad del servidor se conserva aparte en quote_ceiling_credits.
+    markSubmitted(manifest, {
+      client_request_id: quote.client_request_id,
+      uploaded_files: uploads.savedUploads,
+      quote_id: quote.quote_id,
+      quote_expires_at: quote.expires_at,
+      quote_estimated_credits: quote.estimated_credits,
+      quote_max_credits: Number(quote.estimated_credits),
+      quote_ceiling_credits: Number(quote.max_credits_authorized),
+      quote_verified_duration_seconds: quote.verified_duration_seconds,
+      estimated_credits: quote.estimated_credits,
+    });
+  }
 
   out('── PLAN DE GENERACION (sin gasto todavia) ──');
   out('Modelo: ' + m.label + ' (' + hit.id + ')' + (m.expensive ? ' · MODELO CARO' : ''));
   for (const [k, val] of Object.entries(v.params)) out('  ' + k + ': ' + JSON.stringify(val));
   for (const f of files) out('  archivo (' + f.param + '): ' + f.path + ' · ' + f.mime + ' · ' + Math.round(f.size / 1024) + 'KB');
-  out('Estimacion: ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr') + (est.note ? ' (' + est.note + ')' : ''));
-  if (m.expensive && est.credits !== null) out('Maximo autorizado por este manifiesto: ' + est.credits + ' cr.');
+  const requiredBalance = serverQuote ? Number(quote.estimated_credits) : est.credits;
+  if (serverQuote) {
+    out('Cotizacion del servidor: ' + quote.quote_id + ' · coste cotizado '
+      + (quote.estimated_credits === null ? 'pendiente' : quote.estimated_credits + ' cr')
+      + ' (importe que se aprueba) · techo de seguridad del servidor ' + quote.max_credits_authorized + ' cr');
+    out('La cotizacion caduca: ' + quote.expires_at + '. Pasada esa hora hay que volver a preparar.');
+  } else {
+    out('Estimacion: ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr') + (est.note ? ' (' + est.note + ')' : ''));
+    if (m.expensive && est.credits !== null) out('Maximo autorizado por este manifiesto: ' + est.credits + ' cr.');
+  }
   out('Saldo actual: ' + me.balance + ' cr.');
-  if (est.credits !== null && me.balance < est.credits) {
-    out('AVISO: el saldo no cubre la estimacion. Recarga en: ' + CUENTA_URL);
+  if (Number.isFinite(requiredBalance) && requiredBalance > 0 && me.balance < requiredBalance) {
+    out('AVISO: el saldo no cubre la operacion (~' + requiredBalance + ' cr). Recarga en: ' + CUENTA_URL);
   }
   out('Manifiesto: ' + manifest.manifest_id + ' (caduca en 15 min)');
   out('Para ejecutar dentro de la autorizacion del encargo: node scripts/ailab.mjs submit ' + manifest.manifest_id + ' --confirmed');
@@ -585,7 +704,27 @@ async function cmdSubmit(cat, manifestId, opts) {
     fail('El manifiesto ya no supera la validacion del modelo. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   }
   const estimateAgain = estimateCredits(model, { ...validatedAgain.params, ...validatedAgain.fileParams });
-  if (estimateAgain.credits !== m0.estimated_credits || estimateAgain.credits !== m0.max_credits_authorized) {
+  const serverQuote = requiresServerQuote(model);
+  if (serverQuote) {
+    // El manifiesto congela una cotizacion del servidor: sin ella, caducada o
+    // con un maximo distinto no se envia nada (el adapter lo vuelve a exigir).
+    if (typeof m0.quote_id !== 'string' || !m0.quote_id.trim()) {
+      fail('El manifiesto no tiene la cotizacion verificada del servidor. Vuelve a preparar; no se ha enviado nada.');
+    }
+    const quoteApproved = Number(m0.quote_max_credits);
+    const quoteCeiling = Number(m0.quote_ceiling_credits ?? m0.quote_max_credits);
+    const quoteExpires = Date.parse(String(m0.quote_expires_at || ''));
+    if (!Number.isFinite(quoteApproved) || quoteApproved <= 0) fail('La cotizacion del manifiesto no tiene un importe aprobado valido. Vuelve a preparar; no se ha enviado nada.');
+    if (!Number.isFinite(quoteCeiling) || quoteCeiling <= 0) fail('La cotizacion del manifiesto no tiene un techo de seguridad valido. Vuelve a preparar; no se ha enviado nada.');
+    if (!Number.isFinite(quoteExpires)) fail('La cotizacion del manifiesto no tiene una caducidad valida. Vuelve a preparar; no se ha enviado nada.');
+    if (Date.now() > quoteExpires) fail('La cotizacion aprobada en prepare ha caducado. Vuelve a ejecutar prepare; no se ha enviado nada.');
+    if (Number(m0.max_credits_authorized) !== quoteApproved) fail('El importe autorizado del manifiesto no coincide con la cotizacion aprobada. Vuelve a preparar; no se ha enviado nada.');
+    const quotedCost = Number(m0.quote_estimated_credits);
+    if (!Number.isFinite(quotedCost) || quotedCost <= 0) fail('La cotizacion del manifiesto no tiene un coste cotizado valido. Vuelve a preparar; no se ha enviado nada.');
+    if (quotedCost > quoteCeiling) fail('La cotizacion (' + quotedCost + ' cr) supera el techo de seguridad de la cotizacion (' + quoteCeiling + ' cr). Vuelve a preparar; no se ha enviado nada.');
+    const ceiling = creditCeiling(opts);
+    if (ceiling !== null && quoteApproved > ceiling) fail('La cotizacion del servidor (' + quoteApproved + ' cr) supera el maximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+  } else if (estimateAgain.credits !== m0.estimated_credits || estimateAgain.credits !== m0.max_credits_authorized) {
     fail('La estimacion o el maximo autorizado del manifiesto no coincide con el plan confirmado. Vuelve a preparar.');
   }
 
@@ -594,8 +733,11 @@ async function cmdSubmit(cat, manifestId, opts) {
   }
 
   const me = await requireSession();
-  if (m0.estimated_credits !== null && me.balance < m0.estimated_credits) {
-    fail('Saldo insuficiente para la estimacion (~' + m0.estimated_credits + ' cr; saldo ' + me.balance + ' cr). Recarga en: ' + CUENTA_URL);
+  // El importe que se exige en saldo es el coste cotizado aprobado, no el techo
+  // de seguridad del servidor.
+  const requiredBalance = serverQuote ? Number(m0.quote_max_credits) : m0.estimated_credits;
+  if (Number.isFinite(requiredBalance) && requiredBalance > 0 && me.balance < requiredBalance) {
+    fail('Saldo insuficiente para la operacion (~' + requiredBalance + ' cr; saldo ' + me.balance + ' cr). Recarga en: ' + CUENTA_URL);
   }
 
   // client_request_id: generado y persistido ANTES de enviar (base de la
@@ -605,52 +747,29 @@ async function cmdSubmit(cat, manifestId, opts) {
   markSubmitted(manifestState, {});
 
   // Subir archivos de entrada (si los hay)
-  const uploadedByParam = {};
-  const cachedUploads = Array.isArray(m0.uploaded_files) ? m0.uploaded_files : [];
-  const savedUploads = [];
-  for (let fileIndex = 0; fileIndex < frozenFiles.length; fileIndex++) {
-    const f = frozenFiles[fileIndex];
-    const cached = cachedUploads[fileIndex];
-    const cachedMatches = cached && cached.param === f.param
-      && cached.path === f.path && cached.sha256 === f.sha256 && typeof cached.url === 'string';
-    const cachedExpiry = cachedMatches && typeof cached.expires_at === 'string'
-      ? Date.parse(cached.expires_at.replace(' ', 'T') + (cached.expires_at.includes('T') ? '' : 'Z'))
-      : NaN;
-    if (cachedMatches && Number.isFinite(cachedExpiry) && cachedExpiry > Date.now() + 60 * 1000) {
-      (uploadedByParam[f.param] = uploadedByParam[f.param] || []).push(cached.url);
-      savedUploads.push(cached);
-      out('Reutilizando la subida verificada de ' + f.path + '…');
-      continue;
-    }
-    const insp = inspectFile(f.path, null);
-    if (!insp.ok) fail(insp.error);
-    out('Subiendo ' + f.path + '…');
-    const up = await uploadPath(insp.path, uploadName('input', insp.mime), insp.mime, f.sha256);
-    if (!up.ok) fail('Fallo la subida de ' + f.path + ': ' + explain(up) + ' (no se ha gastado nada)');
-    const url = up.data && up.data.url;
-    if (!url) fail('La subida no devolvio URL (no se ha gastado nada).');
-    (uploadedByParam[f.param] = uploadedByParam[f.param] || []).push(url);
-    const uploadRecord = {
-      param: f.param,
-      path: f.path,
-      sha256: f.sha256,
-      url,
-      expires_at: up.data && up.data.expires_at ? String(up.data.expires_at) : '',
-    };
-    savedUploads.push(uploadRecord);
-    manifestState = { ...manifestState, uploaded_files: [...savedUploads] };
+  const uploads = await uploadFrozenFiles(frozenFiles, m0.uploaded_files, (saved) => {
     // Persistir la URL antes del submit mantiene estable el hash idempotente si
     // la respuesta del gateway se pierde y el usuario recupera con la misma UUID.
+    manifestState = { ...manifestState, uploaded_files: [...saved] };
     markSubmitted(manifestState, {});
-  }
+  });
+  const uploadedByParam = uploads.uploadedByParam;
 
   const adapter = ADAPTERS[model.driver];
   const payload = adapter.buildPayload(model, m0.params, uploadedByParam);
   out('Enviando a ' + model.label + '…');
-  const sub = await adapter.submit(model, payload, {
+  const intent = {
     client_request_id: clientRequestId,
-    max_credits_authorized: estimateAgain.credits,
-  });
+    max_credits_authorized: serverQuote ? Number(m0.max_credits_authorized) : estimateAgain.credits,
+  };
+  if (serverQuote) {
+    // El adapter reenvia la cotizacion aprobada; si algo no cuadra rechaza en
+    // local sin llamar al proveedor.
+    intent.quote_id = String(m0.quote_id);
+    intent.quote_max_credits = Number(m0.quote_max_credits);
+    intent.quote_expires_at = String(m0.quote_expires_at);
+  }
+  const sub = await adapter.submit(model, payload, intent);
   if (!sub.ok) fail(explain(sub.normalized));
   markSubmitted(manifestState, { submitted_task: sub.taskRef.serverTaskId, submitted_at: new Date().toISOString() });
   saveTaskReceipt(hit.id, sub.taskRef);
@@ -749,7 +868,7 @@ async function main() {
   if (!cmd || cmd === 'help') {
     out('AILAB CLI v' + CLI_VERSION + ' · Playground y asistentes desde Claude Code');
     out('Base: ' + BASE_URL);
-    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
+    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
   if (cmd === 'login') return cmdLogin();

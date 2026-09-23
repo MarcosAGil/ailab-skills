@@ -84,6 +84,15 @@ Para `lipsync-veed-v2`, adjunta un vídeo con el rostro y el audio que debe
 sincronizarse. La duración se mide localmente a partir del vídeo y el coste se
 calcula a 14 créditos por segundo, con un mínimo de 14; no inventes ese valor.
 
+`SOUL 2` (`soul-2`) exige prompt y admite 720p o 1080p con `batch_size` de 1 o 4;
+usa `style_id` para fijar el estilo y cotiza antes de confirmar. `Genjutsu`
+(`genjutsu`) cambia de operación según el modo: `--mode character_swap` es Motion
+Transfer y `--mode object_swap` es Cambio de objeto, con endpoints distintos. Su
+prompt es opcional, parte de un vídeo propio y de 1 a 8 imágenes, admite 480p o
+720p y el servidor verifica que la duración redondeada no supere 30 segundos, con
+un techo específico de ese modelo de 2100 créditos. Si la cotización caduca,
+vuelve a preparar; ante un envío ambiguo no reintentes automáticamente.
+
 Muestra de forma breve modelo, parámetros, archivos, estimación, reserva y saldo.
 El máximo del manifiesto protege esa petición, no impone un presupuesto al flujo.
 Con la autorización del encargo, ejecuta:

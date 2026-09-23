@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.16.0",
+  "catalog_version": "1.17.0",
   "min_cli_version": "2.1.0",
   "models": {
     "gpt-image-2-5": {
@@ -1243,6 +1243,73 @@
       "status": "active",
       "tier": "hub",
       "vendor": "Google"
+    },
+    "genjutsu": {
+      "id": "genjutsu",
+      "label": "Higgsfield Genjutsu",
+      "description": "Transfiere el movimiento de un video a tus imagenes o cambia un objeto por otro. El servidor mide el video y las referencias antes de cotizar.",
+      "section": "video",
+      "vendor": "Higgsfield",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "higgsfield-v1",
+      "min_cli_version": "2.3.0",
+      "aliases": [
+        "higgsfield genjutsu",
+        "motion transfer",
+        "transferencia de movimiento",
+        "cambio de objeto"
+      ],
+      "modes": [
+        "character_swap",
+        "object_swap"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "character_swap",
+            "object_swap"
+          ],
+          "default": "character_swap",
+          "help": "character_swap transfiere el movimiento (Motion Transfer); object_swap cambia un objeto (Cambio de objeto)."
+        },
+        "prompt": {
+          "type": "string",
+          "max_len": 5000,
+          "help": "Opcional. Si lo dejas vacio, el modelo usa solo el video y las imagenes."
+        },
+        "video_url": {
+          "type": "file",
+          "accept": "video",
+          "required": true,
+          "help": "Video del movimiento que se transfiere."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "required": true,
+          "min": 1,
+          "max": 8,
+          "help": "De 1 a 8 imagenes de referencia."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p"
+          ],
+          "default": "720p"
+        }
+      },
+      "estimate": {
+        "kind": "higgsfield_quote",
+        "approximate": true,
+        "note": "Higgsfield no publica tarifa fija: el servidor cotiza midiendo el video y las referencias antes de generar."
+      }
     },
     "gpt-image-2": {
       "aliases": [
@@ -4372,6 +4439,83 @@
         "frames_per_provider_credit": { "1080p": 10, "4K": 6 },
         "approximate": false,
         "note": "Cálculo exacto por número de fotogramas y resolución de salida. Con prompt: máximo 450 fotogramas."
+      }
+    },
+    "soul-2": {
+      "id": "soul-2",
+      "label": "Higgsfield SOUL 2",
+      "description": "Imagen fotorrealista de personas con estilo y semilla controlables. El servidor cotiza antes de generar.",
+      "section": "image",
+      "vendor": "Higgsfield",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "higgsfield-v1",
+      "min_cli_version": "2.3.0",
+      "aliases": [
+        "higgsfield soul 2",
+        "higgsfield soul",
+        "soul 2"
+      ],
+      "modes": [
+        "t2i"
+      ],
+      "params": {
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 5000
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9",
+            "4:3",
+            "3:4",
+            "1:1",
+            "2:3",
+            "3:2"
+          ],
+          "default": "1:1"
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p"
+        },
+        "batch_size": {
+          "type": "enum",
+          "values": [
+            "1",
+            "4"
+          ],
+          "default": "1"
+        },
+        "seed": {
+          "type": "int",
+          "min": 1,
+          "max": 1000000,
+          "help": "Opcional. Dejala vacia para una semilla aleatoria."
+        },
+        "style_id": {
+          "type": "string",
+          "max_len": 120
+        },
+        "enhance_prompt": {
+          "type": "bool",
+          "default": true
+        }
+      },
+      "estimate": {
+        "kind": "higgsfield_quote",
+        "approximate": true,
+        "note": "Higgsfield no publica tarifa fija: el servidor cotiza antes de generar."
       }
     },
     "suno": {

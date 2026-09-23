@@ -34,6 +34,12 @@ globalThis.fetch = async (url, init) => {
   if (failure) return Response.json({ code: 400, msg: 'Model not supported' });
   if (endpoint.endsWith('/api.php')) return Response.json({ ok: true, credits: 100, costs: { mock: 7, 'fal:mock': 7, 'apimart:mock': 7, 'heygen:mock': 7, 'topaz:mock': 7 } });
   if (endpoint.endsWith('/upload.php')) return Response.json({ ok: true, url: 'https://media.invalid/reference.png' });
+  if (endpoint.endsWith('/api/skill/higgsfield.php')) {
+    const action = parsed.searchParams.get('action');
+    if (action === 'quote') return Response.json({ code: 200, data: { quote_id: 'quote-mock', estimated_credits: 10, max_credits_authorized: 1000, expires_at: new Date(Date.now() + 600000).toISOString(), verified_duration_seconds: 5 } });
+    if (action === 'status') return Response.json({ code: 200, data: { status: 'COMPLETED', urls: [media] } });
+    return Response.json({ code: 200, data: { request_id: 'mock' } });
+  }
   if (endpoint.endsWith('/assistant.php') || endpoint.endsWith('/task.php')) return Response.json({ ok: true });
   if (endpoint.endsWith('/gateway.php')) {
     const route = parsed.searchParams.get('path');
@@ -73,6 +79,12 @@ async function exercise(model, overrides = {}, uploads = {}) {
   const params = Object.fromEntries(Object.entries(model.params || {}).filter(([, spec]) => spec.default !== undefined).map(([key, spec]) => [key, spec.default]));
   const payload = adapter.buildPayload(model, { ...params, ...overrides }, uploads);
   const intent = { client_request_id: crypto.randomUUID(), max_credits_authorized: 1000 };
+  if (model.driver === 'higgsfield-v1') {
+    // Higgsfield exige una cotizacion verificada antes de crear la tarea.
+    intent.quote_id = 'quote-mock';
+    intent.quote_max_credits = 1000;
+    intent.quote_expires_at = new Date(Date.now() + 600000).toISOString();
+  }
   const submitted = await adapter.submit(model, payload, intent);
   assert.equal(submitted.ok, true, JSON.stringify(submitted));
   const sent = calls.at(-1);
