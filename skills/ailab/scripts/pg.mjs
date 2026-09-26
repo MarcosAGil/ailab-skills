@@ -779,7 +779,21 @@ async function cmdSubmit(cat, manifestId, opts) {
   process.exit(done ? 0 : 1);
 }
 
-async function pollAndDownload(model, taskRef, outputOverride) {
+function recoverHint(taskId) {
+  out('Conserva esta tarea; no vuelvas a generar. Recupera con: node scripts/ailab.mjs status ' + taskId);
+}
+
+function storedResult(remote) {
+  const meta = remote.ok && remote.raw && remote.raw.task;
+  if (!meta) return null;
+  const urls = (Array.isArray(meta.result_urls) && meta.result_urls.length
+    ? meta.result_urls : (meta.result_url ? [meta.result_url] : []))
+    .filter(url => typeof url === 'string' && /^https?:\/\//i.test(url));
+  if (String(meta.state).toLowerCase() === 'success' && urls.length) return { status: 'success', urls: [...new Set(urls)] };
+  return null;
+}
+
+async function pollAndDownload(model, taskRef, outputOverride, initialResult = null) {
   const t0 = Date.now();
   const limit = TIMEOUT_MS[model.output] || TIMEOUT_MS.image;
   const adapter = ADAPTERS[model.driver];
@@ -788,7 +802,13 @@ async function pollAndDownload(model, taskRef, outputOverride) {
       out('Sigue en curso tras el tiempo maximo de espera. Reanuda con: node scripts/ailab.mjs status ' + taskRef.serverTaskId + ' · o mira el Historial de la web.');
       return false;
     }
-    const st = await adapter.check(model, taskRef);
+    let st = initialResult || await adapter.check(model, taskRef);
+    initialResult = null;
+    if (st.recoveryRequired || st.status === 'fail' || (st.status === 'error' && st.normalized?.kind !== 'rate_limited')) {
+      // Una unica lectura de la wallet puede recuperar lo que ya ve la web.
+      // Nunca crea otra tarea ni interpreta un fallo de transporte como fallo final.
+      st = storedResult(await taskLookup(taskRef.serverTaskId)) || st;
+    }
     if (st.status === 'success') {
       const dir = resolveOutputDir(outputOverride);
       const saved = [];
@@ -805,11 +825,22 @@ async function pollAndDownload(model, taskRef, outputOverride) {
       const cost = await adapter.realCost(taskRef);
       const me = await apiPost({ action: 'me' });
       out('Coste real: ' + (cost === null ? 'pendiente de liquidar' : cost + ' cr') + (me.ok ? ' · saldo ' + me.raw.balance + ' cr' : ''));
-      completeTaskReceipt(taskRef.serverTaskId);
-      return saved.length > 0;
+      const expected = (st.texts || []).length + (st.urls || []).length;
+      if (expected > 0 && saved.length === expected) {
+        completeTaskReceipt(taskRef.serverTaskId);
+        return true;
+      }
+      out('La generacion esta completada, pero faltan archivos por descargar.');
+      recoverHint(taskRef.serverTaskId);
+      return false;
     }
-    if (st.status === 'fail') { out('La generacion fallo (sin cargo): ' + st.error); return false; }
-    if (st.status === 'error') { out('Error consultando el estado: ' + explain(st.normalized)); return false; }
+    if (st.recoveryRequired) {
+      out('El proveedor indica completado; el resultado aun no es recuperable. No se ha confirmado un fallo ni ausencia de cargo.');
+      recoverHint(taskRef.serverTaskId);
+      return false;
+    }
+    if (st.status === 'fail') { out('La generacion fallo: ' + st.error); recoverHint(taskRef.serverTaskId); return false; }
+    if (st.status === 'error') { out('No se pudo confirmar el estado: ' + explain(st.normalized)); recoverHint(taskRef.serverTaskId); return false; }
     await sleep(POLL_MS);
   }
 }
@@ -819,19 +850,24 @@ async function cmdStatus(cat, taskId, opts) {
   const receipt = loadTaskReceipt(taskId);
   let model;
   let taskRef;
+  // Consultar tambien con recibo local: el historial puede tener ya el resultado
+  // aunque la respuesta anterior del proveedor fuera incompleta.
+  const remote = await taskLookup(taskId);
+  if (!remote.ok && remote.kind === 'rate_limited') fail(explain(remote));
   if (receipt && cat.models[receipt.model_id]) {
     model = cat.models[receipt.model_id];
     taskRef = receipt.task_ref;
   } else {
-    const remote = await taskLookup(taskId);
     if (!remote.ok || !remote.raw || !remote.raw.task) {
       fail('No hay recibo local ni metadatos recuperables para esa tarea: ' + explain(remote));
     }
     const meta = remote.raw.task;
-    if (!cat.models[meta.model_id]) {
+    const recoveredModel = cat.models[meta.model_id] || Object.values(cat.models).find(candidate =>
+      candidate.server_model === meta.model_id || (candidate.driver === 'higgsfield-v1' && ADAPTERS['higgsfield-v1'].serverModelId(candidate) === meta.model_id));
+    if (!recoveredModel) {
       fail('La tarea existe, pero su modelo (' + meta.model_id + ') no tiene un contrato publico recuperable. Actualiza AILAB o consulta el Historial web.');
     }
-    model = cat.models[meta.model_id];
+    model = recoveredModel;
     const state = String(meta.state || '').toLowerCase();
     if (state === 'failed' || state === 'fail' || state === 'expired') {
       fail('La tarea termino con estado ' + state + ' y no tiene un resultado descargable.');
@@ -854,11 +890,12 @@ async function cmdStatus(cat, taskId, opts) {
     if (model.driver === 'labs-queue-multi-v1') providerRequestId = providerRequestId.replace(/^apimart:/, '');
     if (model.driver === 'heygen-v1') providerRequestId = providerRequestId.replace(/^heygen:/, '');
     if (model.driver === 'topaz-v1') providerRequestId = providerRequestId.replace(/^topaz:/, '');
+    if (model.driver === 'higgsfield-v1') providerRequestId = providerRequestId.replace(/^higgsfield:/, '');
     taskRef = { serverTaskId: String(taskId), providerRequestId, costTaskId: String(taskId) };
-    saveTaskReceipt(meta.model_id, taskRef);
+    saveTaskReceipt(model.id, taskRef);
     out('Tarea recuperada desde la wallet compartida: ' + meta.model_id + '.');
   }
-  const ok = await pollAndDownload(model, taskRef, opts.output);
+  const ok = await pollAndDownload(model, taskRef, opts.output, storedResult(remote));
   process.exit(ok ? 0 : 1);
 }
 

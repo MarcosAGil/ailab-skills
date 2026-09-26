@@ -156,6 +156,12 @@ node <skill-dir>/scripts/ailab.mjs status <task_id> [--output <carpeta>]
 resultado desde la wallet compartida aunque el recibo local no exista. Si el
 servidor marca una operación como ambigua, no inventes otra UUID ni la reintentes.
 
+Un timeout del comando o una respuesta «completado» sin archivo no demuestra que
+la generación haya fallado ni que sea gratuita. Conserva el ID y recupera esa
+misma tarea con `status`. No propongas otra generación para resolver un fallo de
+consulta o descarga. Si falta parte de un resultado múltiple, conserva el recibo
+y recupera los archivos pendientes; no presentes una entrega parcial como completa.
+
 ## Entregar resultados
 
 Al completar una generación, termina siempre con una entrega visible y verificable:

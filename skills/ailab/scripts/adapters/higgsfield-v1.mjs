@@ -342,7 +342,19 @@ function resultUrls(data) {
     const single = firstUrl(data.result_url, data.video_url, data.output_url, data.url);
     if (single) list.push(single);
   }
-  return [...new Set(list)];
+  // El gateway conserva la respuesta del proveedor: video:{url} e
+  // images:[{url}] son los formatos que tambien consume el historial web.
+  const visit = (value, depth = 0) => {
+    if (depth > 6 || !value) return;
+    if (typeof value === 'string') { if (/^https?:\/\//i.test(value)) list.push(value); return; }
+    if (Array.isArray(value)) { value.forEach(item => visit(item, depth + 1)); return; }
+    if (typeof value !== 'object') return;
+    for (const key of ['url', 'video', 'videos', 'image', 'images', 'video_url', 'image_url', 'result_url', 'result_urls', 'resultUrl', 'resultUrls', 'output', 'result', 'data', 'response']) {
+      if (Object.hasOwn(value, key)) visit(value[key], depth + 1);
+    }
+  };
+  visit(data);
+  return [...new Set(list)].filter(url => typeof url === 'string' && /^https?:\/\//i.test(url));
 }
 
 // action=status va por GET con el id de la tarea en la query (?taskId=).
@@ -353,14 +365,13 @@ export async function check(model, taskRef) {
   }
   const response = await serviceGet(ENDPOINT, { action: 'status', taskId });
   if (!response.ok) {
-    if (response.businessCode === 422) return { status: 'fail', error: response.message || 'El procesamiento no pudo completarse.' };
     return { status: 'error', normalized: response };
   }
   const data = response.data || {};
   const status = String(data.status || data.state || '').toUpperCase();
-  if (['COMPLETED', 'SUCCESS', 'SUCCEEDED', 'DONE'].includes(status)) {
+  if (['COMPLETED', 'COMPLETE', 'SUCCESS', 'SUCCEEDED', 'DONE'].includes(status)) {
     const urls = resultUrls(data);
-    return urls.length ? { status: 'success', urls } : { status: 'fail', error: 'Completado pero sin URL de resultado.' };
+    return urls.length ? { status: 'success', urls } : { status: 'pending', recoveryRequired: true };
   }
   if (['FAILED', 'FAIL', 'CANCELLED', 'CANCELED', 'ERROR', 'EXPIRED'].includes(status)) {
     return { status: 'fail', error: 'El procesamiento no pudo completarse.' };

@@ -18,10 +18,12 @@ export async function check(model, taskRef) {
   const n = await servicePost('api/wallet/apimart-gateway.php?action=status', { action: 'status', request_id: taskRef.providerRequestId });
   if (!n.ok) return { status: 'error', normalized: n };
   const d = n.data || {};
-  if (String(d.status).toUpperCase() === 'COMPLETED') {
+  const status = String(d.status || '').toUpperCase();
+  if (['COMPLETED', 'SUCCESS', 'SUCCEEDED'].includes(status)) {
     const urls = [...(Array.isArray(d.images) ? d.images : []), ...(Array.isArray(d.videos) ? d.videos : [])].filter(Boolean);
-    return urls.length ? { status: 'success', urls } : { status: 'fail', error: 'Completado pero sin URLs de resultado.' };
+    return urls.length ? { status: 'success', urls } : { status: 'pending', recoveryRequired: true };
   }
+  if (['FAILED', 'FAILURE', 'FAILURE_STATE', 'ERROR', 'CANCELLED', 'CANCELED'].includes(status)) return { status: 'fail', error: d.error || d.message || 'El proveedor indica que la tarea ha fallado.' };
   return { status: 'pending' };
 }
 

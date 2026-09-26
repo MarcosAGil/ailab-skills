@@ -27,6 +27,11 @@ su asistente de instalación. Las versiones proceden de `registry.json`; el desp
 de AILAB publica una copia validada junto a los ZIP, sin depender de GitHub al abrir
 la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza AILAB.
 
+La versión 2.3.2 recupera los resultados de Higgsfield en los formatos que recibe
+el historial y consulta la tarea guardada aunque exista un recibo local. Una URL
+ausente o un error de consulta no se presentan como fallo sin cargo. Las descargas
+parciales de Midjourney conservan el recibo para recuperar la misma tarea.
+
 La versión 2.3.1 corrige la lectura de cotizaciones de Higgsfield: la skill ahora
 extrae el precio del sobre `{ok, code, msg, data}` que devuelve AILAB, conservando
 la compatibilidad con las respuestas planas anteriores.
