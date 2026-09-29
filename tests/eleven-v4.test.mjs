@@ -10,12 +10,12 @@ const {validateParams,estimateCredits,validateCatalogShape}=await import('../ski
 const adapter=await import('../skills/ailab/scripts/adapters/eleven-v1.mjs');
 const catalog=JSON.parse(fs.readFileSync(new URL('../skills/ailab/catalog/catalog.json',import.meta.url),'utf8'));
 const model=structuredClone(catalog.models['eleven-tts']);
-model.params.version.values.push('v4');model.min_cli_version='2.3.3';
+model.min_cli_version='2.3.4';
 model.estimate={kind:'per_1000_chars',characters_param:'text',rate_param:'version',credits_per_1000_by_value:{flash:10.2,multi:20.4,v3:20.4,v4:16.32},minimum_credits:1,round_up:true,approximate:false,promo:{label:'Cierre anticipado de AILAB',until:'2026-10-11T00:00:00Z',credits_per_1000_by_value:{v4:4.488}}};
 const given={version:'v4',text:'Hola Cristina.',voice_id:'dNjJKg63Fr5AXwIdkATa'};
 
 test.after(()=>fs.rmSync(temp,{recursive:true,force:true}));
-test('v4 is staged, absent from the active published catalog',()=>{assert.ok(!catalog.models['eleven-tts'].params.version.values.includes('v4'));});
+test('v4 is published with a compatible runtime and a bounded promotional tariff',()=>{assert.ok(catalog.models['eleven-tts'].params.version.values.includes('v4'));assert.equal(catalog.models['eleven-tts'].min_cli_version,'2.3.4');assert.equal(catalog.models['eleven-tts'].estimate.promo.until,'2026-10-11T00:00:00Z');});
 test('strict catalog accepts per-version prices and bounded promotion',()=>{const c=structuredClone(catalog);c.models['eleven-tts']=model;assert.equal(validateCatalogShape(c),c);});
 test('v4 omits unsupported defaults while old versions keep their full payload',()=>{const v=validateParams(model,given);assert.equal(v.ok,true);assert.ok(!('style' in v.params));assert.ok(!('speed' in v.params));const b=adapter.buildPayload(model,v.params,{});assert.deepEqual(b.input.voice_settings,{stability:0.5,similarity_boost:0.75});const old=validateParams(catalog.models['eleven-tts'],{version:'flash',text:'Hola'});assert.equal(adapter.buildPayload(model,old.params,{}).input.voice_settings.speed,1);});
 test('explicit unsupported options or unverified voice are refused before submitting',()=>{for(const key of ['style','speed'])assert.equal(validateParams(model,{...given,[key]:0}).ok,false);assert.equal(validateParams(model,{...given,voice_id:'another123456789'}).ok,false);});

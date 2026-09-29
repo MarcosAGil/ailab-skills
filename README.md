@@ -27,6 +27,11 @@ su asistente de instalación. Las versiones proceden de `registry.json`; el desp
 de AILAB publica una copia validada junto a los ZIP, sin depender de GitHub al abrir
 la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza AILAB.
 
+La versión 2.3.4 incorpora Eleven v4 para voz individual con Cristina, hasta 10.000
+caracteres, estabilidad y similitud. La reserva y la recuperación conservan una única
+solicitud y un único cargo. La promoción cierra anticipadamente en AILAB el 11 de
+octubre de 2026, a las 00:00 UTC; después se aplica automáticamente la tarifa ordinaria.
+
 La versión 2.3.2 recupera los resultados de Higgsfield en los formatos que recibe
 el historial y consulta la tarea guardada aunque exista un recibo local. Una URL
 ausente o un error de consulta no se presentan como fallo sin cargo. Las descargas
