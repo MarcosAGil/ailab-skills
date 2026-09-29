@@ -11,8 +11,8 @@ export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'la
 const TOP_KEYS = new Set(['catalog_version', 'min_cli_version', 'models', 'server_contract_version']);
 const MODEL_KEYS = new Set(['aliases', 'description', 'driver', 'enabled', 'estimate', 'expensive', 'id', 'label', 'min_cli_version', 'modes', 'output', 'params', 'section', 'status', 'tier', 'vendor']);
 const PARAM_KEYS = new Set(['accept', 'default', 'help', 'internal', 'max', 'max_len', 'min', 'required', 'required_when', 'step', 'type', 'values']);
-const ESTIMATE_KEYS = new Set(['max_credits', 'ailab_credits_per_provider_credit', 'approximate', 'audio_param', 'auto_duration_param', 'auto_duration_seconds', 'basic_credit_per_input', 'basic_credits', 'block_seconds', 'by_param', 'characters_param', 'characters_params', 'column_param', 'credit_usd', 'credits', 'credits_by_value', 'credits_matrix', 'credits_per_1000', 'credits_per_file', 'credits_per_second', 'credits_per_unit', 'credits_with_audio', 'credits_with_files', 'credits_with_video', 'credits_with_video_matrix', 'duration_by_mode', 'files_param', 'frames_param', 'frames_per_provider_credit', 'high_credits', 'kind', 'layers_max_credits', 'margin_multiplier', 'matrix_mode', 'megapixels_param', 'minimum_credits', 'mode_param', 'note', 'promo', 'provider_credits_by_max_megapixels', 'quality_param', 'resolution_param', 'round_up', 'row_param', 'seconds_param', 'unit_label', 'unit_name', 'units_param', 'usd_per_block', 'video_param']);
-const PROMO_KEYS = new Set(['label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
+const ESTIMATE_KEYS = new Set(['rate_param', 'credits_per_1000_by_value', 'max_credits', 'ailab_credits_per_provider_credit', 'approximate', 'audio_param', 'auto_duration_param', 'auto_duration_seconds', 'basic_credit_per_input', 'basic_credits', 'block_seconds', 'by_param', 'characters_param', 'characters_params', 'column_param', 'credit_usd', 'credits', 'credits_by_value', 'credits_matrix', 'credits_per_1000', 'credits_per_file', 'credits_per_second', 'credits_per_unit', 'credits_with_audio', 'credits_with_files', 'credits_with_video', 'credits_with_video_matrix', 'duration_by_mode', 'files_param', 'frames_param', 'frames_per_provider_credit', 'high_credits', 'kind', 'layers_max_credits', 'margin_multiplier', 'matrix_mode', 'megapixels_param', 'minimum_credits', 'mode_param', 'note', 'promo', 'provider_credits_by_max_megapixels', 'quality_param', 'resolution_param', 'round_up', 'row_param', 'seconds_param', 'unit_label', 'unit_name', 'units_param', 'usd_per_block', 'video_param']);
+const PROMO_KEYS = new Set(['credits_per_1000_by_value', 'label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
 const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars', 'duration_blocks', 'topaz_image', 'topaz_video', 'higgsfield_quote']);
 const PARAM_TYPES = new Set(['string', 'string[]', 'enum', 'int', 'number', 'bool', 'file', 'file[]']);
 const OUTPUT_TYPES = new Set(['image', 'multi-image', 'video', 'audio', 'text']);
@@ -244,6 +244,10 @@ export function validateParams(model, given) {
   }
   for (const [key, spec] of Object.entries(schema)) {
     let v = given[key];
+    if (model.id === 'eleven-tts' && given.version === 'v4' && ['style','speed'].includes(key)) {
+      if (given[key] !== undefined) errors.push('La versión v4 no admite --' + key + '.');
+      continue;
+    }
     if (v === undefined || v === '') {
       if (spec.required) { errors.push('Falta el parametro obligatorio --' + key); continue; }
       if (spec.default !== undefined) v = spec.default; else continue;
@@ -255,7 +259,9 @@ export function validateParams(model, given) {
     switch (spec.type) {
       case 'string': {
         v = String(v);
-        if (spec.max_len && v.length > spec.max_len) errors.push('--' + key + ' supera ' + spec.max_len + ' caracteres (' + v.length + ').');
+        const count = model.id === 'eleven-tts' && given.version === 'v4' && key === 'text' ? Array.from(v.trim()).length : v.length;
+        const limit = model.id === 'eleven-tts' && given.version === 'v4' && key === 'text' ? 10000 : spec.max_len;
+        if (limit && count > limit) errors.push('--' + key + ' supera ' + limit + ' caracteres (' + count + ').');
         params[key] = v; break;
       }
       case 'string[]': {
@@ -319,6 +325,11 @@ export function validateParams(model, given) {
     ));
     const present = spec.type === 'file' || spec.type === 'file[]' ? !!(fileParams[key] && fileParams[key].length) : params[key] !== undefined;
     if (active && !present) errors.push('Falta el parametro --' + key + ' cuando ' + Object.entries(spec.required_when).map(([k,v]) => '--' + k + '=' + v).join(', ') + '.');
+  }
+  if (model.id === 'eleven-tts' && params.version === 'v4') {
+    params.text = String(params.text || '').trim();
+    if (!params.text) errors.push('La versión v4 necesita texto.');
+    if (params.voice_id !== 'dNjJKg63Fr5AXwIdkATa') errors.push('La versión v4 está verificada con Cristina; selecciona su identificador de voz.');
   }
   if (model.driver === 'topaz-v1') {
     const frames = Number(params.frame_count);
@@ -543,8 +554,16 @@ export function estimateCredits(model, params, now = Date.now()) {
   }
   if (e.kind === 'per_1000_chars') {
     const characterParams = Array.isArray(e.characters_params) ? e.characters_params : [e.characters_param];
-    const chars = characterParams.reduce((total, key) => total + String(params[key] || '').length, 0);
-    const credits = Math.max(Number(e.minimum_credits || 0), Math.ceil(chars / 1000) * Number(e.credits_per_1000 || 0));
+    const chars = characterParams.reduce((total, key) => total + (params.version === 'v4' ? Array.from(String(params[key] || '').trim()).length : String(params[key] || '').length), 0);
+    let rate = Number(e.credits_per_1000 || 0);
+    if (e.rate_param && e.credits_per_1000_by_value) {
+      rate = Number(e.credits_per_1000_by_value[params[e.rate_param]]);
+      const ends = Date.parse(e.promo?.until || '');
+      // La tabla base es ordinaria. Un descuento inválido o vencido no se aplica.
+      if (Number.isFinite(ends) && now < ends && e.promo?.credits_per_1000_by_value) rate = Number(e.promo.credits_per_1000_by_value[params[e.rate_param]] ?? rate);
+    }
+    const units = e.rate_param ? chars / 1000 : Math.ceil(chars / 1000);
+    const credits = Math.max(Number(e.minimum_credits || 0), Number((units * rate).toFixed(4)));
     return { credits: Number.isFinite(credits) && credits > 0 ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
   }
   return { credits: null, approximate: true, note: 'sin regla de estimacion' };

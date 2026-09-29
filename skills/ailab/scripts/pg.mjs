@@ -669,9 +669,23 @@ async function cmdPrepare(cat, name, opts) {
 }
 
 async function cmdSubmit(cat, manifestId, opts) {
-  const m0 = loadManifest(manifestId);
+    const m0 = loadManifest(manifestId);
   if (!m0) fail('Manifiesto no encontrado: ' + manifestId);
-  if (m0.submitted_task) fail('Ese manifiesto ya se ejecuto (tarea ' + m0.submitted_task + '). Crea uno nuevo con prepare.');
+  if (m0.submitted_task) fail('Ese manifiesto ya se ejecutó. Consulta: node scripts/ailab.mjs status ' + m0.submitted_task + '. No vuelvas a generar para recuperarlo.');
+  // Consulta antes de comprobar caducidad o precio: una petición enviada no
+  // se convierte en otra generación al expirar el manifiesto o la promoción.
+  if (m0.model === 'eleven-tts' && m0.params?.version === 'v4' && m0.confirmed_at && m0.client_request_id) {
+    await requireSession();
+    const existing = await servicePost('api/wallet/elevenlabs-gateway.php?action=v4_lookup', { action:'v4_lookup', client_request_id:m0.client_request_id });
+    const taskId = existing.ok && existing.data?.taskId;
+    if (!taskId) fail('El envío anterior requiere revisión. No se ha reenviado. Conserva el manifiesto y consulta el historial o administración.');
+    const hit = resolveModel(cat, 'eleven-tts');
+    if (!hit) fail('Generación registrada: ' + taskId + '. Recupérala mediante status; no vuelvas a enviar.');
+    const ref = { serverTaskId:taskId, providerRequestId:taskId, costTaskId:taskId, version:'v4' };
+    markSubmitted(m0, { submitted_task:taskId }); saveTaskReceipt(hit.id,ref);
+    const done = await pollAndDownload(hit.model,ref,opts.output);
+    process.exit(done ? 0 : 1);
+  }
   if (manifestExpired(m0)) fail('El manifiesto ha caducado (15 min). Vuelve a ejecutar prepare.');
   if (!opts.confirmed) fail('Falta la confirmacion. Este comando gasta creditos: ejecuta submit con --confirmed SOLO con autorizacion del usuario para este encargo.');
 

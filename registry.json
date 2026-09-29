@@ -1,19 +1,16 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-26",
+  "updated_at": "2026-09-29",
   "skills": [
     {
       "id": "ailab",
       "name": "AILAB",
-      "version": "2.3.2",
+      "version": "2.3.3",
       "channel": "beta",
       "path": "skills/ailab",
       "description": "Playground y asistentes de AILAB desde agentes de código.",
       "minimum_node": "18.17.0",
-      "clients": [
-        "claude-code",
-        "codex"
-      ]
+      "clients": ["claude-code", "codex"]
     },
     {
       "id": "vervideo",
@@ -23,10 +20,7 @@
       "path": "skills/vervideo",
       "description": "Análisis de vídeos locales o públicos en modos completo y mini mediante OpenRouter.",
       "minimum_python": "3.9",
-      "clients": [
-        "claude-code",
-        "codex"
-      ],
+      "clients": ["claude-code", "codex"],
       "self_test": {
         "command": "python3",
         "args": [

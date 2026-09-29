@@ -57,6 +57,8 @@ el resto del estado de AILAB permanece separado.
 
 ## Generar con el Playground
 
+Para voz individual con v4, aplica [el contrato y la recuperación de v4](references/eleven-v4.md). El catálogo activo decide si está disponible.
+
 Primero consulta el contrato del modelo. Pasa los archivos mediante el nombre exacto
 que muestra `info`; un parámetro `file[]` puede repetirse.
 
