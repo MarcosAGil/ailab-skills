@@ -1,10 +1,10 @@
 # Voz individual con v4
 
-El runtime 2.3.3 incorpora el contrato de v4. La disponibilidad depende del catálogo
+El runtime 2.3.4 publica v4 para voz individual. La disponibilidad depende del catálogo
 activo y de las puertas del servidor. No fuerces `--version v4` si `info eleven-tts`
-no la ofrece. La incorporación del runtime no activa el modelo.
+no la ofrece. El servidor puede desactivar la generación si cambia el contrato o la tarifa.
 
-Cuando se publique, la primera entrega admitirá Cristina y hasta 10.000 caracteres
+La primera entrega admite Cristina y hasta 10.000 caracteres
 Unicode. Estabilidad y similitud aceptan valores de 0 a 1. Omite estilo y velocidad;
 el runtime rechaza su uso explícito y elimina esos valores predeterminados para v4.
 No sustituye la versión ni la voz si el proveedor las rechaza.
@@ -17,7 +17,7 @@ es consumo de cuota del proveedor, separado del precio de AILAB.
 
 `prepare` fija parámetros y máximo; el servidor vuelve a comprobar la tarifa y la
 voz antes de reservar. Un intento enviado conserva su UUID. Si falta el audio, se
-consulta la misma tarea y el historial del proveedor; no se genera otra pieza.
+consulta la misma tarea y el historial del proveedor, respetando pausas y backoff; no se genera otra pieza.
 Un `submit` de v4 ya confirmado consulta por UUID incluso después de caducar su
 manifiesto. Si no puede encontrarlo, queda en revisión, sin reenviarlo.
 

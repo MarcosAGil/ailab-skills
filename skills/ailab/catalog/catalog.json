@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.17.0",
+  "catalog_version": "1.18.0",
   "min_cli_version": "2.1.0",
   "models": {
     "gpt-image-2-5": {
@@ -642,63 +642,82 @@
         "tts",
         "eleven tts"
       ],
-      "description": "Texto a voz rapido, multilingue o expresivo.",
+      "description": "Texto a voz con Flash, Multilingual, v3 y v4. V4 admite Cristina, hasta 10.000 caracteres, estabilidad y similitud.",
       "driver": "eleven-v1",
       "enabled": true,
       "estimate": {
-        "approximate": true,
-        "characters_param": "text",
-        "credits_per_1000": 11,
         "kind": "per_1000_chars",
-        "minimum_credits": 1
+        "characters_param": "text",
+        "rate_param": "version",
+        "credits_per_1000": 10.2,
+        "credits_per_1000_by_value": {
+          "flash": 10.2,
+          "multi": 20.4,
+          "v3": 20.4,
+          "v4": 16.32
+        },
+        "minimum_credits": 1,
+        "round_up": true,
+        "approximate": false,
+        "promo": {
+          "label": "Cierre anticipado de AILAB",
+          "until": "2026-10-11T00:00:00Z",
+          "credits_per_1000_by_value": {
+            "v4": 4.488
+          }
+        },
+        "note": "Precio por caracteres de entrada, mínimo 1 cr y total redondeado al crédito superior. V4: Cristina. La promoción termina con el cierre anticipado de AILAB del 11 de octubre de 2026, a las 00:00 UTC; después 16,32 cr por 1.000 caracteres."
       },
       "expensive": false,
       "id": "eleven-tts",
       "label": "ElevenLabs TTS",
-      "min_cli_version": "1.0.0",
+      "min_cli_version": "2.3.4",
       "output": "audio",
       "params": {
-        "similarity_boost": {
-          "default": 0.75,
-          "max": 1,
-          "min": 0,
-          "type": "number"
-        },
-        "speed": {
-          "default": 1,
-          "max": 1.2,
-          "min": 0.7,
-          "type": "number"
-        },
-        "stability": {
-          "default": 0.5,
-          "max": 1,
-          "min": 0,
-          "type": "number"
-        },
-        "style": {
-          "default": 0,
-          "max": 1,
-          "min": 0,
-          "type": "number"
-        },
         "text": {
-          "max_len": 40000,
+          "type": "string",
           "required": true,
-          "type": "string"
+          "max_len": 40000,
+          "help": "V4 admite hasta 10.000 caracteres Unicode; las versiones anteriores conservan sus límites."
         },
         "version": {
-          "default": "flash",
           "type": "enum",
           "values": [
             "flash",
             "multi",
-            "v3"
-          ]
+            "v3",
+            "v4"
+          ],
+          "default": "flash"
         },
         "voice_id": {
+          "type": "string",
           "max_len": 40,
-          "type": "string"
+          "help": "V4: selecciona Cristina (dNjJKg63Fr5AXwIdkATa), única voz verificada en esta entrega."
+        },
+        "stability": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0.5
+        },
+        "similarity_boost": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0.75
+        },
+        "style": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0
+        },
+        "speed": {
+          "type": "number",
+          "min": 0.7,
+          "max": 1.2,
+          "default": 1
         }
       },
       "section": "voice",

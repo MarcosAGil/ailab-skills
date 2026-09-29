@@ -25,5 +25,5 @@ test('una release nueva no queda oculta por un catálogo cacheado anterior', (t)
     env: { ...process.env, AILAB_CONFIG_DIR: config },
   });
   assert.equal(loaded.status, 0, loaded.stderr);
-  assert.equal(loaded.stdout, '1.17.0:61');
+  assert.equal(loaded.stdout, '1.18.0:61');
 });
