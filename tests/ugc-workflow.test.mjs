@@ -136,7 +136,7 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
     AILAB_TASK_ENDPOINT: base + 'api/v1/skill/task.php', AILAB_CATALOG_PATH: path.join(root, 'skills/ailab/catalog/catalog.json'),
     AILAB_CONFIG_DIR: path.join(temp, 'config'), AILAB_CREDENTIALS_DIR: credentials };
   const run = async (...args) => (await execute(process.execPath, [cli, ...args], { env, timeout: 30000 })).stdout;
-  assert.match(await run('self-test'), /SELF_TEST_OK 2\.3\.2/);
+  assert.match(await run('self-test'), /SELF_TEST_OK 2\.3\.3/);
   const filesFrom = output => [...output.matchAll(/(?:Guardado|Recuperado del servidor): (.+) \(/g)].map(match => match[1]);
   const brief = path.join(temp, 'brief.txt');
   fs.writeFileSync(brief, 'Testimonial, diálogo literal "Hola", cámara estática, 4 segundos, 9:16, 1080p.');
@@ -192,7 +192,7 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
   assert.equal(submissions[3].input.remove_background_noise, false);
   assert.deepEqual(submissions.map(item => item.max_credits_authorized), [65, 11, 1, 5]);
   assert.equal(new Set(submissions.map(item => item.client_request_id)).size, 4);
-  await assert.rejects(run('submit', generated.manifest, '--confirmed'), /ya se ejecuto/);
+  await assert.rejects(run('submit', generated.manifest, '--confirmed'), /ya se ejecut[oó]/);
   const recovered = await execute(process.execPath, [cli, 'status', 'fal:mock-sam', '--output', path.join(temp, 'recovered')], {
     env: { ...env, AILAB_CONFIG_DIR: path.join(temp, 'fresh-session') }, timeout: 30000,
   });
