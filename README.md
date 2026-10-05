@@ -32,6 +32,19 @@ caracteres, estabilidad y similitud. La reserva y la recuperación conservan una
 solicitud y un único cargo. La promoción cierra anticipadamente en AILAB el 11 de
 octubre de 2026, a las 00:00 UTC; después se aplica automáticamente la tarifa ordinaria.
 
+La fuente 2.3.7 incorpora Flux 3 e Ideogram 4.5 con validación por modalidad,
+filtrado de parámetros públicos y recuperación de imágenes de la cola. Flux 3
+comprueba las dimensiones de sus referencias antes de subirlas; Ideogram conserva
+seed en la CLI y redondea el coste una sola vez sobre el lote. Esta fuente requiere
+empaquetado, publicación firmada y verificación del catálogo servido: no acredita
+por sí sola disponibilidad en producción.
+
+El runtime 2.3.7 consulta `api/v1/skill/catalog-v2.json` (catálogo 1.20.0,
+63 modelos y CLI mínima 2.3.7). La ruta `api/v1/skill/catalog.json` conserva
+el catálogo 1.18.0 de 61 modelos para las instalaciones anteriores. Publica
+primero los archivos del runtime, después el catálogo v2 y finalmente el índice
+firmado `stable.json`; los overrides de URL explícitos siguen siendo compatibles.
+
 La versión 2.3.2 recupera los resultados de Higgsfield en los formatos que recibe
 el historial y consulta la tarea guardada aunque exista un recibo local. Una URL
 ausente o un error de consulta no se presentan como fallo sin cargo. Las descargas

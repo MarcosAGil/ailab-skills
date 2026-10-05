@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const CLI_VERSION = '2.3.4';
+export const CLI_VERSION = '2.3.7';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // En la instalación completa este módulo vive en scripts/lib/. En las releases
@@ -36,9 +36,10 @@ export const CREDENTIALS_DIR = process.env.AILAB_CREDENTIALS_DIR || process.env.
 export const OUTPUT_DIR = process.env.AILAB_OUTPUT_DIR || process.env.PG_OUTPUT_DIR || path.join(os.homedir(), 'Downloads', 'AILAB');
 
 export const CATALOG_PATH = process.env.AILAB_CATALOG_PATH || process.env.PG_CATALOG_PATH || path.join(SKILL_ROOT, 'catalog', 'catalog.json');
-// Catálogo versionado de AILAB, independiente de la URL de la skill legacy.
+// La ruta v2 exige el parser 2.3.7; catalog.json conserva el contrato 1.18.0
+// para runtimes anteriores mientras reciben la actualización firmada.
 export const CATALOG_URL = process.env.AILAB_CATALOG_URL || process.env.PG_CATALOG_URL
-  || BASE_URL + 'api/v1/skill/catalog.json';
+  || BASE_URL + 'api/v1/skill/catalog-v2.json';
 export const SERVER_CONTRACT_VERSION = '2';
 
 export const CUENTA_URL = BASE_URL + 'api/wallet/cuenta.html';

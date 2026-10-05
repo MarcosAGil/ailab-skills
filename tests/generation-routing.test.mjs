@@ -70,7 +70,19 @@ for (const [name, overrides, expectedBase, expectedGeneration] of [
   test('bases coherentes: ' + name, () => {
     const result = spawnSync(process.execPath, ['--input-type=module', '-e', `import * as c from ${JSON.stringify(configURL)}; console.log(JSON.stringify([c.BASE_URL,c.GENERATION_BASE_URL,c.CATALOG_URL,c.TASK_ENDPOINT]));`], { env: { PATH: process.env.PATH, ...overrides }, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(JSON.parse(result.stdout), [expectedBase, expectedGeneration, expectedBase + 'api/v1/skill/catalog.json', expectedBase + 'api/v1/skill/task.php']);
+    assert.deepEqual(JSON.parse(result.stdout), [expectedBase, expectedGeneration, expectedBase + 'api/v1/skill/catalog-v2.json', expectedBase + 'api/v1/skill/task.php']);
+  });
+}
+
+for (const [name, overrides, expected] of [
+  ['AILAB_CATALOG_URL', { AILAB_CATALOG_URL: 'https://catalog.invalid/custom.json' }, 'https://catalog.invalid/custom.json'],
+  ['PG_CATALOG_URL legacy', { PG_CATALOG_URL: 'https://catalog.invalid/legacy.json' }, 'https://catalog.invalid/legacy.json'],
+  ['AILAB gana al override legacy de catálogo', { AILAB_CATALOG_URL: 'https://catalog.invalid/new.json', PG_CATALOG_URL: 'https://catalog.invalid/old.json' }, 'https://catalog.invalid/new.json'],
+]) {
+  test('override de catálogo compatible: ' + name, () => {
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', `import { CATALOG_URL } from ${JSON.stringify(configURL)}; process.stdout.write(CATALOG_URL);`], { env: { PATH: process.env.PATH, ...overrides }, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, expected);
   });
 }
 

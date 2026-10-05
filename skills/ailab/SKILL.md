@@ -59,6 +59,10 @@ el resto del estado de AILAB permanece separado.
 
 Para voz individual con v4, aplica [el contrato y la recuperación de v4](references/eleven-v4.md). El catálogo activo decide si está disponible.
 
+Para **Ideogram 4.5** (`ideogram-v45`), aplica [su contrato y precios](references/ideogram-v45.md) y consulta el catálogo actual: `--mode t2i` crea imágenes desde texto y `--mode edit` edita la primera imagen adjunta, con hasta cuatro referencias adicionales. Calidad, cantidad, formato y tarifa dependen de la modalidad; usa `info` y `prepare` para ver los valores vigentes y el coste agregado. La edición precisa (`--edit_precision high`) requiere `--image_size auto`. No afirmes que la generación funciona en producción hasta que el modelo esté publicado y verificado.
+
+Para **Flux 3** (`flux-3`), consulta [su contrato](references/flux-3.md): `t2i` genera una imagen y `edit` utiliza de 1 a 10 referencias ordenadas. La CLI verifica cada referencia antes de subirla: mínimo 256 px por lado y máximo 4 megapíxeles. No añadas seed, lotes ni opciones privadas del proveedor. El catálogo vigente y la publicación firmada determinan su disponibilidad.
+
 Primero consulta el contrato del modelo. Pasa los archivos mediante el nombre exacto
 que muestra `info`; un parámetro `file[]` puede repetirse.
 

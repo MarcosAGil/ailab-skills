@@ -11,8 +11,11 @@ export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'la
 const TOP_KEYS = new Set(['catalog_version', 'min_cli_version', 'models', 'server_contract_version']);
 const MODEL_KEYS = new Set(['aliases', 'description', 'driver', 'enabled', 'estimate', 'expensive', 'id', 'label', 'min_cli_version', 'modes', 'output', 'params', 'section', 'status', 'tier', 'vendor']);
 const PARAM_KEYS = new Set(['accept', 'default', 'help', 'internal', 'max', 'max_len', 'min', 'required', 'required_when', 'step', 'type', 'values']);
+// Tarifas públicas por calidad, sin exponer costes internos del proveedor.
+const UNIT_RATE_KEYS = ['credits_per_unit_by_value'];
 const ESTIMATE_KEYS = new Set(['rate_param', 'credits_per_1000_by_value', 'max_credits', 'ailab_credits_per_provider_credit', 'approximate', 'audio_param', 'auto_duration_param', 'auto_duration_seconds', 'basic_credit_per_input', 'basic_credits', 'block_seconds', 'by_param', 'characters_param', 'characters_params', 'column_param', 'credit_usd', 'credits', 'credits_by_value', 'credits_matrix', 'credits_per_1000', 'credits_per_file', 'credits_per_second', 'credits_per_unit', 'credits_with_audio', 'credits_with_files', 'credits_with_video', 'credits_with_video_matrix', 'duration_by_mode', 'files_param', 'frames_param', 'frames_per_provider_credit', 'high_credits', 'kind', 'layers_max_credits', 'margin_multiplier', 'matrix_mode', 'megapixels_param', 'minimum_credits', 'mode_param', 'note', 'promo', 'provider_credits_by_max_megapixels', 'quality_param', 'resolution_param', 'round_up', 'row_param', 'seconds_param', 'unit_label', 'unit_name', 'units_param', 'usd_per_block', 'video_param']);
-const PROMO_KEYS = new Set(['credits_per_1000_by_value', 'label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
+const PROMO_KEYS = new Set(['credits_by_value', 'credits_per_1000_by_value', 'label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
+UNIT_RATE_KEYS.forEach(key => ESTIMATE_KEYS.add(key));
 const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars', 'duration_blocks', 'topaz_image', 'topaz_video', 'higgsfield_quote']);
 const PARAM_TYPES = new Set(['string', 'string[]', 'enum', 'int', 'number', 'bool', 'file', 'file[]']);
 const OUTPUT_TYPES = new Set(['image', 'multi-image', 'video', 'audio', 'text']);
@@ -331,6 +334,35 @@ export function validateParams(model, given) {
     if (!params.text) errors.push('La versión v4 necesita texto.');
     if (params.voice_id !== 'dNjJKg63Fr5AXwIdkATa') errors.push('La versión v4 está verificada con Cristina; selecciona su identificador de voz.');
   }
+  if (['flux-3', 'ideogram-v45'].includes(model.id)) {
+    const images = fileParams.image_urls || [];
+    if (!String(params.prompt || '').trim()) errors.push('El prompt no puede estar vacío.');
+    if (params.mode === 't2i' && images.length) errors.push('La modalidad t2i no admite --image_urls.');
+    if (params.mode === 'edit' && !images.length) errors.push('La modalidad edit necesita al menos una imagen en --image_urls.');
+    if (model.id === 'ideogram-v45') {
+      if (params.mode === 't2i') {
+        if (params.quality === 'very_low') errors.push('La calidad very_low solo está disponible en edición.');
+        if (params.image_size === 'auto') errors.push('El tamaño auto solo está disponible en edición.');
+        if (given.edit_precision !== undefined) errors.push('--edit_precision solo está disponible en edición.');
+        delete params.edit_precision;
+      } else if (params.mode === 'edit') {
+        if (params.edit_precision === 'high' && params.image_size !== 'auto') errors.push('La precisión high exige --image_size auto.');
+        if (given.enable_prompt_expansion !== undefined && params.enable_prompt_expansion) errors.push('La edición no admite expansión del prompt.');
+        // El valor por defecto pertenece a t2i; no se envía a la ruta edit.
+        delete params.enable_prompt_expansion;
+      }
+    }
+    if (model.id === 'flux-3') {
+      for (const image of images) {
+        const metadata = inspectPricingMetadata(image);
+        if (!metadata.ok || metadata.class !== 'image' || !Number.isSafeInteger(metadata.width) || !Number.isSafeInteger(metadata.height)) {
+          errors.push(metadata.error || 'No se pudieron medir las dimensiones de una referencia de Flux 3.');
+        } else if (metadata.width < 256 || metadata.height < 256 || metadata.pixels > 4000000) {
+          errors.push('Cada referencia de Flux 3 necesita al menos 256 px por lado y como máximo 4 megapíxeles: ' + image + '.');
+        }
+      }
+    }
+  }
   if (model.driver === 'topaz-v1') {
     const frames = Number(params.frame_count);
     const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : '';
@@ -374,6 +406,17 @@ function effectiveMatrix(estimate, field, previousField, now = Date.now()) {
 
 export function estimateCredits(model, params, now = Date.now()) {
   const e = model.estimate || {};
+  if (model.id === 'ideogram-v45') {
+    const mode = String(params.mode ?? 't2i');
+    const quality = String(params.quality ?? 'medium');
+    const rates = e.credits_per_unit_by_value || {};
+    const unitCredits = Number(rates[quality]);
+    const count = Number(params.num_images ?? 1);
+    if (!['t2i', 'edit'].includes(mode) || (mode === 't2i' && quality === 'very_low') || !Number.isFinite(unitCredits) || unitCredits <= 0 || !Number.isSafeInteger(count) || count < 1 || count > 8) {
+      return { credits: null, approximate: false, note: 'tarifa Ideogram no disponible para esta modalidad' };
+    }
+    return { credits: Math.ceil(Number((unitCredits * count).toFixed(8))), approximate: false, note: count + ' imagen(es) · precio exacto del lote' };
+  }
   // Higgsfield no tiene tarifa local: el servidor cotiza midiendo el video y
   // las referencias. Devolver un precio inventado aqui autorizaria de menos.
   if (e.kind === 'higgsfield_quote') {
@@ -506,7 +549,11 @@ export function estimateCredits(model, params, now = Date.now()) {
   if (e.kind === 'param_table') {
     const key = params[e.by_param];
     const hasFiles = e.files_param && Array.isArray(params[e.files_param]) && params[e.files_param].length > 0;
-    const table = hasFiles && e.credits_with_files ? e.credits_with_files : e.credits_by_value;
+    const ordinary = hasFiles && e.credits_with_files ? e.credits_with_files : e.credits_by_value;
+    const ends = e.promo?.until ? Date.parse(String(e.promo.until)) : NaN;
+    const table = Number.isFinite(ends) && now < ends && e.promo?.credits_by_value
+      ? { ...(ordinary || {}), ...e.promo.credits_by_value }
+      : ordinary;
     const credits = table && Number(table[key]);
     return { credits: Number.isFinite(credits) ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
   }

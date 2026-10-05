@@ -59,6 +59,6 @@ test('la skill mide el audio local y calcula los bloques exactos', (t) => {
 test('el adapter recupera target y residual y la subida admite FLAC', () => {
   const adapter = fs.readFileSync(path.join(ROOT, 'skills/ailab/scripts/adapters/labs-queue-v1.mjs'), 'utf8');
   const runtime = fs.readFileSync(path.join(ROOT, 'skills/ailab/scripts/pg.mjs'), 'utf8');
-  assert.match(adapter, /\[d\.target, d\.residual, d\.image, d\.audio\]/);
+  assert.match(adapter, /\[\.\.\.imageUrls, d\.target, d\.residual, d\.image, d\.audio\]/);
   assert.match(runtime, /'audio\/flac': 'flac'/);
 });

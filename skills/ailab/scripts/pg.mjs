@@ -579,6 +579,10 @@ async function cmdPrepare(cat, name, opts) {
   const ceiling = creditCeiling(opts);
   const serverQuote = requiresServerQuote(m);
   const est = estimateCredits(m, { ...v.params, ...v.fileParams });
+  if (['flux-3', 'ideogram-v45'].includes(m.id)) {
+    if (!Number.isFinite(est.credits) || est.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Actualiza AILAB o consulta el catálogo; no se ha enviado nada.');
+    if (ceiling !== null && est.credits > ceiling) fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+  }
   const me = await requireSession();
 
   // Higgsfield: los archivos suben ANTES de cotizar porque el servidor mide el
@@ -741,6 +745,11 @@ async function cmdSubmit(cat, manifestId, opts) {
   } else if (estimateAgain.credits !== m0.estimated_credits || estimateAgain.credits !== m0.max_credits_authorized) {
     fail('La estimacion o el maximo autorizado del manifiesto no coincide con el plan confirmado. Vuelve a preparar.');
   }
+  if (['flux-3', 'ideogram-v45'].includes(model.id)) {
+    const ceiling = creditCeiling(opts);
+    if (!Number.isFinite(estimateAgain.credits) || estimateAgain.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Vuelve a preparar; no se ha enviado nada.');
+    if (ceiling !== null && estimateAgain.credits > ceiling) fail('El coste (' + estimateAgain.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+  }
 
   for (const f of frozenFiles) {
     if (!rehashMatches(f)) fail('El archivo cambio despues del prepare: ' + f.path + '. Vuelve a ejecutar prepare.');
@@ -876,7 +885,16 @@ async function cmdStatus(cat, taskId, opts) {
       fail('No hay recibo local ni metadatos recuperables para esa tarea: ' + explain(remote));
     }
     const meta = remote.raw.task;
-    const recoveredModel = cat.models[meta.model_id] || Object.values(cat.models).find(candidate =>
+    // El historial guarda la ruta interna; el catálogo solo expone un modelo.
+    // Mapa cerrado: no inferir modelos a partir de prefijos o IDs desconocidos.
+    const imageQueuePublicId = {
+      'flux-3-t2i': 'flux-3', 'flux-3-edit': 'flux-3',
+      'ideogram-v45-t2i': 'ideogram-v45', 'ideogram-v45-edit': 'ideogram-v45',
+    }[meta.model_id];
+    const imageQueueModel = imageQueuePublicId && cat.models[imageQueuePublicId];
+    const recoveredModel = cat.models[meta.model_id]
+      || (imageQueueModel && imageQueueModel.driver === 'labs-queue-v1' ? imageQueueModel : null)
+      || Object.values(cat.models).find(candidate =>
       candidate.server_model === meta.model_id || (candidate.driver === 'higgsfield-v1' && ADAPTERS['higgsfield-v1'].serverModelId(candidate) === meta.model_id));
     if (!recoveredModel) {
       fail('La tarea existe, pero su modelo (' + meta.model_id + ') no tiene un contrato publico recuperable. Actualiza AILAB o consulta el Historial web.');
