@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 
 const catalogURL = new URL('../skills/ailab/scripts/lib/catalog.mjs', import.meta.url).href;
@@ -28,17 +28,20 @@ function cachedCatalog(t, catalog, fetchedAt = '2000-01-01T00:00:00Z') {
 }
 
 function runCatalog(config, script, overrides = {}) {
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+  const input = `
     import assert from 'node:assert/strict';
     import fs from 'node:fs';
     import path from 'node:path';
     import { loadCatalog, refreshCatalog, catalogCompatible } from ${JSON.stringify(catalogURL)};
-    const current = ${JSON.stringify(current)};
-    const legacy = ${JSON.stringify(legacy)};
+    const current = JSON.parse(fs.readFileSync(new URL(${JSON.stringify(bundledPath.href)}), 'utf8'));
     const config = process.env.AILAB_CONFIG_DIR;
     const v2URL = 'https://catalog.invalid/ailab/api/v1/skill/catalog-v2.json';
     ${script}
-  `], {
+  `;
+  assert.ok(Buffer.byteLength(input, 'utf8') < 64 * 1024, 'El script debe leer los catálogos desde archivos, no incluir su JSON');
+  // stdin evita MAX_ARG_STRLEN de Linux en Node 18, 20 y 24.
+  const result = spawnSync(process.execPath, ['--input-type=module'], {
+    input,
     cwd: process.cwd(),
     encoding: 'utf8',
     env: {
@@ -50,6 +53,7 @@ function runCatalog(config, script, overrides = {}) {
       ...overrides,
     },
   });
+  assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
 }
 
@@ -72,6 +76,7 @@ test('una release nueva no queda oculta por un catálogo cacheado anterior', (t)
     encoding: 'utf8',
     env: { ...process.env, AILAB_CONFIG_DIR: config },
   });
+  assert.ifError(loaded.error);
   assert.equal(loaded.status, 0, loaded.stderr);
   assert.equal(loaded.stdout, '1.20.0:63');
 });
@@ -145,7 +150,7 @@ test('AILAB_CATALOG_PATH conserva la lectura explícita sin refresco remoto', t 
   runCatalog(config, `
     globalThis.fetch = async () => { throw new Error('No debe consultar ninguna URL'); };
     assert.deepEqual(await refreshCatalog({ maxAgeMs: 0, requireNetwork: true }), current);
-  `, { AILAB_CATALOG_PATH: path.resolve(bundledPath.pathname) });
+  `, { AILAB_CATALOG_PATH: fileURLToPath(bundledPath) });
 });
 
 test('el runtime publicado 2.3.5 y el nuevo 2.3.7 conviven con la caché compartida', t => {
@@ -159,7 +164,7 @@ test('el runtime publicado 2.3.5 y el nuevo 2.3.7 conviven con la caché compart
   const config = cachedCatalog(t, current, new Date().toISOString());
   runCatalog(config, `
     const oldRuntime = await import(${JSON.stringify(publishedURL)});
-    const published = ${JSON.stringify(publishedCatalog)};
+    const published = JSON.parse(fs.readFileSync(${JSON.stringify(path.join(publishedRoot, 'catalog/catalog.json'))}, 'utf8'));
     let requests = 0;
     globalThis.fetch = async url => {
       requests++;
