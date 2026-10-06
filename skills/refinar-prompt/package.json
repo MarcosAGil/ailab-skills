@@ -1,0 +1,6 @@
+{
+  "name": "refinar-prompt",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Auditoría y refinado de prompts de vídeo mediante instrucciones."
+}

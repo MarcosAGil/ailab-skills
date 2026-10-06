@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { validateRepository } from './validate.mjs';
+import { validateRepository, validateInstructionFiles } from './validate.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -31,6 +31,7 @@ const destinationRoot = path.resolve(customDirectory || path.join(
 ));
 
 function selfTestFor(skill, destination) {
+  if (skill.kind === 'instructions') return null;
   if (skill.self_test) {
     const [entrypoint, ...rest] = skill.self_test.args;
     return {
@@ -81,6 +82,9 @@ for (const id of requested) {
     }
     fs.renameSync(temporary, destination);
     const selfTest = selfTestFor(skill, destination);
+    if (!selfTest) {
+      validateInstructionFiles(destination);
+    } else {
     const check = spawnSync(selfTest.command, selfTest.args, {
       encoding: 'utf8',
       env: selfTest.env,
@@ -89,6 +93,7 @@ for (const id of requested) {
     const checkOutput = `${check.stdout || ''}\n${check.stderr || ''}`;
     if (check.error || check.status !== 0 || !checkOutput.includes(selfTest.expect)) {
       throw new Error((check.stderr || check.stdout || check.error?.message || 'autodiagnóstico fallido').trim());
+    }
     }
     if (hadPrevious) fs.rmSync(backup, { recursive: true, force: true });
     process.stdout.write(`Instalada ${id} ${skill.version} en ${destination}\n`);

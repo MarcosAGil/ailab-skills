@@ -16,6 +16,7 @@ cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 |---|---|---|
 | `ailab` | Beta | Playground, modelos generativos y asistentes de AILAB. |
 | `vervideo` | Beta | Análisis completo o editorial de vídeos locales y URLs públicas. |
+| `refinar-prompt` | Beta | Auditoría y refinado de prompts de vídeo. Solo instrucciones, sin generaciones ni claves. |
 | `ugc-ailab` | Beta | Guion y referencias → Gemini Omni → ambiente SAM y voz ElevenLabs, con pistas separadas. Requiere `ailab`. |
 
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
@@ -113,8 +114,18 @@ Para instalar únicamente el analizador de vídeo:
 node tools/install.mjs vervideo --target claude
 ```
 
-El instalador valida el registro, rechaza enlaces simbólicos, realiza una copia
-atómica y ejecuta el autodiagnóstico de la skill antes de conservarla.
+El instalador valida el registro, rechaza enlaces simbólicos y realiza una copia
+atómica. Ejecuta el autodiagnóstico de las skills ejecutables; en las de solo
+instrucciones valida archivos y referencias sin ejecutar comandos de la skill.
+
+Para instalar Refinar prompt en Codex (o cambia `codex` por `claude`):
+
+```bash
+node tools/install.mjs refinar-prompt --target codex
+```
+
+Invoca `$refinar-prompt` con un prompt ya escrito y sus referencias. No requiere
+AILAB ni consume sus créditos; el agente sigue utilizando tu propio plan.
 
 Para instalar el workflow UGC junto a su dependencia en Codex:
 

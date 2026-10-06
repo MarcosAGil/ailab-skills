@@ -44,6 +44,20 @@ function walk(directory, base = directory) {
   return files;
 }
 
+export function validateInstructionFiles(root) {
+  const files = walk(root);
+  if (files.some(file => file.relative !== 'package.json' && !file.relative.endsWith('.md'))) {
+    fail('Una skill de instrucciones solo admite Markdown y package.json.');
+  }
+  for (const file of files.filter(file => file.relative.endsWith('.md'))) {
+    const text = fs.readFileSync(file.absolute, 'utf8');
+    for (const match of text.matchAll(/(?:`|\]\()((?:references|assets)\/[a-zA-Z0-9_./-]+\.md)(?:`|\))/g)) {
+      const target = path.resolve(root, match[1]);
+      if (!target.startsWith(root + path.sep) || !fs.existsSync(target)) fail(`Referencia ausente: ${match[1]}`);
+    }
+  }
+}
+
 function validateSkill(skill) {
   if (!skill || typeof skill !== 'object') fail('Entrada de skill inválida.');
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(skill.id || '')) fail(`ID de skill inválido: ${skill.id}`);
@@ -64,6 +78,18 @@ function validateSkill(skill) {
 
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   if (pkg.version !== skill.version) fail(`registry y package.json divergen en ${skill.id}.`);
+  if (skill.kind !== undefined && skill.kind !== 'instructions') fail(`Tipo de skill no permitido: ${skill.id}.`);
+  if (skill.kind === 'instructions') {
+    if (skill.self_test) fail(`Una skill de instrucciones no ejecuta self_test: ${skill.id}.`);
+    validateInstructionFiles(root);
+  }
+  if (skill.guide_references !== undefined) {
+    if (!Array.isArray(skill.guide_references) || !skill.guide_references.length
+      || new Set(skill.guide_references).size !== skill.guide_references.length
+      || skill.guide_references.some(p => typeof p !== 'string' || !/^references\/[a-z0-9-]+\.md$/.test(p) || !fs.existsSync(path.join(root, p)))) {
+      fail(`Referencias de guía inválidas: ${skill.id}.`);
+    }
+  }
 
   if (skill.self_test !== undefined) {
     if (!skill.self_test || typeof skill.self_test !== 'object') fail(`self_test inválido en ${skill.id}.`);
@@ -95,7 +121,7 @@ function validateSkill(skill) {
     }
   }
   if (total > 50 * 1024 * 1024) fail(`La skill ${skill.id} supera 50 MB.`);
-  if (!skill.self_test && !files.some((file) => file.relative === 'scripts/ailab.mjs')) {
+  if (skill.kind !== 'instructions' && !skill.self_test && !files.some((file) => file.relative === 'scripts/ailab.mjs')) {
     fail(`Falta el bootstrap de ${skill.id}.`);
   }
   return { files: files.length, bytes: total };

@@ -31,6 +31,17 @@
       }
     },
     {
+      "id": "refinar-prompt",
+      "name": "Refinar prompt",
+      "version": "1.0.0",
+      "channel": "beta",
+      "path": "skills/refinar-prompt",
+      "description": "Audita prompts de vídeo y precisa actuación, cámara, enfoque y sincronía.",
+      "kind": "instructions",
+      "guide_references": ["references/guia-marketplace.md"],
+      "clients": ["claude-code", "codex"]
+    },
+    {
       "id": "ugc-ailab",
       "name": "UGC AILAB",
       "version": "1.0.1",

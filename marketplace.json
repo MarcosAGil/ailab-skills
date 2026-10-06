@@ -36,6 +36,19 @@
       "workflow": "Video Prompter prepara la dirección. Gemini Omni genera el vídeo. FFmpeg extrae localmente el audio original. SAM Audio separa ambiente; Voice Isolator aísla la voz y Voice Changer cambia su timbre. No monta ni sustituye el audio del vídeo automáticamente, y no incluye upscale. Si solo pides un prompt, no autoriza generar un vídeo."
     },
     {
+      "id": "refinar-prompt",
+      "category": "Prompts",
+      "icon": "scan",
+      "summary": "Refina un prompt de vídeo que ya tienes: detecta contradicciones y precisa la actuación, la cámara y el enfoque sin cambiar tu estilo.",
+      "features": ["Auditoría en siete ejes con hallazgos concretos", "Modos completo, diagnóstico y rápido", "Prompt refinado conservando historia, diálogos y referencias"],
+      "requirements": ["Claude Code o Codex", "Un prompt de vídeo ya escrito y sus referencias", "FFmpeg y FFprobe opcionales para medir audio y vídeo"],
+      "billing": "No genera vídeos ni consume créditos de AILAB. El uso del agente se factura según tu propio plan.",
+      "setup": "Instala la carpeta y abre una conversación nueva. Invoca $refinar-prompt con tu prompt, referencias en orden y modelo, duración y proporción si los conoces. No necesita cuenta de AILAB, token ni claves propias.",
+      "example": "Usa $refinar-prompt en modo diagnóstico para revisar este prompt y sus referencias. Detecta contradicciones de cámara y actuación sin reescribirlo todavía.",
+      "install_ids": ["refinar-prompt"],
+      "workflow": "Examina el prompt y los materiales disponibles, identifica problemas y, en modo completo, pregunta antes de refinar. Diagnóstico entrega solo el informe; rápido decide huecos creativos y declara supuestos, sin inventar audio ni tiempos medidos. No crea prompts desde cero, no edita vídeos y no ejecuta generaciones. Seedance es el perfil editorial predeterminado, no una garantía de compatibilidad API."
+    },
+    {
       "id": "vervideo",
       "category": "Análisis",
       "icon": "scan",
