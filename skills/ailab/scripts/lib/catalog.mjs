@@ -217,8 +217,9 @@ export function resolveModel(cat, nameOrAlias) {
 }
 
 // Modelos cuyo coste no se puede calcular en local: el servidor cotiza.
-export function requiresServerQuote(model) {
-  return !!(model && model.estimate && model.estimate.kind === 'higgsfield_quote');
+export function requiresServerQuote(model, params = {}) {
+  return !!(model && ((model.id === 'eleven-tts' && params.version === 'v4')
+    || (model.estimate && model.estimate.kind === 'higgsfield_quote')));
 }
 
 export function modelUsable(model) {
@@ -332,7 +333,12 @@ export function validateParams(model, given) {
   if (model.id === 'eleven-tts' && params.version === 'v4') {
     params.text = String(params.text || '').trim();
     if (!params.text) errors.push('La versión v4 necesita texto.');
-    if (params.voice_id !== 'dNjJKg63Fr5AXwIdkATa') errors.push('La versión v4 está verificada con Cristina; selecciona su identificador de voz.');
+    if (!params.voice_id && !params.private_voice_id) errors.push('Selecciona una voz con --voice_id o --private_voice_id.');
+  }
+  if (['eleven-tts', 'eleven-voice-changer'].includes(model.id)) {
+    if (params.voice_id && params.private_voice_id) errors.push('Usa solo --voice_id o --private_voice_id, no ambos.');
+    if (params.voice_id && !/^[A-Za-z0-9]{12,40}$/.test(params.voice_id)) errors.push('Identificador de voz no válido. Consulta voices.');
+    if (params.private_voice_id && !/^[0-9a-f]{32}$/.test(params.private_voice_id)) errors.push('Referencia privada AILAB no válida. Consulta voice-list.');
   }
   if (['flux-3', 'ideogram-v45'].includes(model.id)) {
     const images = fileParams.image_urls || [];

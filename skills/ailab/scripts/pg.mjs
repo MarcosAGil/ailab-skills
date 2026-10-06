@@ -19,6 +19,7 @@ import * as hybridSeedreamV1 from './adapters/hybrid-seedream-v1.mjs';
 import * as hybridGrokV1 from './adapters/hybrid-grok-v1.mjs';
 import * as veoV1 from './adapters/veo-v1.mjs';
 import * as elevenV1 from './adapters/eleven-v1.mjs';
+import { runVoiceCommand, listElevenVoices } from './lib/voice-commands.mjs';
 import * as sunoV1 from './adapters/suno-v1.mjs';
 import * as heygenV1 from './adapters/heygen-v1.mjs';
 import * as jobsTextV1 from './adapters/jobs-text-v1.mjs';
@@ -132,8 +133,10 @@ async function cmdBalance() {
   out('Cuenta: ' + (me.user ? me.user.email : '¿?') + ' · tier ' + (me.user ? me.user.tier : '¿?') + ' · saldo ' + me.balance + ' cr.');
 }
 
-async function cmdVoices(provider = 'eleven') {
+async function cmdVoices(provider = 'eleven', opts = {}) {
   await requireSession();
+  if (provider === 'eleven') return listElevenVoices(opts, out);
+  if (provider !== 'heygen') fail('Proveedor de voces no válido: usa eleven o heygen.');
   const isHeygen = String(provider).toLowerCase() === 'heygen';
   const r = isHeygen
     ? await servicePost('api/wallet/heygen-gateway.php?action=list_voices', { action: 'list_voices' })
@@ -577,7 +580,7 @@ async function cmdPrepare(cat, name, opts) {
   }
 
   const ceiling = creditCeiling(opts);
-  const serverQuote = requiresServerQuote(m);
+  const serverQuote = requiresServerQuote(m, v.params);
   const est = estimateCredits(m, { ...v.params, ...v.fileParams });
   if (['flux-3', 'ideogram-v45'].includes(m.id)) {
     if (!Number.isFinite(est.credits) || est.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Actualiza AILAB o consulta el catálogo; no se ha enviado nada.');
@@ -722,7 +725,7 @@ async function cmdSubmit(cat, manifestId, opts) {
     fail('El manifiesto ya no supera la validacion del modelo. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   }
   const estimateAgain = estimateCredits(model, { ...validatedAgain.params, ...validatedAgain.fileParams });
-  const serverQuote = requiresServerQuote(model);
+  const serverQuote = requiresServerQuote(model, m0.params);
   if (serverQuote) {
     // El manifiesto congela una cotizacion del servidor: sin ella, caducada o
     // con un maximo distinto no se envia nada (el adapter lo vuelve a exigir).
@@ -937,6 +940,7 @@ async function main() {
   if (!cmd || cmd === 'help') {
     out('AILAB CLI v' + CLI_VERSION + ' · Playground y asistentes desde Claude Code');
     out('Base: ' + BASE_URL);
+    out('ElevenLabs: voices eleven [--language es --search texto --page 0] · voice-list · voice-options · voice-select <id> --owner <owner> --confirmed · voice-prepare <design|clone|create|renew|delete|resume> [opciones] · voice-submit <id> --confirmed · voice-status <id> · voice-samples <id> [--output dir]');
     out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
@@ -956,7 +960,8 @@ async function main() {
   if (cmd === 'login-cookie') return cmdLoginCookie();
   if (cmd === 'logout') return cmdLogout();
   if (cmd === 'balance') return cmdBalance();
-  if (cmd === 'voices') return cmdVoices(pos[1] || 'eleven');
+  if (cmd === 'voices') return cmdVoices(pos[1] || 'eleven', opts);
+  if (cmd.startsWith('voice-')) { await requireSession(); return runVoiceCommand(cmd, pos.slice(1), opts, out); }
   if (cmd === 'assistants') return cmdAssistants();
   if (cmd === 'assistant-prepare') return cmdAssistantPrepare(pos[1], opts);
   if (cmd === 'assistant-submit') return cmdAssistantSubmit(pos[1], opts);

@@ -78,7 +78,7 @@ test('una release nueva no queda oculta por un catálogo cacheado anterior', (t)
   });
   assert.ifError(loaded.error);
   assert.equal(loaded.status, 0, loaded.stderr);
-  assert.equal(loaded.stdout, '1.20.0:63');
+  assert.equal(loaded.stdout, '1.21.0:63');
 });
 
 test('refreshCatalog usa v2 y reemplaza una caché legacy con su ETag anterior', t => {
@@ -90,24 +90,24 @@ test('refreshCatalog usa v2 y reemplaza una caché legacy con su ETag anterior',
       assert.equal(url, v2URL);
       assert.equal(options.headers['If-None-Match'], '"catalog-1.18.0"');
       assert.equal(options.cache, 'no-store');
-      return Response.json(current, { headers: { etag: '"catalog-1.20.0"' } });
+      return Response.json(current, { headers: { etag: '"catalog-1.21.0"' } });
     };
     const refreshed = await refreshCatalog({ maxAgeMs: 600000, requireNetwork: true });
     assert.equal(requests, 1);
-    assert.equal(refreshed.catalog_version, '1.20.0');
+    assert.equal(refreshed.catalog_version, '1.21.0');
     assert.equal(Object.keys(refreshed.models).length, 63);
     assert.deepEqual(catalogCompatible(refreshed), { ok: true });
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'catalog.json'), 'utf8')), current);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'catalog-meta.json'), 'utf8')).etag, '"catalog-1.20.0"');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'catalog-meta.json'), 'utf8')).etag, '"catalog-1.21.0"');
   `);
 });
 
-test('una caché legacy reciente no oculta el catálogo 1.20.0 incluido en 2.3.7', t => {
+test('una caché legacy reciente no oculta el catálogo 1.21.0 incluido en 2.3.7', t => {
   const config = cachedCatalog(t, legacy, new Date().toISOString());
   runCatalog(config, `
     globalThis.fetch = async () => { throw new Error('Una caché reciente no necesita red'); };
     const refreshed = await refreshCatalog({ maxAgeMs: 3600000, requireNetwork: true });
-    assert.equal(refreshed.catalog_version, '1.20.0');
+    assert.equal(refreshed.catalog_version, '1.21.0');
     assert.equal(Object.keys(refreshed.models).length, 63);
     assert.deepEqual(catalogCompatible(refreshed), { ok: true });
   `);
@@ -118,12 +118,12 @@ test('un 304 de v2 mantiene el catálogo validado y actualiza la fecha de caché
   runCatalog(config, `
     globalThis.fetch = async (url, options) => {
       assert.equal(url, v2URL);
-      assert.equal(options.headers['If-None-Match'], '"catalog-1.20.0"');
+      assert.equal(options.headers['If-None-Match'], '"catalog-1.21.0"');
       return new Response(null, { status: 304 });
     };
     assert.deepEqual(await refreshCatalog({ maxAgeMs: 0, requireNetwork: true }), current);
     const meta = JSON.parse(fs.readFileSync(path.join(config, 'catalog-meta.json'), 'utf8'));
-    assert.equal(meta.etag, '"catalog-1.20.0"');
+    assert.equal(meta.etag, '"catalog-1.21.0"');
     assert.ok(Date.parse(meta.fetched_at) > Date.parse('2000-01-01T00:00:00Z'));
   `);
 });

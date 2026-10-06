@@ -6,6 +6,7 @@ description: >-
   para trabajar con Image Prompter, Audio Prompter, Video Prompter y el asistente
   libre. Actívala cuando el usuario pida crear con un modelo del Playground de
   AILAB, consultar modelos o saldo, recuperar una tarea, o usar un Prompter.
+  También permite explorar ElevenLabs y crear o gestionar voces propias en AILAB.
 ---
 
 # AILAB
@@ -57,7 +58,7 @@ el resto del estado de AILAB permanece separado.
 
 ## Generar con el Playground
 
-Para voz individual con v4, aplica [el contrato y la recuperación de v4](references/eleven-v4.md). El catálogo activo decide si está disponible.
+Para voz individual con v4, aplica [el contrato y la recuperación de v4](references/eleven-v4.md). Para buscar voces, clonar una grabación autorizada, diseñar por prompt o gestionar Mis voces, lee [ElevenLabs y voces privadas](references/eleven-voices.md). El catálogo y los permisos del servidor deciden qué está disponible.
 
 Para **Ideogram 4.5** (`ideogram-v45`), aplica [su contrato y precios](references/ideogram-v45.md) y consulta el catálogo actual: `--mode t2i` crea imágenes desde texto y `--mode edit` edita la primera imagen adjunta, con hasta cuatro referencias adicionales. Calidad, cantidad, formato y tarifa dependen de la modalidad; usa `info` y `prepare` para ver los valores vigentes y el coste agregado. La edición precisa (`--edit_precision high`) requiere `--image_size auto`. No afirmes que la generación funciona en producción hasta que el modelo esté publicado y verificado.
 
@@ -209,6 +210,11 @@ verificada.
 
 ```text
 login · logout · doctor · balance · voices [eleven|heygen]
+voices eleven --language es --search <nombre> [--page 0]
+voice-list · voice-options · voice-select <voice_id> --owner <owner_id> --confirmed
+voice-prepare <design|clone|create|renew|delete|resume> [parámetros]
+voice-submit <manifest_id> --confirmed · voice-status <referencia>
+voice-samples <referencia_de_muestras> [--output <carpeta>]
 models · info <modelo> · validate <modelo> [parámetros]
 prepare <modelo> [parámetros] · submit <manifiesto> --confirmed
 status <task_id> · assistants

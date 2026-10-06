@@ -15,15 +15,20 @@ const { BUNDLED_RUNTIME_VERSION, checkAndMaybeUpdate } = await import('../skills
 const catalog = JSON.parse(fs.readFileSync(new URL('../skills/ailab/catalog/catalog.json', import.meta.url), 'utf8'));
 const baseline = JSON.parse(fs.readFileSync(new URL('./fixtures/catalog-1.18.0-2.3.5.model-hashes.json', import.meta.url), 'utf8'));
 
-test('la release conserva exactamente los 61 contratos firmados anteriores', () => {
+test('la release conserva los contratos anteriores excepto la ampliación Eleven versionada', () => {
   assert.equal(Object.keys(baseline.model_sha256).length, 61);
   for (const [id, expected] of Object.entries(baseline.model_sha256)) {
     assert.ok(catalog.models[id], 'No puede desaparecer ' + id);
+    if (['eleven-tts','eleven-voice-changer'].includes(id)) {
+      assert.equal(catalog.models[id].min_cli_version,'2.3.8');
+      assert.ok(catalog.models[id].params.private_voice_id);
+      continue;
+    }
     const actual = crypto.createHash('sha256').update(stableStringify(catalog.models[id])).digest('hex');
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
   assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'ideogram-v45']);
-  assert.equal(catalog.catalog_version, '1.20.0');
+  assert.equal(catalog.catalog_version, '1.21.0');
   assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
@@ -58,8 +63,8 @@ test('los nuevos contratos públicos no contienen costes o endpoints privados', 
   }
 });
 
-test('una instalación 2.3.7 no retrocede al runtime estable anterior', async () => {
-  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.7');
+test('una instalación 2.3.8 no retrocede al runtime estable anterior', async () => {
+  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.8');
   let installations = 0;
   const checked = await checkAndMaybeUpdate({
     force: true,
@@ -67,7 +72,7 @@ test('una instalación 2.3.7 no retrocede al runtime estable anterior', async ()
     releaseInstaller: async () => { installations++; throw new Error('No debe instalar una versión anterior'); },
   });
   assert.equal(checked.ok, true);
-  assert.equal(checked.current, '2.3.7');
+  assert.equal(checked.current, '2.3.8');
   assert.equal(checked.update, null);
   assert.equal(installations, 0);
 });

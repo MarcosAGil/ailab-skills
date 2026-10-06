@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.20.0",
+  "catalog_version": "1.21.0",
   "min_cli_version": "2.3.7",
   "models": {
     "gpt-image-2-5": {
@@ -642,7 +642,7 @@
         "tts",
         "eleven tts"
       ],
-      "description": "Texto a voz con Flash, Multilingual, v3 y v4. V4 admite Cristina, hasta 10.000 caracteres, estabilidad y similitud.",
+      "description": "Texto a voz con Flash, Multilingual, v3 y v4. Biblioteca y voces privadas propias, según compatibilidad y tarifa verificada por AILAB.",
       "driver": "eleven-v1",
       "enabled": true,
       "estimate": {
@@ -666,12 +666,12 @@
             "v4": 4.488
           }
         },
-        "note": "Precio por caracteres de entrada, mínimo 1 cr y total redondeado al crédito superior. V4: Cristina. La promoción termina con el cierre anticipado de AILAB del 11 de octubre de 2026, a las 00:00 UTC; después 16,32 cr por 1.000 caracteres."
+        "note": "Precio por caracteres de entrada, mínimo 1 cr y total redondeado al crédito superior. V4 requiere cotización del servidor por voz. La promoción termina el 11 de octubre de 2026, a las 00:00 UTC; después 16,32 cr por 1.000 caracteres."
       },
       "expensive": false,
       "id": "eleven-tts",
       "label": "ElevenLabs TTS",
-      "min_cli_version": "2.3.4",
+      "min_cli_version": "2.3.8",
       "output": "audio",
       "params": {
         "text": {
@@ -693,7 +693,12 @@
         "voice_id": {
           "type": "string",
           "max_len": 40,
-          "help": "V4: selecciona Cristina (dNjJKg63Fr5AXwIdkATa), única voz verificada en esta entrega."
+          "help": "ID de una voz disponible. Consulta voices; para voces propias usa private_voice_id."
+        },
+        "private_voice_id": {
+          "type": "string",
+          "max_len": 32,
+          "help": "Referencia AILAB de una voz privada propia, activa y compatible. Consulta voice-list. No se combina con voice_id."
         },
         "stability": {
           "type": "number",
@@ -744,7 +749,7 @@
       "expensive": true,
       "id": "eleven-voice-changer",
       "label": "Cambiador de Voz",
-      "min_cli_version": "2.2.4",
+      "min_cli_version": "2.3.8",
       "output": "audio",
       "params": {
         "audio_url": {
@@ -767,6 +772,11 @@
         "voice_id": {
           "max_len": 40,
           "type": "string"
+        },
+        "private_voice_id": {
+          "type": "string",
+          "max_len": 32,
+          "help": "Solo si voice-list indica compatibilidad voice-changer. El servidor comprueba propiedad y vigencia."
         }
       },
       "section": "voice",

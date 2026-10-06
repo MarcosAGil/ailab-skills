@@ -22,6 +22,18 @@ export function buildPayload(model, params, uploadedByParam) {
   return { model: model.id, input };
 }
 
+export async function quote(model, payload) {
+  if (model.id !== 'eleven-tts' || payload.input?.version !== 'v4') throw new Error('Esta operación no admite cotización v4.');
+  const n = await servicePost('api/wallet/elevenlabs-gateway.php?action=v4_quote', { action:'v4_quote', input:payload.input });
+  if (!n.ok) return { ok:false, normalized:n };
+  const q=n.data || {};
+  if (!/^[0-9a-f]{32}$/.test(q.quote_id || '') || !Number.isSafeInteger(q.estimated_credits) || q.estimated_credits < 1
+    || q.max_credits_authorized !== q.estimated_credits || !(Date.parse(q.expires_at)>Date.now())) {
+    return { ok:false, normalized:{ ...n,ok:false,kind:'invalid_response',message:'Cotización v4 incompleta. No se ha enviado audio.' } };
+  }
+  return { ok:true, quote:q };
+}
+
 export async function submit(model, payload, intent = {}) {
   const n = await servicePost('api/wallet/elevenlabs-gateway.php?action=generate', {
     action: 'generate', ...payload, ...intent,

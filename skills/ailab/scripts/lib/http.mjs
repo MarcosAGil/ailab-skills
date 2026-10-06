@@ -40,7 +40,7 @@ export function normalize(httpStatus, body, contentType) {
   if (typeof body.ok === 'boolean') {
     const ok = body.ok && httpStatus < 400;
     const nested = body.data && typeof body.data === 'object' && !Array.isArray(body.data) ? body.data : null;
-    return { ok, kind: ok ? 'ok' : kindFor(httpStatus, null), httpStatus, businessCode: null, message: body.error || '', data: nested || body, raw: body };
+    return { ok, kind: ok ? 'ok' : kindFor(httpStatus, null), httpStatus, businessCode: null, message: body.error || body.message || '', data: nested || body, raw: body };
   }
   if (typeof body.code === 'number') {
     const ok = body.code === 200 && httpStatus >= 200 && httpStatus < 400;
@@ -185,6 +185,33 @@ export async function servicePost(relativePath, body) {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
+}
+
+export async function privateVoiceMultipart(action, body, file) {
+  if (!['create','upload'].includes(action)) throw new Error('Operación multipart no válida.');
+  if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 20971520) throw new Error('Archivo fuera del límite de 20 MB.');
+  const bytes=fs.readFileSync(file.path);
+  if (bytes.length !== file.size || crypto.createHash('sha256').update(bytes).digest('hex') !== file.sha256) throw new Error('El archivo ha cambiado. Vuelve a preparar.');
+  const form=new FormData();
+  if (action === 'create') form.append('payload',JSON.stringify(body));
+  else form.append('kind','evidence');
+  form.append(action === 'create'?'audio':'file',new Blob([bytes],{type:file.mime}),file.mime==='audio/mpeg'?'grabacion.mp3':file.mime==='audio/wav'?'grabacion.wav':file.mime==='application/pdf'?'autorizacion.pdf':'autorizacion.txt');
+  return doFetch(GENERATION_BASE_URL+'api/wallet/private-voices.php?action='+action,{method:'POST',headers:authHeaders(),body:form});
+}
+
+export async function privateVoiceSample(sampleId) {
+  if (!/^[0-9a-f]{32}$/.test(sampleId)) throw new Error('Referencia de muestra no válida.');
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);
+  try {
+    const r=await fetch(GENERATION_BASE_URL+'api/wallet/private-voices.php?action=media&sample_id='+sampleId,{headers:authHeaders(),redirect:'error',signal:controller.signal});
+    if (!r.ok || (r.headers.get('content-type')||'').split(';')[0] !== 'audio/mpeg') throw new Error('Muestra no disponible. Consulta voice-status; no generes otro lote para recuperarla.');
+    const reader=r.body.getReader();let size=0;const chunks=[];
+    for (;;) { const part=await reader.read();if(part.done)break;size+=part.value.byteLength;
+      if(size>4194304){await reader.cancel();throw new Error('La muestra supera 4 MB.');}chunks.push(Buffer.from(part.value)); }
+    const bytes=Buffer.concat(chunks);
+    if(bytes.length<4 || !(bytes.subarray(0,3).toString()==='ID3'||(bytes[0]===255&&(bytes[1]&224)===224))) throw new Error('La muestra no contiene un MP3 válido.');
+    return bytes;
+  } finally { clearTimeout(timer); }
 }
 
 // GET del contrato de la skill (api/skill/*.php): algunos endpoints exigen el

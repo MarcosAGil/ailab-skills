@@ -14,10 +14,10 @@
       "category": "Generación",
       "icon": "layers",
       "summary": "Todo el Playground desde tu agente: genera, consulta tus tareas y descarga los resultados sin salir de tu proyecto.",
-      "features": ["Imagen, vídeo, voz, música, upscale y utilidades", "Image, Video y Audio Prompter con documentación de AILAB", "Precios, recuperación de tareas y archivos ordenados"],
+      "features": ["Imagen, vídeo, voz, música, upscale y utilidades", "Image, Video y Audio Prompter con documentación de AILAB", "Biblioteca ElevenLabs, clonación y diseño de voces con permisos explícitos", "Precios, recuperación de tareas y archivos ordenados"],
       "requirements": ["Node.js 18.17 o posterior", "Cuenta de AILAB con acceso activo", "Créditos para las operaciones de pago"],
       "billing": "Utiliza tus créditos de AILAB. Consulta el coste antes de generar.",
-      "setup": "En tu cuenta de AILAB crea un token personal para agentes. Ejecuta el comando login en tu terminal e introdúcelo cuando lo solicite de forma oculta; después ejecuta doctor. No pegues el token en el chat.",
+      "setup": "En tu cuenta de AILAB crea un token personal para agentes. Si quieres seleccionar, crear o gestionar voces, marca el permiso opcional de gestión de voces al crear el token. Ejecuta login en tu terminal e introdúcelo de forma oculta; después ejecuta doctor. No pegues el token en el chat.",
       "example": "Usa $ailab para generar una imagen 16:9 con GPT Image 2.5 a partir de esta referencia. Guarda la imagen y el prompt en mi proyecto.",
       "install_ids": ["ailab"],
       "workflow": "El agente consulta el catálogo y contrato del modelo, prepara el coste, ejecuta lo autorizado y recupera los resultados. La generación se realiza en los proveedores de AILAB, no en tu ordenador. El catálogo remoto es la fuente de modelos, parámetros, precios y disponibilidad."

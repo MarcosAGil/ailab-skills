@@ -27,7 +27,7 @@ su asistente de instalación. Las versiones proceden de `registry.json`; el desp
 de AILAB publica una copia validada junto a los ZIP, sin depender de GitHub al abrir
 la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza AILAB.
 
-La versión 2.3.4 incorpora Eleven v4 para voz individual con Cristina, hasta 10.000
+La versión 2.3.4 incorporó Eleven v4 para voz individual con Cristina, hasta 10.000
 caracteres, estabilidad y similitud. La reserva y la recuperación conservan una única
 solicitud y un único cargo. La promoción cierra anticipadamente en AILAB el 11 de
 octubre de 2026, a las 00:00 UTC; después se aplica automáticamente la tarifa ordinaria.
@@ -44,6 +44,14 @@ El runtime 2.3.7 consulta `api/v1/skill/catalog-v2.json` (catálogo 1.20.0,
 el catálogo 1.18.0 de 61 modelos para las instalaciones anteriores. Publica
 primero los archivos del runtime, después el catálogo v2 y finalmente el índice
 firmado `stable.json`; los overrides de URL explícitos siguen siendo compatibles.
+
+La fuente 2.3.8 amplía ElevenLabs: biblioteca paginada, voces privadas propias,
+clonación autorizada, diseño por prompt, muestras de pago, alta, conservación
+con fecha y borrado recuperable. La gestión exige un token nuevo con el permiso
+opcional `voices_manage`; los tokens anteriores no se amplían. V4 cotiza la voz
+y el texto en servidor antes de confirmar. El catálogo 1.21.0 conserva los 63
+modelos y versiona solo los dos contratos Eleven afectados. Su disponibilidad
+requiere el backend compatible y la release firmada 2.3.8 publicada en AILAB.
 
 La versión 2.3.2 recupera los resultados de Higgsfield en los formatos que recibe
 el historial y consulta la tarea guardada aunque exista un recibo local. Una URL
