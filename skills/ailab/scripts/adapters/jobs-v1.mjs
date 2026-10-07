@@ -48,6 +48,7 @@ export async function check(model, taskRef) {
       urls.push(...segments.map((segment) => segment && (segment.maskUrl || segment.mask_url)).filter(Boolean));
     } catch { /* abajo */ }
     if (!urls.length && Array.isArray(d.resultUrls)) urls = d.resultUrls.filter(Boolean);
+    if (!urls.length && model.id === 'nano-banana-2-1') return { status: 'pending' };
     if (!urls.length) return { status: 'fail', error: 'Completado pero sin URLs de resultado.' };
     return { status: 'success', urls };
   }

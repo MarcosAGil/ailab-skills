@@ -64,6 +64,8 @@ Para **Ideogram 4.5** (`ideogram-v45`), aplica [su contrato y precios](reference
 
 Para **Flux 3** (`flux-3`), consulta [su contrato](references/flux-3.md): `t2i` genera una imagen y `edit` utiliza de 1 a 10 referencias ordenadas. La CLI verifica cada referencia antes de subirla: mínimo 256 px por lado y máximo 4 megapíxeles. No añadas seed, lotes ni opciones privadas del proveedor. El catálogo vigente y la publicación firmada determinan su disponibilidad.
 
+Para **Nano Banana 2.1** (`nano-banana-2-1`), lee [su contrato](references/nano-banana-21.md): `t2i` genera desde texto y `edit` admite de 1 a 14 referencias ordenadas, hasta 30 MB cada una. El prompt admite hasta 20.000 caracteres y la resolución puede ser 1K, 2K o 4K. No añadas lotes, seed ni controles de razonamiento. Consulta `info` y `prepare` para comprobar disponibilidad y coste antes de enviar.
+
 Primero consulta el contrato del modelo. Pasa los archivos mediante el nombre exacto
 que muestra `info`; un parámetro `file[]` puede repetirse.
 

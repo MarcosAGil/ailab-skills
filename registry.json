@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-05",
+  "updated_at": "2026-10-07",
   "skills": [
     {
       "id": "ailab",
       "name": "AILAB",
-      "version": "2.3.8",
+      "version": "2.3.9",
       "channel": "beta",
       "path": "skills/ailab",
       "description": "Playground y asistentes de AILAB desde agentes de código.",

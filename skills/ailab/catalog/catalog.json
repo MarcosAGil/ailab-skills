@@ -1,7 +1,95 @@
 {
-  "catalog_version": "1.21.0",
+  "catalog_version": "1.22.0",
   "min_cli_version": "2.3.7",
   "models": {
+    "nano-banana-2-1": {
+      "id": "nano-banana-2-1",
+      "label": "Nano Banana 2.1",
+      "description": "Generación y edición de imágenes con referencias ordenadas, hasta 4K.",
+      "section": "image",
+      "vendor": "Google",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.9",
+      "aliases": [
+        "nano banana 2.1",
+        "nano banana 2 1"
+      ],
+      "modes": [
+        "t2i",
+        "edit"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "edit"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000,
+          "help": "Hasta 20.000 caracteres."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "default": "1K"
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "21:9",
+            "16:9",
+            "3:2",
+            "4:3",
+            "5:4",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3",
+            "9:16",
+            "4:1",
+            "1:4",
+            "8:1",
+            "1:8"
+          ],
+          "default": "auto"
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 14,
+          "required_when": {
+            "mode": "edit"
+          },
+          "help": "Edición: de 1 a 14 referencias JPG, PNG o WebP, hasta 30 MB cada una. El orden se conserva."
+        }
+      },
+      "estimate": {
+        "kind": "param_table",
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 5,
+          "2K": 7,
+          "4K": 10
+        },
+        "approximate": true,
+        "note": "Por generación según resolución, con o sin referencias. Incluye el servicio de AILAB y el redondeo al crédito superior. Liquidación según consumo confirmado."
+      }
+    },
     "gpt-image-2-5": {
       "id": "gpt-image-2-5",
       "label": "GPT Image 2.5",

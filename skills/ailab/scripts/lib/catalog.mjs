@@ -263,7 +263,7 @@ export function validateParams(model, given) {
     switch (spec.type) {
       case 'string': {
         v = String(v);
-        const count = model.id === 'eleven-tts' && given.version === 'v4' && key === 'text' ? Array.from(v.trim()).length : v.length;
+        const count = (model.id === 'eleven-tts' && given.version === 'v4' && key === 'text') || (model.id === 'nano-banana-2-1' && key === 'prompt') ? Array.from(v.trim()).length : v.length;
         const limit = model.id === 'eleven-tts' && given.version === 'v4' && key === 'text' ? 10000 : spec.max_len;
         if (limit && count > limit) errors.push('--' + key + ' supera ' + limit + ' caracteres (' + count + ').');
         params[key] = v; break;
@@ -340,11 +340,24 @@ export function validateParams(model, given) {
     if (params.voice_id && !/^[A-Za-z0-9]{12,40}$/.test(params.voice_id)) errors.push('Identificador de voz no válido. Consulta voices.');
     if (params.private_voice_id && !/^[0-9a-f]{32}$/.test(params.private_voice_id)) errors.push('Referencia privada AILAB no válida. Consulta voice-list.');
   }
-  if (['flux-3', 'ideogram-v45'].includes(model.id)) {
+  if (['flux-3', 'ideogram-v45', 'nano-banana-2-1'].includes(model.id)) {
     const images = fileParams.image_urls || [];
     if (!String(params.prompt || '').trim()) errors.push('El prompt no puede estar vacío.');
     if (params.mode === 't2i' && images.length) errors.push('La modalidad t2i no admite --image_urls.');
     if (params.mode === 'edit' && !images.length) errors.push('La modalidad edit necesita al menos una imagen en --image_urls.');
+    if (model.id === 'nano-banana-2-1') {
+      const length = Array.from(String(params.prompt || '').trim()).length;
+      if (length < 1 || length > 20000) errors.push('El prompt necesita entre 1 y 20.000 caracteres.');
+      for (const image of images) {
+        try {
+          const metadata = inspectPricingMetadata(image);
+          const bytes = fs.statSync(image).size;
+          if (!metadata.ok || metadata.class !== 'image' || !metadata.width || !metadata.height
+            || !['.jpg','.jpeg','.png','.webp'].includes(path.extname(image).toLowerCase())
+            || bytes < 1 || bytes > 30 * 1024 * 1024) errors.push('Usa JPG, PNG o WebP válidos de hasta 30 MB: ' + image + '.');
+        } catch { errors.push('No se puede leer la referencia: ' + image + '.'); }
+      }
+    }
     if (model.id === 'ideogram-v45') {
       if (params.mode === 't2i') {
         if (params.quality === 'very_low') errors.push('La calidad very_low solo está disponible en edición.');

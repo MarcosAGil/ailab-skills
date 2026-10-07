@@ -27,8 +27,8 @@ test('la release conserva los contratos anteriores excepto la ampliación Eleven
     const actual = crypto.createHash('sha256').update(stableStringify(catalog.models[id])).digest('hex');
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
-  assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'ideogram-v45']);
-  assert.equal(catalog.catalog_version, '1.21.0');
+  assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'ideogram-v45', 'nano-banana-2-1']);
+  assert.equal(catalog.catalog_version, '1.22.0');
   assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
@@ -63,8 +63,8 @@ test('los nuevos contratos públicos no contienen costes o endpoints privados', 
   }
 });
 
-test('una instalación 2.3.8 no retrocede al runtime estable anterior', async () => {
-  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.8');
+test('una instalación 2.3.9 no retrocede al runtime estable anterior', async () => {
+  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.9');
   let installations = 0;
   const checked = await checkAndMaybeUpdate({
     force: true,
@@ -72,7 +72,7 @@ test('una instalación 2.3.8 no retrocede al runtime estable anterior', async ()
     releaseInstaller: async () => { installations++; throw new Error('No debe instalar una versión anterior'); },
   });
   assert.equal(checked.ok, true);
-  assert.equal(checked.current, '2.3.8');
+  assert.equal(checked.current, '2.3.9');
   assert.equal(checked.update, null);
   assert.equal(installations, 0);
 });
