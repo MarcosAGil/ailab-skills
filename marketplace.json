@@ -14,51 +14,143 @@
       "category": "Generación",
       "icon": "layers",
       "summary": "Todo el Playground desde tu agente: genera, consulta tus tareas y descarga los resultados sin salir de tu proyecto.",
-      "features": ["Imagen, vídeo, voz, música, upscale y utilidades", "Image, Video y Audio Prompter con documentación de AILAB", "Biblioteca ElevenLabs, clonación y diseño de voces con permisos explícitos", "Precios, recuperación de tareas y archivos ordenados"],
-      "requirements": ["Node.js 18.17 o posterior", "Cuenta de AILAB con acceso activo", "Créditos para las operaciones de pago"],
+      "features": [
+        "Imagen, vídeo, voz, música, upscale y utilidades",
+        "Image, Video y Audio Prompter con documentación de AILAB",
+        "Biblioteca ElevenLabs, clonación y diseño de voces con permisos explícitos",
+        "Precios, recuperación de tareas y archivos ordenados"
+      ],
+      "requirements": [
+        "Node.js 18.17 o posterior",
+        "Cuenta de AILAB con acceso activo",
+        "Créditos para las operaciones de pago"
+      ],
       "billing": "Utiliza tus créditos de AILAB. Consulta el coste antes de generar.",
       "setup": "En tu cuenta de AILAB crea un token personal para agentes. Si quieres seleccionar, crear o gestionar voces, marca el permiso opcional de gestión de voces al crear el token. Ejecuta login en tu terminal e introdúcelo de forma oculta; después ejecuta doctor. No pegues el token en el chat.",
       "example": "Usa $ailab para generar una imagen 16:9 con GPT Image 2.5 a partir de esta referencia. Guarda la imagen y el prompt en mi proyecto.",
-      "install_ids": ["ailab"],
+      "install_ids": [
+        "ailab"
+      ],
       "workflow": "El agente consulta el catálogo y contrato del modelo, prepara el coste, ejecuta lo autorizado y recupera los resultados. La generación se realiza en los proveedores de AILAB, no en tu ordenador. El catálogo remoto es la fuente de modelos, parámetros, precios y disponibilidad."
     },
     {
-      "id": "ugc-ailab",
-      "category": "Workflow UGC",
-      "icon": "workflow",
-      "summary": "De tu guion y referencias a un vídeo UGC con las pistas de voz y ambiente separadas, listo para montar.",
-      "features": ["Video Prompter y Gemini Omni Flash 1.1", "Ambiente con SAM Audio y voz con ElevenLabs", "Vídeo, pistas, prompts y registro por carpetas"],
-      "requirements": ["Skill AILAB instalada y configurada (2.2.4 o posterior)", "Node.js 18.17 o posterior, FFmpeg y FFprobe", "Cuenta y créditos de AILAB"],
-      "billing": "Utiliza tus créditos de AILAB por cada etapa. No requiere claves adicionales.",
-      "setup": "El comando instala UGC AILAB y su dependencia AILAB. Configura primero el acceso de AILAB con login y doctor. Comprueba que ffmpeg y ffprobe están disponibles en tu terminal.",
-      "example": "Usa $ugc-ailab con este guion y estas referencias. Quiero un vídeo vertical de 10 segundos y las pistas de voz y ambiente por separado.",
-      "install_ids": ["ailab", "ugc-ailab"],
-      "workflow": "Video Prompter prepara la dirección. Gemini Omni genera el vídeo. FFmpeg extrae localmente el audio original. SAM Audio separa ambiente; Voice Isolator aísla la voz y Voice Changer cambia su timbre. No monta ni sustituye el audio del vídeo automáticamente, y no incluye upscale. Si solo pides un prompt, no autoriza generar un vídeo."
+      "id": "refinar-actuacion-camara",
+      "collection": "prompting",
+      "category": "Prompting",
+      "icon": "scan",
+      "summary": "Método personal de Marcos: audita actuación y cámara sin cambiar la estética de tu prompt.",
+      "features": [
+        "Auditoría en siete ejes y preguntas antes de refinar",
+        "Dirección de cada persona, cámara y enfoque",
+        "Formato editorial Seedance 2.5"
+      ],
+      "requirements": [
+        "Un prompt de vídeo ya escrito",
+        "Referencias ordenadas con su rol",
+        "Audio o transcripción si hay diálogo"
+      ],
+      "billing": "No genera vídeos ni consume créditos de AILAB. El agente se factura según tu propio plan; generar audio de Seed Audio es una operación aparte.",
+      "setup": "Instala la carpeta completa con el comando del marketplace o extrae el ZIP en ~/.claude/skills/ o ~/.codex/skills/. Abre una conversación nueva e invoca $refinar-actuacion-camara. No necesita token de AILAB ni API key. Conserva references/.",
+      "example": "Usa $refinar-actuacion-camara para auditar este prompt, respetar su estética y preguntarme antes de reescribirlo.",
+      "install_ids": [
+        "refinar-actuacion-camara"
+      ],
+      "workflow": "Completo: informe, preguntas y prompt refinado. Diagnóstico: solo informe. Rápido: decisiones explícitas y supuestos. No crea prompts desde cero, no edita vídeos y no sirve para extensiones, Genjutsu ni motion graphics."
     },
     {
       "id": "refinar-prompt",
       "category": "Prompts",
       "icon": "scan",
       "summary": "Refina un prompt de vídeo que ya tienes: detecta contradicciones y precisa la actuación, la cámara y el enfoque sin cambiar tu estilo.",
-      "features": ["Auditoría en siete ejes con hallazgos concretos", "Modos completo, diagnóstico y rápido", "Prompt refinado conservando historia, diálogos y referencias"],
-      "requirements": ["Claude Code o Codex", "Un prompt de vídeo ya escrito y sus referencias", "FFmpeg y FFprobe opcionales para medir audio y vídeo"],
+      "features": [
+        "Auditoría en siete ejes con hallazgos concretos",
+        "Modos completo, diagnóstico y rápido",
+        "Prompt refinado conservando historia, diálogos y referencias"
+      ],
+      "requirements": [
+        "Claude Code o Codex",
+        "Un prompt de vídeo ya escrito y sus referencias",
+        "FFmpeg y FFprobe opcionales para medir audio y vídeo"
+      ],
       "billing": "No genera vídeos ni consume créditos de AILAB. El uso del agente se factura según tu propio plan.",
       "setup": "Instala la carpeta y abre una conversación nueva. Invoca $refinar-prompt con tu prompt, referencias en orden y modelo, duración y proporción si los conoces. No necesita cuenta de AILAB, token ni claves propias.",
       "example": "Usa $refinar-prompt en modo diagnóstico para revisar este prompt y sus referencias. Detecta contradicciones de cámara y actuación sin reescribirlo todavía.",
-      "install_ids": ["refinar-prompt"],
-      "workflow": "Examina el prompt y los materiales disponibles, identifica problemas y, en modo completo, pregunta antes de refinar. Diagnóstico entrega solo el informe; rápido decide huecos creativos y declara supuestos, sin inventar audio ni tiempos medidos. No crea prompts desde cero, no edita vídeos y no ejecuta generaciones. Seedance es el perfil editorial predeterminado, no una garantía de compatibilidad API."
+      "install_ids": [
+        "refinar-prompt"
+      ],
+      "workflow": "Examina el prompt y los materiales disponibles, identifica problemas y, en modo completo, pregunta antes de refinar. Diagnóstico entrega solo el informe; rápido decide huecos creativos y declara supuestos, sin inventar audio ni tiempos medidos. No crea prompts desde cero, no edita vídeos y no ejecuta generaciones. Seedance es el perfil editorial predeterminado, no una garantía de compatibilidad API.",
+      "collection": "prompting"
+    },
+    {
+      "id": "refinar-prompt-ugc",
+      "collection": "prompting",
+      "category": "Prompting",
+      "icon": "scan",
+      "summary": "La más reciente y completa para realismo UGC: cámara de móvil, actuación, luz y sonido coherentes.",
+      "features": [
+        "Once formatos, de selfie y producto a entrevista y podcast",
+        "Gestos ligados al texto hablado literal",
+        "Scripts locales para medir audio y comprobar el prompt"
+      ],
+      "requirements": [
+        "Prompt ya escrito o brief, sin pedirle que escriba el guion",
+        "Referencias ordenadas con su rol y texto hablado literal",
+        "Audio de Seed Audio recomendado; sin audio advierte menor sincronía",
+        "Python 3, FFmpeg y FFprobe para medición; Whisper local opcional"
+      ],
+      "billing": "No genera vídeos ni consume créditos de AILAB. El agente se factura según tu propio plan; generar audio de Seed Audio es una operación aparte.",
+      "setup": "Instala la carpeta completa con el comando del marketplace o extrae el ZIP en ~/.claude/skills/ o ~/.codex/skills/. Abre una conversación nueva e invoca $refinar-prompt-ugc. No necesita token de AILAB ni API key. Conserva references/ y scripts/.",
+      "example": "Usa $refinar-prompt-ugc con este prompt, las referencias y el audio de Seed Audio. Quiero realismo de móvil y conservar mi diálogo literal.",
+      "install_ids": [
+        "refinar-prompt-ugc"
+      ],
+      "workflow": "Audita, pregunta y refina. Por defecto 9:16, una toma, imperfección natural y cortes duros solo si se solicitan. Cubre once formatos, incluidos alguien graba, ponencia, trípode y podcast. No escribe guion, ganchos o CTA, no genera vídeos y no sirve para extensiones o ediciones."
+    },
+    {
+      "id": "ugc-ailab",
+      "category": "Workflow UGC",
+      "icon": "workflow",
+      "summary": "De tu guion y referencias a un vídeo UGC con las pistas de voz y ambiente separadas, listo para montar.",
+      "features": [
+        "Video Prompter y Gemini Omni Flash 1.1",
+        "Ambiente con SAM Audio y voz con ElevenLabs",
+        "Vídeo, pistas, prompts y registro por carpetas"
+      ],
+      "requirements": [
+        "Skill AILAB instalada y configurada (2.2.4 o posterior)",
+        "Node.js 18.17 o posterior, FFmpeg y FFprobe",
+        "Cuenta y créditos de AILAB"
+      ],
+      "billing": "Utiliza tus créditos de AILAB por cada etapa. No requiere claves adicionales.",
+      "setup": "El comando instala UGC AILAB y su dependencia AILAB. Configura primero el acceso de AILAB con login y doctor. Comprueba que ffmpeg y ffprobe están disponibles en tu terminal.",
+      "example": "Usa $ugc-ailab con este guion y estas referencias. Quiero un vídeo vertical de 10 segundos y las pistas de voz y ambiente por separado.",
+      "install_ids": [
+        "ailab",
+        "ugc-ailab"
+      ],
+      "workflow": "Video Prompter prepara la dirección. Gemini Omni genera el vídeo. FFmpeg extrae localmente el audio original. SAM Audio separa ambiente; Voice Isolator aísla la voz y Voice Changer cambia su timbre. No monta ni sustituye el audio del vídeo automáticamente, y no incluye upscale. Si solo pides un prompt, no autoriza generar un vídeo."
     },
     {
       "id": "vervideo",
       "category": "Análisis",
       "icon": "scan",
       "summary": "Analiza un vídeo que ya existe: entiende su estética, el guion, los planos, el sonido y el ritmo de montaje.",
-      "features": ["Modo completo: análisis del vídeo entero", "Modo mini: escenas, hook y transcripción", "Informe en Markdown con referencias temporales"],
-      "requirements": ["Python 3.9 o posterior", "FFmpeg, FFprobe y yt-dlp", "API key propia de OpenRouter con saldo"],
+      "features": [
+        "Modo completo: análisis del vídeo entero",
+        "Modo mini: escenas, hook y transcripción",
+        "Informe en Markdown con referencias temporales"
+      ],
+      "requirements": [
+        "Python 3.9 o posterior",
+        "FFmpeg, FFprobe y yt-dlp",
+        "API key propia de OpenRouter con saldo"
+      ],
       "billing": "Se cobra en tu propia cuenta de OpenRouter, no en los créditos de AILAB.",
       "setup": "Configura personalmente OPENROUTER_API_KEY fuera de la skill, en ~/.config/openrouter/.env, con permisos restringidos. No introduzcas la clave en este chat. Para el instalador del repositorio también necesitas Node.js 18.17 o posterior. En Windows debes tener python3 disponible en el terminal.",
       "example": "Usa $vervideo en modo completo para analizar la cámara, la luz y el sonido de este vídeo. Guarda el informe junto al archivo.",
-      "install_ids": ["vervideo"],
+      "install_ids": [
+        "vervideo"
+      ],
       "workflow": "Completo comprime si hace falta y envía el vídeo a OpenRouter para analizarlo. Mini extrae escenas y el hook localmente, transcribe el audio mediante OpenRouter y el agente compone un informe editorial. Solo descarga URLs públicas; no elude accesos privados. No genera vídeos. Los modelos y requisitos vigentes están en el SKILL.md de la versión instalada."
     }
   ]

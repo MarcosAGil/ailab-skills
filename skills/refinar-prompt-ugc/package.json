@@ -1,0 +1,6 @@
+{
+  "name": "refinar-prompt-ugc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Auditoría de realismo UGC y comprobaciones locales de audio y prompt."
+}

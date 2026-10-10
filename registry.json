@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-07",
+  "updated_at": "2026-10-10",
   "skills": [
     {
       "id": "ailab",
@@ -10,7 +10,10 @@
       "path": "skills/ailab",
       "description": "Playground y asistentes de AILAB desde agentes de código.",
       "minimum_node": "18.17.0",
-      "clients": ["claude-code", "codex"]
+      "clients": [
+        "claude-code",
+        "codex"
+      ]
     },
     {
       "id": "vervideo",
@@ -20,7 +23,10 @@
       "path": "skills/vervideo",
       "description": "Análisis de vídeos locales o públicos en modos completo y mini mediante OpenRouter.",
       "minimum_python": "3.9",
-      "clients": ["claude-code", "codex"],
+      "clients": [
+        "claude-code",
+        "codex"
+      ],
       "self_test": {
         "command": "python3",
         "args": [
@@ -38,8 +44,13 @@
       "path": "skills/refinar-prompt",
       "description": "Audita prompts de vídeo y precisa actuación, cámara, enfoque y sincronía.",
       "kind": "instructions",
-      "guide_references": ["references/guia-marketplace.md"],
-      "clients": ["claude-code", "codex"]
+      "guide_references": [
+        "references/guia-marketplace.md"
+      ],
+      "clients": [
+        "claude-code",
+        "codex"
+      ]
     },
     {
       "id": "ugc-ailab",
@@ -49,12 +60,58 @@
       "path": "skills/ugc-ailab",
       "description": "Vídeo UGC con Gemini Omni y pistas separadas de ambiente y voz mediante AILAB.",
       "minimum_node": "18.17.0",
-      "clients": ["claude-code", "codex"],
+      "clients": [
+        "claude-code",
+        "codex"
+      ],
       "self_test": {
         "command": "node",
-        "args": ["scripts/extract-audio.mjs", "--help"],
+        "args": [
+          "scripts/extract-audio.mjs",
+          "--help"
+        ],
         "expect": "Extrae audio original para UGC AILAB"
       }
+    },
+    {
+      "id": "refinar-actuacion-camara",
+      "name": "Refinar actuación y cámara",
+      "version": "1.0.0",
+      "channel": "beta",
+      "path": "skills/refinar-actuacion-camara",
+      "description": "Método personal de Marcos: audita actuación y cámara sin cambiar la estética de tu prompt.",
+      "kind": "instructions",
+      "guide_references": [
+        "references/guia-marketplace.md"
+      ],
+      "clients": [
+        "claude-code",
+        "codex"
+      ]
+    },
+    {
+      "id": "refinar-prompt-ugc",
+      "name": "Refinar prompt UGC",
+      "version": "1.0.0",
+      "channel": "beta",
+      "path": "skills/refinar-prompt-ugc",
+      "description": "La más reciente y completa para realismo UGC: cámara de móvil, actuación, luz y sonido coherentes.",
+      "minimum_python": "3.9",
+      "self_test": {
+        "command": "python3",
+        "args": [
+          "scripts/lint_prompt.py",
+          "--help"
+        ],
+        "expect": "--duration"
+      },
+      "guide_references": [
+        "references/guia-marketplace.md"
+      ],
+      "clients": [
+        "claude-code",
+        "codex"
+      ]
     }
   ]
 }
