@@ -13,8 +13,12 @@ test('instalación integrada guarda workflow y dependencias sin gasto',t=>{
  const dir=temp(t);const r=spawnSync(process.execPath,['tools/install.mjs','ailab','refinar-prompt-ugc','ugcia-ultrarrealista-aill','--dir',dir],{encoding:'utf8',timeout:30000});
  assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/ugcia-ultrarrealista-aill 1\.1\.2/);
  for(const id of ['ailab','refinar-prompt-ugc','ugcia-ultrarrealista-aill'])assert.ok(fs.existsSync(path.join(dir,id,'SKILL.md')));
- const checked=spawnSync('bash',[path.join(dir,'ugcia-ultrarrealista-aill/scripts/comprobar_requisitos.sh')],{encoding:'utf8',timeout:30000,env:{...process.env,AILAB_SKILLS_DIR:dir,CLAUDE_SKILLS_DIR:dir}});
+ const portableEnv={...process.env};delete portableEnv.AILAB_SKILLS_DIR;delete portableEnv.CLAUDE_SKILLS_DIR;
+ const checked=spawnSync('bash',[path.join(dir,'ugcia-ultrarrealista-aill/scripts/comprobar_requisitos.sh')],{encoding:'utf8',timeout:30000,env:portableEnv});
  assert.equal(checked.status,0,checked.stdout+checked.stderr);assert.match(checked.stdout,/MODO: completo/);
+ const standalone=run('install.sh',['--target','codex','--forzar'],{env:{...portableEnv,AILAB_SKILLS_DIR:dir}});
+ assert.equal(standalone.status,0,standalone.stdout+standalone.stderr);assert.match(standalone.stdout,/sesión nueva en codex/);
+ assert.ok(fs.readdirSync(dir).some(n=>n.startsWith('ugcia-ultrarrealista-aill.bak-')));
 });
 
 test('promoción rechaza traversal y enlaces sin mover archivos externos',t=>{
