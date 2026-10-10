@@ -26,4 +26,4 @@ Para Codex cambia claude por codex. Para actualizar, ejecuta git pull --ff-only 
 
 ## Diferencias
 
-Refinar actuación y cámara conserva el método personal de Marcos. Refinar prompt es la alternativa universal y no impone estética. Refinar prompt UGC incorpora realismo de móvil y scripts locales; acepta brief y no escribe el texto hablado. No ofrecemos UGCIA-Ultrarrealista-AILL en este catálogo.
+Refinar actuación y cámara conserva el método personal de Marcos. Refinar prompt es la alternativa universal y no impone estética. Refinar prompt UGC incorpora realismo de móvil y scripts locales; acepta brief y no escribe el texto hablado. UGC ultrarrealista AILAB es el workflow de principio a fin que utiliza Refinar prompt UGC en su fase de vídeo.

@@ -93,7 +93,7 @@ function validateSkill(skill) {
 
   if (skill.self_test !== undefined) {
     if (!skill.self_test || typeof skill.self_test !== 'object') fail(`self_test inválido en ${skill.id}.`);
-    if (!['node', 'python3'].includes(skill.self_test.command)) fail(`Comando de self_test no permitido en ${skill.id}.`);
+    if (!['node', 'python3', 'bash'].includes(skill.self_test.command)) fail(`Comando de self_test no permitido en ${skill.id}.`);
     if (!Array.isArray(skill.self_test.args) || skill.self_test.args.length < 1) fail(`args de self_test ausentes en ${skill.id}.`);
     if (skill.self_test.args.some((arg) => typeof arg !== 'string' || !arg || path.isAbsolute(arg) || arg.includes('..'))) {
       fail(`args de self_test no seguros en ${skill.id}.`);

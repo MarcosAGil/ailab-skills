@@ -17,7 +17,10 @@ cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 | `ailab` | Beta | Playground, modelos generativos y asistentes de AILAB. |
 | `vervideo` | Beta | Análisis completo o editorial de vídeos locales y URLs públicas. |
 | `refinar-prompt` | Beta | Auditoría y refinado de prompts de vídeo. Solo instrucciones, sin generaciones ni claves. |
+| `refinar-actuacion-camara` | Beta | Método personal portable de Marcos, sin imponer estética. |
+| `refinar-prompt-ugc` | Beta | Realismo UGC, once formatos, medición de audio y lint local. |
 | `ugc-ailab` | Beta | Guion y referencias → Gemini Omni → ambiente SAM y voz ElevenLabs, con pistas separadas. Requiere `ailab`. |
+| `ugcia-ultrarrealista-aill` | Beta | Workflow por fases con imágenes, Seed Audio y Seedance 2.5. Requiere `refinar-prompt-ugc`; `ailab` para automatizar. |
 
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
 es independiente y vive dentro de `skills/<id>/`.
@@ -75,6 +78,7 @@ descubren el modelo al refrescar el catálogo remoto.
 ## Requisitos
 
 - Node.js 18.17 o posterior.
+- Para `ugcia-ultrarrealista-aill`: Bash, Python 3.9+, FFmpeg y FFprobe; en Windows, WSL o Git Bash. Su autotest no llama a proveedores ni consume créditos.
 - Para `ailab`: una cuenta de AILAB habilitada y créditos para las operaciones de pago.
 - Para `vervideo`: Python 3.9 o posterior, una API key propia de OpenRouter y
   `ffmpeg`, `ffprobe` y `yt-dlp` para procesar vídeo, audio y URLs públicas.

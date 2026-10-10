@@ -131,6 +131,32 @@
       "workflow": "Video Prompter prepara la dirección. Gemini Omni genera el vídeo. FFmpeg extrae localmente el audio original. SAM Audio separa ambiente; Voice Isolator aísla la voz y Voice Changer cambia su timbre. No monta ni sustituye el audio del vídeo automáticamente, y no incluye upscale. Si solo pides un prompt, no autoriza generar un vídeo."
     },
     {
+      "id": "ugcia-ultrarrealista-aill",
+      "category": "Workflow UGC",
+      "icon": "workflow",
+      "summary": "UGC ultrarrealista de principio a fin: personaje consistente, audio primero y vídeo, con aprobación en cada fase.",
+      "features": [
+        "Hojas de personaje y referencias aprobadas",
+        "Seed Audio medido y prompt refinado con realismo UGC",
+        "Proyecto ordenado, sin sobrescribir ni reenviar tareas ambiguas"
+      ],
+      "requirements": [
+        "Skills AILAB y Refinar prompt UGC para el flujo automatizado",
+        "Bash, Python 3, FFmpeg y FFprobe; Node.js para AILAB",
+        "Cuenta con créditos AILAB y permiso para las fotos y voces",
+        "Windows: WSL o Git Bash con herramientas disponibles"
+      ],
+      "billing": "La instalación es gratuita. Cada generación consume créditos AILAB y necesita autorización con el coste visible. Sin AILAB, modo solo prompts.",
+      "setup": "El comando instala las tres skills. Configura AILAB con login y doctor. El ZIP del workflow no incluye las dependencias: instala también AILAB y Refinar prompt UGC. Abre una sesión nueva y ejecuta el autotest local si quieres comprobar las herramientas sin gasto.",
+      "example": "Usa $ugcia-ultrarrealista-aill con este brief y mi foto autorizada. Prepara el plan y detente en cada aprobación antes de generar.",
+      "install_ids": [
+        "ailab",
+        "refinar-prompt-ugc",
+        "ugcia-ultrarrealista-aill"
+      ],
+      "workflow": "Fase 1: hojas de personaje, entorno opcional y frames. Aprobación. Fase 2: idea cerrada, guion literal y audio Seed Audio medido y aprobado. Fase 3: Refinar prompt UGC, mostrar prompt, referencias, parámetros y coste; generar solo tras confirmación. Guarda finales y pruebas separados. No publica ni promete sincronía perfecta. Sin AILAB solo prepara prompts; Refinar prompt UGC es necesaria para el vídeo."
+    },
+    {
       "id": "vervideo",
       "category": "Análisis",
       "icon": "scan",

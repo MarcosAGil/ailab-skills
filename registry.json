@@ -112,6 +112,30 @@
         "claude-code",
         "codex"
       ]
+    },
+    {
+      "id": "ugcia-ultrarrealista-aill",
+      "name": "UGC ultrarrealista AILAB",
+      "version": "1.1.2",
+      "channel": "beta",
+      "path": "skills/ugcia-ultrarrealista-aill",
+      "description": "Workflow UGC por fases con imágenes de personaje, audio primero y vídeo Seedance.",
+      "minimum_python": "3.9",
+      "minimum_node": "18.17.0",
+      "clients": [
+        "claude-code",
+        "codex"
+      ],
+      "guide_references": [
+        "references/guia-marketplace.md"
+      ],
+      "self_test": {
+        "command": "bash",
+        "args": [
+          "scripts/autotest.sh"
+        ],
+        "expect": "0 fallos"
+      }
     }
   ]
 }
