@@ -4,10 +4,27 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {validateParams} from '../skills/ailab/scripts/lib/catalog.mjs';
 const skill=path.resolve('skills/ugcia-ultrarrealista-aill');
 function temp(t){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ugc-ultra-test-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));return dir;}
 function run(script,args=[],options={}){return spawnSync('bash',[path.join(skill,'scripts',script),...args],{encoding:'utf8',timeout:30000,...options});}
 function project(t){const root=temp(t);const r=run('crear_proyecto.sh',['Prueba',root]);assert.equal(r.status,0,r.stderr);return r.stdout.trim();}
+
+test('los modelos y ajustes del workflow encajan en el catálogo sin llamadas al proveedor',t=>{
+ const catalog=JSON.parse(fs.readFileSync('skills/ailab/catalog/catalog.json','utf8'));
+ const dir=temp(t),image=path.join(dir,'ref.png'),audio=path.join(dir,'audio.wav');
+ fs.writeFileSync(image,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=','base64'));
+ fs.writeFileSync(audio,'referencia sintética para validación del esquema');
+ const cases=[
+  ['gpt-image-2-5',{mode:'i2i',version:'flare',prompt:'test',image_urls:[image],aspect_ratio:'16:9',resolution:'2K'}],
+  ['nano-banana-2-1',{mode:'edit',prompt:'test',image_urls:[image],aspect_ratio:'9:16',resolution:'2K'}],
+  ['ideogram-v45',{mode:'edit',prompt:'test',image_urls:[image],quality:'high',edit_precision:'regular',image_size:'auto',num_images:1}],
+  ['seed-audio',{prompt:'test',image_url:image,output_format:'wav',speed:1,estimated_duration_seconds:60}],
+  ['seedance-2-5',{mode:'ref',prompt:'test',duration:10,aspect_ratio:'9:16',resolution:'720p',generate_audio:true,reference_image_urls:[image],reference_audio_urls:[audio]}],
+  ['seedream-v5-pro',{mode:'i2i',prompt:'test',quality:'high',aspect_ratio:'16:9',image_urls:[image]}]
+ ];
+ for(const [id,params]of cases){const model=catalog.models[id];assert.ok(model,id);const result=validateParams({id,...model},params);assert.deepEqual(result.errors,[],id);}
+});
 
 test('instalación integrada guarda workflow y dependencias sin gasto',t=>{
  const dir=temp(t);const r=spawnSync(process.execPath,['tools/install.mjs','ailab','refinar-prompt-ugc','ugcia-ultrarrealista-aill','--dir',dir],{encoding:'utf8',timeout:30000});
