@@ -278,4 +278,4 @@ Antes de entregar, todo debe ser "sí":
 
 ## Mantenimiento
 
-Actualizar desde el repositorio oficial. Esta copia portable conserva el método personal de Marcos, no necesita su vault ni otras skills. Los ejemplos de otras skills no están incluidos y no son requisitos. No modificar materiales del usuario sin su aprobación.
+Actualizar desde el repositorio oficial de AiLendra Labs. Esta skill no necesita archivos personales, un vault ni otras skills. Los ejemplos de otras skills no están incluidos y no son requisitos. No modificar materiales del usuario sin su aprobación.

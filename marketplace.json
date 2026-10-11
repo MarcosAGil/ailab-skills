@@ -38,7 +38,7 @@
       "collection": "prompting",
       "category": "Prompting",
       "icon": "scan",
-      "summary": "Método personal de Marcos: audita actuación y cámara sin cambiar la estética de tu prompt.",
+      "summary": "Mejora la actuación, la cámara y el enfoque de tu prompt de vídeo. Comparte el prompt y sus referencias: la skill detecta huecos, te hace preguntas y entrega una versión refinada respetando tu estética.",
       "features": [
         "Auditoría en siete ejes y preguntas antes de refinar",
         "Dirección de cada persona, cámara y enfoque",

@@ -1,11 +1,11 @@
 ---
 name: refinar-actuacion-camara
-description: Audita un prompt de vídeo ya escrito y precisa actuación, cámara, enfoque y sincronía sin imponer estética. Método personal de Marcos con modos completo, diagnóstico y rápido; salida editorial Seedance 2.5 por defecto. No crea prompts desde cero, no edita vídeos ni sirve para extensiones, Genjutsu o motion graphics.
+description: Audita un prompt de vídeo ya escrito y precisa actuación, cámara, enfoque y sincronía sin imponer estética. Skill de AiLendra Labs con modos completo, diagnóstico y rápido; salida editorial Seedance 2.5 por defecto. No crea prompts desde cero, no edita vídeos ni sirve para extensiones, Genjutsu o motion graphics.
 ---
 
 # Refinar actuación y cámara
 
-Copia portable del método personal de Marcos. No necesita su vault ni archivos de su ordenador.
+Skill de AiLendra Labs para revisar un prompt de vídeo junto con sus referencias, detectar lo que falta y concretar la actuación y la cámara. Pregunta antes de reescribir y conserva la estética original. No depende de archivos personales ni de un vault.
 
 Lee completos [auditoria.md](references/auditoria.md) y [direccion-y-entrega.md](references/direccion-y-entrega.md) antes de auditar. El primero contiene los siete ejes, contradicciones, preguntas y preparación; el segundo, la dirección de personas y cámara, formato, límites y entrega.
 

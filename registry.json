@@ -76,10 +76,10 @@
     {
       "id": "refinar-actuacion-camara",
       "name": "Refinar actuación y cámara",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "channel": "beta",
       "path": "skills/refinar-actuacion-camara",
-      "description": "Método personal de Marcos: audita actuación y cámara sin cambiar la estética de tu prompt.",
+      "description": "Skill de AiLendra Labs para precisar actuación, cámara y enfoque. Comparte un prompt de vídeo ya escrito y sus referencias; audita, pregunta y refina sin cambiar tu estética.",
       "kind": "instructions",
       "guide_references": [
         "references/guia-marketplace.md"

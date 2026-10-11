@@ -1,6 +1,6 @@
 {
   "name": "refinar-actuacion-camara",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
-  "description": "Método personal portable de actuación y cámara."
+  "description": "Skill de AiLendra Labs para auditar y refinar actuación, cámara y enfoque en prompts de vídeo."
 }
