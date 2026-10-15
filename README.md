@@ -12,6 +12,12 @@ cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 
 ## Skills disponibles
 
+La versión 2.3.10 consulta los límites efectivos de referencias de los asistentes,
+conserva los adjuntos en las continuaciones y permite consultar un envío incierto
+con `assistant-status <UUID>` sin repetir la generación. Los límites dependen de
+la modalidad, el tamaño conjunto y el servidor; no todas las combinaciones de
+50 archivos caben en una petición. Requiere el backend compatible de AILAB.
+
 | Skill | Estado | Descripción |
 |---|---|---|
 | `ailab` | Beta | Playground, modelos generativos y asistentes de AILAB. |
