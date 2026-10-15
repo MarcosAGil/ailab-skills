@@ -142,6 +142,12 @@ conversación que conserve contexto, añade `--session new` al primer mensaje y
 reutiliza el UUID de sesión que devuelve la CLI en los siguientes
 `assistant-prepare`.
 
+`assistant-prepare` consulta los límites de archivos del servidor antes de subirlos.
+Un resultado incierto se consulta con `assistant-status <request_id>`: no prepares
+otro envío ni repitas una respuesta incompleta para intentar desbloquearlo. La
+consulta puede recuperar el recibo y el consumo; no garantiza reconstruir un texto
+que no llegó a guardarse.
+
 Tras informar del coste, dentro de la autorización del encargo:
 
 ```bash

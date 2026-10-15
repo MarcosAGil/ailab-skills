@@ -88,6 +88,7 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
         costs: { 'mock-video': 65, 'fal:mock-sam': 11 },
       });
       if (url.pathname.endsWith('/assistant.php')) {
+        if (body.action === 'capabilities') return json(res, {ok:true,limits:{max_attachments:50,max_by_kind:{image:50,audio:2,video:2},max_bytes:{image:10485760,audio:12582912,video:12582912},max_total_bytes:12582912,max_inline_bytes:12582912}});
         assistantCalls.push(body);
         return json(res, { ok: true, assistant_id: body.assistant_id, model_id: body.model_id,
           message: { role: 'assistant', content: 'Static camera. She says: "Hola". Use @image1 and @image2.' },

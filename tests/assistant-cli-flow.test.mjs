@@ -26,7 +26,7 @@ function waitForPort(child) {
   });
 }
 
-test('la CLI usa el modelo fijo y reintenta una respuesta inválida sin otra confirmación', async (t) => {
+test('la CLI reintenta solo rechazos confirmados, respeta límites remotos y consulta resultados inciertos', async (t) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-assistant-cli-'));
   const config = path.join(temp, 'config');
   const credentials = path.join(temp, 'credentials');
@@ -70,4 +70,20 @@ test('la CLI usa el modelo fijo y reintenta una respuesta inválida sin otra con
   assert.equal(requests[1].body.client_request_id, requestId);
   assert.equal(requests[0].body.model_id, 'gemini-3-5-flash-lite-priority');
   assert.equal(requests[0].body.assistant_id, 'image-prompter');
+
+  const png = path.join(temp, 'referencia.png');
+  fs.writeFileSync(png, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'));
+  const seven = await execFileAsync(process.execPath, [cli, 'assistant-prepare', 'image-prompter', '--message', 'Siete referencias', ...Array.from({length:7},()=>['--image',png]).flat()], {env});
+  assert.match(seven.stdout, /7 imagen/);
+  const uncertain = await execFileAsync(process.execPath, [cli, 'assistant-prepare', 'image-prompter', '--message', 'AMBIGUOUS_RESPONSE'], {env});
+  const uncertainId = /Peticion: ([0-9a-f-]{36})/.exec(uncertain.stdout)[1];
+  await assert.rejects(execFileAsync(process.execPath, [cli, 'assistant-submit', uncertainId, '--confirmed'], {env}), error => {
+    assert.match(error.stderr, /assistant-status/); return true;
+  });
+  const callsBeforeStatus = fs.readFileSync(log,'utf8').trim().split('\n').length;
+  assert.equal(callsBeforeStatus, 3, 'el error ambiguo solo genera un envío');
+  const status = await execFileAsync(process.execPath, [cli, 'assistant-status', uncertainId], {env});
+  assert.match(status.stdout, /Texto recuperado sin otro envío/);
+  assert.match(status.stdout, /Consumo verificado: 9 cr/);
+  assert.equal(fs.readFileSync(log,'utf8').trim().split('\n').length, callsBeforeStatus);
 });

@@ -7,6 +7,7 @@ import { login, promptVisible, promptHidden, readCookie, readToken, saveToken, c
 import { apiPost, servicePost, assistantPost, taskLookup, explain } from './lib/http.mjs';
 import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, estimateCredits, modelContractHash, requiresServerQuote, stableStringify } from './lib/catalog.mjs';
 import { refreshAssistantsCatalog, resolveAssistant, resolveAssistantModel, assistantContractHash } from './lib/assistants.mjs';
+import { assistantLimits, validateAssistantBatch, LEGACY_ASSISTANT_LIMITS } from './lib/assistant-limits.mjs';
 import { createAssistantRequest, loadAssistantRequest, updateAssistantRequest, loadSession, createSession, saveSession, assistantRequestIntact } from './lib/assistant-requests.mjs';
 import { inspectFile, inspectPricingMetadata, inspectVideoMetadata, rehashMatches } from './lib/files.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './lib/manifest.mjs';
@@ -193,7 +194,15 @@ function repeatedOpt(opts, key) {
   return Array.isArray(opts[key]) ? opts[key] : [opts[key]];
 }
 
-function assistantFiles(opts, model) {
+async function currentAssistantLimits() {
+  const response = await assistantPost({ action: 'capabilities' });
+  if (response.ok) return assistantLimits(response.raw.limits);
+  // Compatibilidad con el servidor anterior, que rechaza el campo action.
+  if (response.httpStatus === 400) return LEGACY_ASSISTANT_LIMITS;
+  fail(explain(response));
+}
+
+function assistantFiles(opts, model, limits) {
   const specs = [
     { option: 'image', kind: 'image', maxBytes: 10 * 1024 * 1024 },
     { option: 'audio', kind: 'audio', maxBytes: 20 * 1024 * 1024 },
@@ -208,11 +217,10 @@ function assistantFiles(opts, model) {
       if (value === true) fail('--' + spec.option + ' necesita una ruta.');
       const inspected = inspectFile(String(value), spec.kind);
       if (!inspected.ok) fail(inspected.error);
-      if (inspected.size > spec.maxBytes) fail('Cada archivo de ' + spec.kind + ' debe pesar como maximo ' + Math.round(spec.maxBytes / 1024 / 1024) + 'MB.');
       files.push({ path: inspected.path, sha256: inspected.sha256, mime: inspected.mime, size: inspected.size, kind: spec.kind });
     }
   }
-  if (files.length > 6) fail('El Asistente admite como maximo 6 archivos entre imagen, audio y video.');
+  validateAssistantBatch(files, limits);
   return files;
 }
 
@@ -225,7 +233,8 @@ async function cmdAssistantPrepare(name, opts) {
   singleOpt(opts, 'model');
   const modelHit = resolveAssistantModel(catalog, catalog.default_model);
   const message = readAssistantMessage(opts);
-  const files = assistantFiles(opts, modelHit.model);
+  const me = await requireSession();
+  const files = assistantFiles(opts, modelHit.model, await currentAssistantLimits());
 
   let session = null;
   const sessionOption = singleOpt(opts, 'session');
@@ -255,7 +264,6 @@ async function cmdAssistantPrepare(name, opts) {
     estimated_credits: hit.assistant.estimated_credits,
     max_credits_authorized: hit.assistant.max_authorized_credits,
   });
-  const me = await requireSession();
   out('── PLAN DE ASISTENTE (sin gasto todavia) ──');
   out('Asistente: ' + hit.assistant.label + ' (' + hit.id + ')');
   out('Modelo fijo: ' + modelHit.model.label + ' · ' + modelHit.model.vendor);
@@ -286,6 +294,7 @@ async function cmdAssistantSubmit(requestId, opts) {
   const currentHash = assistantContractHash(catalog, request.assistant_id, request.model_id);
   if (currentHash !== request.contract_hash) fail('El contrato o el precio del asistente cambio. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   await requireSession();
+  validateAssistantBatch(request.files || [], await currentAssistantLimits());
 
   let attachmentUrls = Array.isArray(request.attachment_urls) ? request.attachment_urls.slice() : [];
   if (Array.isArray(request.files) && request.files.length) {
@@ -320,7 +329,8 @@ async function cmdAssistantSubmit(requestId, opts) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     request = updateAssistantRequest(request, { send_attempts: Number(request.send_attempts || 0) + 1 });
     response = await assistantPost(payload);
-    const retrySame = !response.ok && response.raw && response.raw.retry_same_request === true;
+    const retrySame = !response.ok && response.raw && response.raw.retry_same_request === true
+      && response.raw.error_code !== 'retryable_invalid_response' && !response.raw.requires_review;
     if (!retrySame || attempt === 2) break;
     if (response.kind === 'rate_limited') {
       const seconds = Number.isFinite(response.retryAfterSeconds) ? Math.max(1, Math.ceil(response.retryAfterSeconds)) : 60;
@@ -332,15 +342,15 @@ async function cmdAssistantSubmit(requestId, opts) {
   }
   if (!response.ok) {
     const serverCode = response.raw && response.raw.error_code;
-    const serverNeedsReview = ['ambiguous_upstream', 'ambiguous_internal', 'ambiguous_previous'].includes(serverCode)
+    const serverNeedsReview = !!response.raw?.requires_review || ['ambiguous_upstream', 'ambiguous_internal', 'ambiguous_previous', 'upstream_timeout', 'retryable_invalid_response'].includes(serverCode)
       || response.kind === 'ambiguous_submit';
     if (serverNeedsReview) {
       updateAssistantRequest(request, { state: 'needs_review', last_error: explain(response) });
-      fail(explain(response) + ' No vuelvas a enviarla: revisa la operacion pendiente en la cuenta o con administracion.');
+      fail(explain(response) + ' Consulta: assistant-status ' + request.request_id + '. No prepares otra petición.');
     }
     if (response.kind === 'network' || response.kind === 'timeout') {
       updateAssistantRequest(request, { state: 'ambiguous', last_error: explain(response) });
-      fail(explain(response) + ' Ejecuta una sola vez el mismo assistant-submit para recuperar una respuesta ya guardada; no prepares otra peticion.');
+      fail(explain(response) + ' Consulta: assistant-status ' + request.request_id + '. No prepares otra petición.');
     }
     updateAssistantRequest(request, { state: 'failed', last_error: explain(response) });
     fail(explain(response));
@@ -355,7 +365,7 @@ async function cmdAssistantSubmit(requestId, opts) {
   if (request.session_id) {
     const session = loadSession(request.session_id);
     if (session) {
-      session.messages.push({ role: 'user', content: request.message });
+      session.messages.push({ role: 'user', content: request.message, ...(attachmentUrls.length ? { attachments: attachmentUrls } : {}) });
       session.messages.push({ role: 'assistant', content: answer });
       saveSession(session);
     }
@@ -363,6 +373,20 @@ async function cmdAssistantSubmit(requestId, opts) {
   out('── RESPUESTA DE ' + request.assistant_id.toUpperCase() + ' ──');
   out(answer);
   out('── Coste: ' + raw.charged_credits + ' cr · saldo: ' + raw.balance + ' cr' + (request.session_id ? ' · sesion ' + request.session_id : '') + ' ──');
+}
+
+async function cmdAssistantStatus(requestId) {
+  if (!/^[a-f0-9-]{36}$/i.test(String(requestId || ''))) fail('Indica el UUID del envío de asistente.');
+  await requireSession();
+  const response = await assistantPost({ action: 'status', client_request_id: requestId });
+  if (!response.ok) fail(explain(response));
+  const status = response.raw;
+  const local = loadAssistantRequest(requestId);
+  if (local) updateAssistantRequest(local, { state: status.requires_review ? 'needs_review' : (status.answer ? 'completed' : (status.state === 'failed' ? 'failed' : 'receipt_recovered')), receipt: status });
+  out(status.message);
+  if (status.answer) out(status.answer);
+  out('Referencia: ' + requestId + ' · Estado: ' + status.state);
+  if (typeof status.charged_credits === 'number') out('Consumo verificado: ' + status.charged_credits + ' cr.');
 }
 
 function cmdModels(cat) {
@@ -965,6 +989,7 @@ async function main() {
   if (cmd === 'assistants') return cmdAssistants();
   if (cmd === 'assistant-prepare') return cmdAssistantPrepare(pos[1], opts);
   if (cmd === 'assistant-submit') return cmdAssistantSubmit(pos[1], opts);
+  if (cmd === 'assistant-status') return cmdAssistantStatus(pos[1]);
   const cat = (cmd === 'submit' || cmd === 'doctor' || cmd === 'status')
     ? await refreshCatalog({ maxAgeMs: 10 * 60 * 1000, requireNetwork: true })
     : await refreshCatalog({ maxAgeMs: 60 * 60 * 1000, requireNetwork: false });

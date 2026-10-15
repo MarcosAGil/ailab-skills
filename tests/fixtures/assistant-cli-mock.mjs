@@ -45,14 +45,23 @@ const server = http.createServer((request, response) => {
       return;
     }
     if (request.url === '/api/v1/skill/assistant.php') {
-      assistantCalls += 1;
       const body = JSON.parse(raw || '{}');
+      if (body.action === 'capabilities') {
+        json(response, 200, {ok: true, limits: {max_attachments:50, max_by_kind:{image:50,audio:2,video:2},max_bytes:{image:10485760,audio:20971520,video:33554432},max_total_bytes:50331648,max_inline_bytes:37748736}}); return;
+      }
+      if (body.action === 'status') {
+        json(response, 200, {ok:true,request_id:body.client_request_id,state:'resolved',requires_review:false,charged_credits:9,message:'Recibo recuperado.',answer:'Texto recuperado sin otro envío.'}); return;
+      }
+      assistantCalls += 1;
       if (logFile) fs.appendFileSync(logFile, JSON.stringify({ call: assistantCalls, body }) + '\n');
+      if (body.message === 'AMBIGUOUS_RESPONSE') {
+        json(response, 502, {ok:false,error:'No se confirmó la respuesta.',error_code:'ambiguous_upstream',requires_review:true,retry_same_request:false}); return;
+      }
       if (assistantCalls === 1) {
-        json(response, 502, {
+        json(response, 400, {
           ok: false,
           error: 'Respuesta inválida simulada. No se han cobrado créditos.',
-          error_code: 'retryable_invalid_response',
+          error_code: 'retryable_provider_rejected',
           retry_same_request: true,
           credits_reserved: 0,
         });
