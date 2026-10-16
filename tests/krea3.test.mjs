@@ -5,11 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
+import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import {validateCatalogShape, validateParams, estimateCredits, requiresServerQuote} from '../skills/ailab/scripts/lib/catalog.mjs';
 import {buildPayload} from '../skills/ailab/scripts/adapters/labs-queue-v1.mjs';
 
-const root=path.resolve(import.meta.dirname,'..');
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const catalogPath=path.join(root,'skills/ailab/catalog/catalog.json');
 const model={id:'krea-3',...validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath))).models['krea-3']};
 const execute=promisify(execFile);
