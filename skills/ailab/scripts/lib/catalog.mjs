@@ -17,7 +17,6 @@ const ESTIMATE_KEYS = new Set(['rate_param', 'credits_per_1000_by_value', 'max_c
 const PROMO_KEYS = new Set(['credits_by_value', 'credits_per_1000_by_value', 'label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
 UNIT_RATE_KEYS.forEach(key => ESTIMATE_KEYS.add(key));
 const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars', 'duration_blocks', 'topaz_image', 'topaz_video', 'higgsfield_quote']);
-ESTIMATE_KINDS.add('fal_image_quote');
 const PARAM_TYPES = new Set(['string', 'string[]', 'enum', 'int', 'number', 'bool', 'file', 'file[]']);
 const OUTPUT_TYPES = new Set(['image', 'multi-image', 'video', 'audio', 'text']);
 
@@ -220,7 +219,8 @@ export function resolveModel(cat, nameOrAlias) {
 // Modelos cuyo coste no se puede calcular en local: el servidor cotiza.
 export function requiresServerQuote(model, params = {}) {
   return !!(model && ((model.id === 'eleven-tts' && params.version === 'v4')
-    || (model.estimate && ['higgsfield_quote','fal_image_quote'].includes(model.estimate.kind))));
+    || model.id === 'krea-3'
+    || (model.estimate && model.estimate.kind === 'higgsfield_quote')));
 }
 
 export function modelUsable(model) {
@@ -449,7 +449,7 @@ export function estimateCredits(model, params, now = Date.now()) {
   }
   // Higgsfield no tiene tarifa local: el servidor cotiza midiendo el video y
   // las referencias. Devolver un precio inventado aqui autorizaria de menos.
-  if (['higgsfield_quote','fal_image_quote'].includes(e.kind)) {
+  if (model.id === 'krea-3' || e.kind === 'higgsfield_quote') {
     return {
       credits: null,
       approximate: true,

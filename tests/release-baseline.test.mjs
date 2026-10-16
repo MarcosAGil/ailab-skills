@@ -29,7 +29,7 @@ test('la release conserva los contratos anteriores excepto la ampliación Eleven
   }
   assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'ideogram-v45', 'krea-3', 'nano-banana-2-1']);
   assert.equal(catalog.catalog_version, '1.23.0');
-  assert.equal(catalog.min_cli_version, '2.3.11');
+  assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
 test('Eleven mantiene su promoción publicada y Nano su contrato vigente', () => {
