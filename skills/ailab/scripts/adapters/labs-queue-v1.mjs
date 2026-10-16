@@ -10,6 +10,12 @@ function withUploads(model, params, uploadedByParam) {
 }
 
 export function buildPayload(model, params, uploadedByParam) {
+  if(model.id==='krea-3') {
+    const keys=['mode','prompt','variant','reasoning_level','negative_prompt','resolution','aspect_ratio','width','height','output_format'];
+    const input=Object.fromEntries(keys.filter(key=>params[key]!==undefined).map(key=>[key,params[key]]));
+    if(params.mode==='edit')input.image_urls=(uploadedByParam.image_urls||[]).slice();
+    return {model:model.id,input};
+  }
   if (['flux-3', 'ideogram-v45'].includes(model.id)) {
     // AILAB enruta por mode; solo se admiten campos públicos del contrato.
     // Nunca reenviar metadatos locales, tarifas ni opciones privadas de fal.
@@ -28,6 +34,12 @@ export function buildPayload(model, params, uploadedByParam) {
     return { model: model.id, input };
   }
   return { model: model.id, input: withUploads(model, params, uploadedByParam) };
+}
+
+export async function quote(model,payload) {
+  const n=await servicePost('api/wallet/fal-gateway.php?action=quote',payload);
+  if(!n.ok)return {ok:false,normalized:n};
+  return {ok:true,quote:n.data};
 }
 
 export async function submit(model, payload, intent = {}) {

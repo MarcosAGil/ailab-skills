@@ -1,7 +1,135 @@
 {
-  "catalog_version": "1.22.0",
-  "min_cli_version": "2.3.7",
+  "catalog_version": "1.23.0",
+  "min_cli_version": "2.3.11",
   "models": {
+    "krea-3": {
+      "id": "krea-3",
+      "label": "Krea 3",
+      "description": "Genera y edita imágenes con Berry (calidad) o Jam (velocidad), referencias ordenadas y razonamiento configurable.",
+      "section": "image",
+      "vendor": "Krea · fal",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "driver": "labs-queue-v1",
+      "min_cli_version": "2.3.11",
+      "expensive": false,
+      "aliases": [
+        "krea 3",
+        "krea v3",
+        "berry",
+        "jam"
+      ],
+      "modes": [
+        "t2i",
+        "edit"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "edit"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 5000,
+          "help": "Describe la imagen o el cambio. Puedes nombrar <image-1>, <image-2> y las referencias siguientes."
+        },
+        "variant": {
+          "type": "enum",
+          "values": [
+            "berry",
+            "jam"
+          ],
+          "default": "berry",
+          "help": "Berry prioriza calidad y admite prompt negativo. Jam prioriza rapidez."
+        },
+        "reasoning_level": {
+          "type": "enum",
+          "values": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "low",
+          "help": "Bajo y Medio en texto; Alto solo en edición, con coste adicional y tamaño explícito."
+        },
+        "negative_prompt": {
+          "type": "string",
+          "max_len": 1024,
+          "help": "Elementos que quieres evitar. Solo funciona con Berry."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1k",
+            "2k",
+            "custom",
+            "auto"
+          ],
+          "default": "1k",
+          "help": "1K ≈ 1 MP; 2K ≈ 4 MP. El tamaño final depende de la proporción. Automático autoriza un presupuesto máximo."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "3:2",
+            "2:3",
+            "21:9"
+          ],
+          "default": "1:1"
+        },
+        "width": {
+          "type": "int",
+          "min": 256,
+          "max": 3200,
+          "default": 1024,
+          "help": "Solo en Personalizado. Se ajusta al múltiplo superior de 16."
+        },
+        "height": {
+          "type": "int",
+          "min": 256,
+          "max": 3200,
+          "default": 1024,
+          "help": "Solo en Personalizado. Máximo conjunto: 4.220.160 píxeles."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 1,
+          "max": 8,
+          "required_when": {
+            "mode": "edit"
+          },
+          "help": "Solo edición, de 1 a 8 imágenes ordenadas. Límite de AILAB: 30 MiB por archivo."
+        },
+        "output_format": {
+          "type": "enum",
+          "values": [
+            "png",
+            "jpeg"
+          ],
+          "default": "png"
+        }
+      },
+      "estimate": {
+        "kind": "fal_image_quote",
+        "credits_per_unit": 5.1,
+        "max_credits": 211,
+        "approximate": true,
+        "note": "Por megapíxeles de salida y referencias procesadas. Alto añade el equivalente a 5 MP. Cotización del servidor antes de enviar; máximo visible y liquidación única."
+      }
+    },
     "nano-banana-2-1": {
       "id": "nano-banana-2-1",
       "label": "Nano Banana 2.1",

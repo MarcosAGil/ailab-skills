@@ -17,6 +17,7 @@ const ESTIMATE_KEYS = new Set(['rate_param', 'credits_per_1000_by_value', 'max_c
 const PROMO_KEYS = new Set(['credits_by_value', 'credits_per_1000_by_value', 'label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
 UNIT_RATE_KEYS.forEach(key => ESTIMATE_KEYS.add(key));
 const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars', 'duration_blocks', 'topaz_image', 'topaz_video', 'higgsfield_quote']);
+ESTIMATE_KINDS.add('fal_image_quote');
 const PARAM_TYPES = new Set(['string', 'string[]', 'enum', 'int', 'number', 'bool', 'file', 'file[]']);
 const OUTPUT_TYPES = new Set(['image', 'multi-image', 'video', 'audio', 'text']);
 
@@ -219,7 +220,7 @@ export function resolveModel(cat, nameOrAlias) {
 // Modelos cuyo coste no se puede calcular en local: el servidor cotiza.
 export function requiresServerQuote(model, params = {}) {
   return !!(model && ((model.id === 'eleven-tts' && params.version === 'v4')
-    || (model.estimate && model.estimate.kind === 'higgsfield_quote')));
+    || (model.estimate && ['higgsfield_quote','fal_image_quote'].includes(model.estimate.kind))));
 }
 
 export function modelUsable(model) {
@@ -340,6 +341,16 @@ export function validateParams(model, given) {
     if (params.voice_id && !/^[A-Za-z0-9]{12,40}$/.test(params.voice_id)) errors.push('Identificador de voz no válido. Consulta voices.');
     if (params.private_voice_id && !/^[0-9a-f]{32}$/.test(params.private_voice_id)) errors.push('Referencia privada AILAB no válida. Consulta voice-list.');
   }
+  if(model.id==='krea-3') {
+    if(!String(params.prompt||'').trim())errors.push('El prompt no puede estar vacío.');
+    const images=fileParams.image_urls||[];
+    if(params.mode==='edit'&&(images.length<1||images.length>8))errors.push('La edición necesita de 1 a 8 imágenes ordenadas.');
+    if(params.mode==='t2i'&&images.length)errors.push('Texto a imagen no admite referencias.');
+    if(params.mode==='t2i'&&params.reasoning_level==='high')errors.push('Alto solo está disponible en edición.');
+    if(params.variant==='jam'&&params.negative_prompt)errors.push('El prompt negativo solo funciona con Berry.');
+    if(params.resolution==='auto'&&params.reasoning_level==='high')errors.push('Alto necesita un tamaño explícito.');
+    if(params.resolution==='custom'&&Math.ceil(Number(params.width)/16)*16*Math.ceil(Number(params.height)/16)*16>4220160)errors.push('Las dimensiones superan 4.220.160 píxeles después del redondeo.');
+  }
   if (['flux-3', 'ideogram-v45', 'nano-banana-2-1'].includes(model.id)) {
     const images = fileParams.image_urls || [];
     if (!String(params.prompt || '').trim()) errors.push('El prompt no puede estar vacío.');
@@ -438,7 +449,7 @@ export function estimateCredits(model, params, now = Date.now()) {
   }
   // Higgsfield no tiene tarifa local: el servidor cotiza midiendo el video y
   // las referencias. Devolver un precio inventado aqui autorizaria de menos.
-  if (e.kind === 'higgsfield_quote') {
+  if (['higgsfield_quote','fal_image_quote'].includes(e.kind)) {
     return {
       credits: null,
       approximate: true,
