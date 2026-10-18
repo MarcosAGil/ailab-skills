@@ -12,7 +12,7 @@ import test from 'node:test';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const execute = promisify(execFile);
 const cli = process.env.AILAB_TEST_RUNTIME || path.join(root, 'skills/ailab/scripts/ailab.mjs');
-const helper = path.join(root, 'skills/ugc-ailab/scripts/extract-audio.mjs');
+const helper = path.join(root, 'skills/ugc-bajo-coste-ailab/scripts/extract-audio.mjs');
 const available = ['ffmpeg', 'ffprobe'].every(command => spawnSync(command, ['-version']).status === 0);
 const sha = buffer => crypto.createHash('sha256').update(buffer).digest('hex');
 

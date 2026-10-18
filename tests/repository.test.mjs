@@ -13,7 +13,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 test('el registro público y todas las skills son válidos', () => {
   const result = validateRepository();
   assert.equal(result.registry.schema_version, 1);
-  assert.deepEqual(result.registry.skills.map((skill) => skill.id), ['ailab', 'vervideo', 'refinar-prompt', 'ugc-ailab', 'refinar-actuacion-camara', 'refinar-prompt-ugc', 'ugcia-ultrarrealista-aill']);
+  assert.deepEqual(result.registry.skills.map((skill) => skill.id), ['ailab', 'vervideo', 'refinar-prompt', 'ugc-bajo-coste-ailab', 'refinar-actuacion-camara', 'refinar-prompt-ugc', 'ugcia-ultrarrealista-aill']);
   assert.ok(result.results[0].files > 10);
   assert.equal(result.results.find((skill) => skill.id === 'vervideo').files, 8);
 });
