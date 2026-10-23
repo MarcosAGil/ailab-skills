@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.23.0",
+  "catalog_version": "1.24.0",
   "min_cli_version": "2.3.7",
   "models": {
     "krea-3": {
@@ -4945,11 +4945,11 @@
         "wan 3.0",
         "wan 3 video"
       ],
-      "description": "Generación multimodal de hasta 30 segundos con versiones Normal y Prime, audio nativo y referencias de imagen, vídeo, audio, enlaces y documentos.",
+      "description": "Vídeo de hasta 30 segundos con audio nativo y referencias de imagen, vídeo, audio, enlaces y documentos. Normal ofrece la calidad de referencia y Prime genera más rápido. Los vídeos de referencia suman su duración al precio.",
       "driver": "jobs-v1",
       "enabled": true,
       "estimate": {
-        "approximate": false,
+        "approximate": true,
         "column_param": "resolution",
         "credits_matrix": {
           "normal": {
@@ -4964,14 +4964,14 @@
           }
         },
         "kind": "per_second_matrix",
-        "note": "Precio final AILAB por segundo de vídeo entregado, incluido el 2% de servicio.",
+        "note": "Tarifa AILAB por segundo sobre los segundos de salida más los de los vídeos de referencia (cada vídeo al segundo superior, medido por el servidor), incluido el 2% de servicio. Sin vídeos de entrada es exacto; con ellos es el máximo reservado y el cargo final es el consumo confirmado.",
         "row_param": "version",
         "seconds_param": "duration"
       },
       "expensive": true,
       "id": "wan-3-video",
       "label": "Wan 3.0 Video",
-      "min_cli_version": "2.1.0",
+      "min_cli_version": "2.3.12",
       "modes": [
         "t2v",
         "i2v",
@@ -4998,14 +4998,14 @@
         },
         "duration": {
           "default": 5,
-          "help": "Duración de salida entre 2 y 30 segundos. Con vídeo de referencia, entrada y salida no pueden superar 30 segundos.",
+          "help": "Duración de salida entre 2 y 30 segundos. Si adjuntas vídeo, entrada y salida no pueden superar 30 s en total. La duración inteligente no está disponible.",
           "max": 30,
           "min": 2,
           "type": "int"
         },
         "first_frame_url": {
           "accept": "image",
-          "help": "Primer fotograma. JPG, PNG o WebP de hasta 20 MB.",
+          "help": "Primer fotograma. JPG, PNG (sin transparencia) o WebP de hasta 20 MB; cada lado de 240 a 8.000 px.",
           "required_when": {
             "mode": "i2v"
           },
@@ -5033,19 +5033,19 @@
         },
         "reference_audio_urls": {
           "accept": "audio",
-          "help": "Hasta 5 audios; cada uno entre 1 y 15 segundos y 15 segundos combinados como máximo.",
+          "help": "Hasta 5 audios MP3 o WAV de hasta 15 MB; cada uno entre 1 y 15 s y 15 s combinados como máximo. No se cobran.",
           "max": 5,
           "type": "file[]"
         },
         "reference_file_urls": {
-          "help": "Una URL pública directa a un documento. No se combina con enlaces ni fotogramas.",
+          "help": "Una URL pública directa a un documento (PDF, Word, Excel, PowerPoint, Keynote, Pages, Numbers, TXT o MD, hasta 50 páginas). No se combina con enlaces ni fotogramas.",
           "max": 1,
           "max_len": 2048,
           "type": "string[]"
         },
         "reference_image_urls": {
           "accept": "image",
-          "help": "Hasta 10 imágenes de referencia. No se combinan con los fotogramas.",
+          "help": "Hasta 10 imágenes de referencia. JPG, PNG (sin transparencia) o WebP de hasta 20 MB. No se combinan con los fotogramas.",
           "max": 10,
           "type": "file[]"
         },
@@ -5057,7 +5057,7 @@
         },
         "reference_video_urls": {
           "accept": "video",
-          "help": "Hasta 5 vídeos; cada uno entre 1 y 15 segundos y 15 segundos combinados como máximo.",
+          "help": "Hasta 5 vídeos MP4 o MOV de hasta 100 MB; cada uno entre 1 y 15 s y 15 s combinados como máximo. Su duración se suma a la de salida en el precio.",
           "max": 5,
           "type": "file[]"
         },
@@ -5071,10 +5071,10 @@
           ]
         },
         "seed": {
-          "default": 0,
-          "max": 2147483647,
+          "type": "int",
           "min": 0,
-          "type": "int"
+          "max": 2147483647,
+          "help": "Opcional. Sin semilla, Kie elige una aleatoria."
         },
         "version": {
           "default": "normal",
@@ -5082,7 +5082,8 @@
           "values": [
             "normal",
             "prime"
-          ]
+          ],
+          "help": "Normal: calidad de referencia. Prime: mismas capacidades con generación más rápida y tarifa por segundo mayor."
         }
       },
       "section": "video",
