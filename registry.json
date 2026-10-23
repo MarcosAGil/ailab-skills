@@ -10,6 +10,15 @@
       "path": "skills/ailab",
       "description": "Playground y asistentes de AILAB desde agentes de código.",
       "minimum_node": "18.17.0",
+      "guide_references": [
+        "references/approval-flows.md",
+        "references/eleven-v4.md",
+        "references/eleven-voices.md",
+        "references/flux-3.md",
+        "references/ideogram-v45.md",
+        "references/krea-3.md",
+        "references/nano-banana-21.md"
+      ],
       "clients": [
         "claude-code",
         "codex"
