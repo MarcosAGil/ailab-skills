@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const script = path.join(root, 'skills/ugc-ailab/scripts/extract-audio.mjs');
+const script = path.join(root, 'skills/ugc-bajo-coste-ailab/scripts/extract-audio.mjs');
 const available = ['ffmpeg', 'ffprobe'].every(command => spawnSync(command, ['-version']).status === 0);
 
 function exec(command, args) {
@@ -17,18 +17,18 @@ function exec(command, args) {
 test('UGC se instala y empaqueta con sus recursos sin acceso a cuenta', t => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ugc-install-'));
   t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
-  const install = exec(process.execPath, [path.join(root, 'tools/install.mjs'), 'ugc-ailab', '--dir', temp]);
+  const install = exec(process.execPath, [path.join(root, 'tools/install.mjs'), 'ugc-bajo-coste-ailab', '--dir', temp]);
   assert.equal(install.status, 0, install.stderr);
-  const help = exec(process.execPath, [path.join(temp, 'ugc-ailab/scripts/extract-audio.mjs'), '--help']);
+  const help = exec(process.execPath, [path.join(temp, 'ugc-bajo-coste-ailab/scripts/extract-audio.mjs'), '--help']);
   assert.equal(help.status, 0, help.stderr);
-  assert.ok(fs.existsSync(path.join(temp, 'ugc-ailab/references/cli-flow.md')));
-  const pack = spawnSync(process.execPath, [path.join(root, 'tools/package.mjs'), 'ugc-ailab'], {
+  assert.ok(fs.existsSync(path.join(temp, 'ugc-bajo-coste-ailab/references/cli-flow.md')));
+  const pack = spawnSync(process.execPath, [path.join(root, 'tools/package.mjs'), 'ugc-bajo-coste-ailab'], {
     encoding: 'utf8', env: { ...process.env, AILAB_DIST_DIR: temp }, timeout: 30000,
   });
   assert.equal(pack.status, 0, pack.stderr);
-  const listing = exec('unzip', ['-Z1', path.join(temp, 'ugc-ailab-skill-v1.0.1-beta.zip')]);
+  const listing = exec('unzip', ['-Z1', path.join(temp, 'ugc-bajo-coste-ailab-skill-v1.1.0-beta.zip')]);
   assert.equal(listing.status, 0, listing.stderr);
-  assert.ok(listing.stdout.trim().split('\n').every(name => name.startsWith('ugc-ailab/')));
+  assert.ok(listing.stdout.trim().split('\n').every(name => name.startsWith('ugc-bajo-coste-ailab/')));
 });
 
 test('extracción preserva canales, duración y desfase; no sobrescribe ni acepta vídeo mudo', { skip: !available }, t => {

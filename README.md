@@ -25,7 +25,7 @@ la modalidad, el tamaño conjunto y el servidor; no todas las combinaciones de
 | `refinar-prompt` | Beta | Auditoría y refinado de prompts de vídeo. Solo instrucciones, sin generaciones ni claves. |
 | `refinar-actuacion-camara` | Beta | Método personal portable de Marcos, sin imponer estética. |
 | `refinar-prompt-ugc` | Beta | Realismo UGC, once formatos, medición de audio y lint local. |
-| `ugc-ailab` | Beta | Guion y referencias → Gemini Omni → ambiente SAM y voz ElevenLabs, con pistas separadas. Requiere `ailab`. |
+| `ugc-bajo-coste-ailab` | Beta | Guion y referencias → Gemini Omni → ambiente SAM y voz ElevenLabs, con pistas separadas. Requiere `ailab`. |
 | `ugcia-ultrarrealista-aill` | Beta | Workflow por fases con imágenes, Seed Audio y Seedance 2.5. Requiere `refinar-prompt-ugc`; `ailab` para automatizar. |
 
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
@@ -88,7 +88,7 @@ descubren el modelo al refrescar el catálogo remoto.
 - Para `ailab`: una cuenta de AILAB habilitada y créditos para las operaciones de pago.
 - Para `vervideo`: Python 3.9 o posterior, una API key propia de OpenRouter y
   `ffmpeg`, `ffprobe` y `yt-dlp` para procesar vídeo, audio y URLs públicas.
-- Para `ugc-ailab`: la skill `ailab` instalada y configurada (runtime 2.2.4 o posterior), además de `ffmpeg`
+- Para `ugc-bajo-coste-ailab`: la skill `ailab` instalada y configurada (runtime 2.2.4 o posterior), además de `ffmpeg`
   y `ffprobe`. Utiliza la cuenta y créditos de AILAB, sin claves adicionales.
 
 ## Instalación
@@ -140,10 +140,10 @@ AILAB ni consume sus créditos; el agente sigue utilizando tu propio plan.
 Para instalar el workflow UGC junto a su dependencia en Codex:
 
 ```bash
-node tools/install.mjs ailab ugc-ailab --target codex
+node tools/install.mjs ailab ugc-bajo-coste-ailab --target codex
 ```
 
-Invoca `$ugc-ailab` y aporta guion, formato, referencias visuales y dirección del
+Invoca `$ugc-bajo-coste-ailab` y aporta guion, formato, referencias visuales y dirección del
 vídeo. Prepara un plan único para Video Prompter, Gemini Omni Flash 1.1, SAM Audio,
 Voice Isolator y Voice Changer. Entrega el vídeo original, ambiente y voz separados;
 no incluye montaje ni upscale. Cristina es la voz predeterminada, resuelta desde

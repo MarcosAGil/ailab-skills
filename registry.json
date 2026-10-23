@@ -62,11 +62,11 @@
       ]
     },
     {
-      "id": "ugc-ailab",
-      "name": "UGC AILAB",
-      "version": "1.0.1",
+      "id": "ugc-bajo-coste-ailab",
+      "name": "UGC Bajo Coste AILAB",
+      "version": "1.1.0",
       "channel": "beta",
-      "path": "skills/ugc-ailab",
+      "path": "skills/ugc-bajo-coste-ailab",
       "description": "Vídeo UGC con Gemini Omni y pistas separadas de ambiente y voz mediante AILAB.",
       "minimum_node": "18.17.0",
       "clients": [
