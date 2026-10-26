@@ -78,8 +78,9 @@ release publicada ni el `catalog.json` legacy de AILAB; `stable.json` conserva e
 ## Logo y aspecto del plugin
 
 - Recursos de marca en `plugins/ailab/assets/`: `ailab-logo.png` (512x512) y `ailab-composer-icon.png` (256x256),
-  generados desde `app/assets/ailab-logo-bicolor.svg` del repositorio AILAB con
-  `node tools/build-plugin-assets.mjs <ruta/a/ailab-logo-bicolor.svg>` (necesita `rsvg-convert`). No los edites a mano.
+  generados desde el logo cuadrado de Ailendra Labs `branding/aill-logo.png` (1000x1000, fuera del plugin) con
+  `node tools/build-plugin-assets.mjs` (usa `sips` en macOS o `ffmpeg`). Para cambiar el logo, sustituye
+  `branding/aill-logo.png` por otro PNG cuadrado y vuelve a ejecutarlo. No edites los PNG del plugin a mano.
 - Codex los muestra: `tools/build-plugin.mjs` escribe en `plugins/ailab/plugin.json` la ruta
   `extensions` → `com.openai` → `interface` con `displayName`, `logo`, `composerIcon`, `brandColor` (`#16B2FF`),
   `defaultPrompt` y URLs. Esa anidación es obligatoria: con una clave plana `com.openai.interface` Codex lo ignora
