@@ -28,6 +28,8 @@ import * as resembleV1 from './adapters/resemble-v1.mjs';
 import * as topazV1 from './adapters/topaz-v1.mjs';
 import * as higgsfieldV1 from './adapters/higgsfield-v1.mjs';
 import { saveTaskReceipt, loadTaskReceipt, completeTaskReceipt } from './lib/tasks.mjs';
+import { guideText } from './lib/guide.mjs';
+import { bootstrapInfo, cliCommand, describeEnvironmentError, environmentNotices, pickDueNotices } from './lib/environment.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 
@@ -94,7 +96,7 @@ function parseArgs(argv) {
 }
 
 async function requireSession() {
-  if (!readToken() && !readCookie()) fail('No hay sesion. Ejecuta: node scripts/ailab.mjs login');
+  if (!readToken() && !readCookie()) fail('No hay sesion. Pide al usuario que ejecute en su terminal: ' + cliCommand('login'));
   const me = await apiPost({ action: 'me' });
   if (!me.ok) fail(explain(me));
   return me.raw;
@@ -114,7 +116,7 @@ async function cmdLogin() {
 }
 
 async function cmdLoginCookie() {
-  if (!cookieAuthEnabled()) fail('El login por contraseña está desactivado. Usa: node scripts/ailab.mjs login');
+  if (!cookieAuthEnabled()) fail('El login por contraseña está desactivado. Usa: ' + cliCommand('login'));
   out('Login privado por cookie (compatibilidad temporal de desarrollo).');
   const email = await promptVisible('Email: ');
   const password = await promptHidden('Contrasena (oculta): ');
@@ -276,7 +278,7 @@ async function cmdAssistantPrepare(name, opts) {
   out('Maximo autorizado temporalmente: ' + hit.assistant.max_authorized_credits + ' cr · saldo actual: ' + me.balance + ' cr.');
   if (session) out('Sesion: ' + session.session_id);
   out('Peticion: ' + request.request_id + ' (caduca en 15 min)');
-  out('Para enviar dentro de la autorizacion del encargo: node scripts/ailab.mjs assistant-submit ' + request.request_id + ' --confirmed');
+  out('Para enviar dentro de la autorizacion del encargo: ' + cliCommand('assistant-submit ' + request.request_id + ' --confirmed'));
   out('Si el usuario ya autorizo el flujo completo, ejecutalo ahora sin volver a preguntar.');
 }
 
@@ -503,8 +505,11 @@ async function cmdDoctor(cat) {
   const add = (ok, name, detail) => { checks.push(ok); out((ok ? 'OK' : 'FALLO') + ' · ' + name + (detail ? ': ' + detail : '')); };
   add(Number(process.versions.node.split('.')[0]) >= 18, 'Node', process.version);
   const compat = catalogCompatible(cat); add(compat.ok, 'Contrato', compat.ok ? 'v' + cat.server_contract_version + ' · catalogo ' + cat.catalog_version : compat.reason);
-  const me = await apiPost({ action: 'me' }); add(me.ok, 'Autenticacion', me.ok ? (me.raw.user.email + ' · saldo ' + me.raw.balance + ' cr') : explain(me));
-  try { const dir = resolveOutputDir(); add(true, 'Salida', dir); } catch (e) { add(false, 'Salida', e.message); }
+  const hasSession = Boolean(readToken() || readCookie());
+  const me = hasSession ? await apiPost({ action: 'me' }) : { ok: false };
+  add(me.ok, 'Autenticacion', me.ok ? (me.raw.user.email + ' · saldo ' + me.raw.balance + ' cr')
+    : hasSession ? explain(me) : 'no hay sesión. Pide al usuario que ejecute en su terminal: ' + cliCommand('login') + ' (no se ha gastado nada)');
+  try { const dir = resolveOutputDir(); add(true, 'Salida', dir); } catch (e) { add(false, 'Salida', describeEnvironmentError(e) || e.message); }
   if (me.ok) {
     const intents = await apiPost({ action: 'submission_intents' });
     if (intents.ok) {
@@ -519,6 +524,9 @@ async function cmdDoctor(cat) {
     const ff = spawnSync('ffprobe', ['-version'], { stdio: 'ignore' });
     if (ff.status === 0) add(true, 'ffprobe', 'disponible'); else out('AVISO · ffprobe: opcional, no encontrado');
   } catch { out('AVISO · ffprobe: opcional, no encontrado'); }
+  const info = bootstrapInfo();
+  out('INFO · Arranque: ' + (info.version || 'desconocido') + ' · ' + ({ plugin: 'plugin', 'manual-claude': 'skill manual de Claude Code', 'manual-codex': 'skill manual de Codex' }[info.kind] || 'otra ubicación') + (info.dir ? ' · ' + info.dir : ''));
+  for (const notice of environmentNotices({ info })) out('AVISO · ' + notice.text);
   if (checks.some((ok) => !ok)) process.exitCode = 1;
 }
 
@@ -695,14 +703,14 @@ async function cmdPrepare(cat, name, opts) {
     out('AVISO: el saldo no cubre la operacion (~' + requiredBalance + ' cr). Recarga en: ' + CUENTA_URL);
   }
   out('Manifiesto: ' + manifest.manifest_id + ' (caduca en 15 min)');
-  out('Para ejecutar dentro de la autorizacion del encargo: node scripts/ailab.mjs submit ' + manifest.manifest_id + ' --confirmed');
+  out('Para ejecutar dentro de la autorizacion del encargo: ' + cliCommand('submit ' + manifest.manifest_id + ' --confirmed'));
   out('Si el usuario ya autorizo el flujo completo, ejecutalo ahora sin volver a preguntar.');
 }
 
 async function cmdSubmit(cat, manifestId, opts) {
     const m0 = loadManifest(manifestId);
   if (!m0) fail('Manifiesto no encontrado: ' + manifestId);
-  if (m0.submitted_task) fail('Ese manifiesto ya se ejecutó. Consulta: node scripts/ailab.mjs status ' + m0.submitted_task + '. No vuelvas a generar para recuperarlo.');
+  if (m0.submitted_task) fail('Ese manifiesto ya se ejecutó. Consulta: ' + cliCommand('status ' + m0.submitted_task) + '. No vuelvas a generar para recuperarlo.');
   // Consulta antes de comprobar caducidad o precio: una petición enviada no
   // se convierte en otra generación al expirar el manifiesto o la promoción.
   if (m0.model === 'eleven-tts' && m0.params?.version === 'v4' && m0.confirmed_at && m0.client_request_id) {
@@ -830,7 +838,7 @@ async function cmdSubmit(cat, manifestId, opts) {
 }
 
 function recoverHint(taskId) {
-  out('Conserva esta tarea; no vuelvas a generar. Recupera con: node scripts/ailab.mjs status ' + taskId);
+  out('Conserva esta tarea; no vuelvas a generar. Recupera con: ' + cliCommand('status ' + taskId));
 }
 
 function storedResult(remote) {
@@ -849,7 +857,7 @@ async function pollAndDownload(model, taskRef, outputOverride, initialResult = n
   const adapter = ADAPTERS[model.driver];
   for (;;) {
     if (Date.now() - t0 > limit) {
-      out('Sigue en curso tras el tiempo maximo de espera. Reanuda con: node scripts/ailab.mjs status ' + taskRef.serverTaskId + ' · o mira el Historial de la web.');
+      out('Sigue en curso tras el tiempo maximo de espera. Reanuda con: ' + cliCommand('status ' + taskRef.serverTaskId) + ' · o mira el Historial de la web.');
       return false;
     }
     let st = initialResult || await adapter.check(model, taskRef);
@@ -958,17 +966,36 @@ async function cmdStatus(cat, taskId, opts) {
   process.exit(ok ? 0 : 1);
 }
 
+// Guia de uso vigente. No necesita sesion ni red: el texto viaja con el runtime firmado.
+function cmdGuide() {
+  let catalog = null;
+  try {
+    const local = loadCatalog();
+    catalog = { catalog_version: local.catalog_version, models: Object.keys(local.models).length };
+  } catch { /* la guia no depende del catalogo */ }
+  out(guideText({ version: CLI_VERSION, run: (sub) => cliCommand(sub), catalog }));
+}
+
 async function main() {
   const { pos, opts } = parseArgs(process.argv.slice(2));
   const cmd = pos[0];
+  // Avisos de entorno (plugin antiguo, doble instalacion): una vez al dia por aviso,
+  // siempre en help y guide, y dentro de doctor. Nunca en self-test (lo parsea el updater).
+  const noisy = !process.env.AILAB_SKIP_NOTICES && !['self-test', 'doctor', 'login', 'login-cookie'].includes(cmd);
+  if (noisy) {
+    const always = !cmd || cmd === 'help' || cmd === 'guide';
+    for (const notice of pickDueNotices(environmentNotices(), { force: always })) process.stderr.write(terminalSafe('Aviso: ' + notice.text) + '\n');
+  }
   if (!cmd || cmd === 'help') {
     out('AILAB CLI v' + CLI_VERSION + ' · Playground y asistentes desde Claude Code');
     out('Base: ' + BASE_URL);
     out('ElevenLabs: voices eleven [--language es --search texto --page 0] · voice-list · voice-options · voice-select <id> --owner <owner> --confirmed · voice-prepare <design|clone|create|renew|delete|resume> [opciones] · voice-submit <id> --confirmed · voice-status <id> · voice-samples <id> [--output dir]');
+    out('Guia actualizada de uso y reglas criticas: guide');
     out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
   if (cmd === 'login') return cmdLogin();
+  if (cmd === 'guide') return cmdGuide();
   if (cmd === 'self-test') {
     const local = loadCatalog();
     const compatibility = catalogCompatible(local);
@@ -1005,4 +1032,7 @@ async function main() {
   fail('Comando desconocido: ' + cmd);
 }
 
-main().catch((e) => fail('Error: ' + (e && e.stack ? e.stack : e)));
+main().catch((e) => {
+  const friendly = describeEnvironmentError(e);
+  fail(friendly || 'Error: ' + (e && e.stack ? e.stack : e));
+});

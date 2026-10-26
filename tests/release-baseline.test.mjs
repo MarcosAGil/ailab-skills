@@ -15,7 +15,7 @@ const { BUNDLED_RUNTIME_VERSION, checkAndMaybeUpdate } = await import('../skills
 const catalog = JSON.parse(fs.readFileSync(new URL('../skills/ailab/catalog/catalog.json', import.meta.url), 'utf8'));
 const baseline = JSON.parse(fs.readFileSync(new URL('./fixtures/catalog-1.18.0-2.3.5.model-hashes.json', import.meta.url), 'utf8'));
 
-test('la release conserva los contratos anteriores excepto las ampliaciones versionadas de Eleven y Wan 3.0', () => {
+test('la release conserva los contratos anteriores excepto las ampliaciones versionadas de Eleven, Wan 3.0 y Seed Audio', () => {
   assert.equal(Object.keys(baseline.model_sha256).length, 61);
   for (const [id, expected] of Object.entries(baseline.model_sha256)) {
     assert.ok(catalog.models[id], 'No puede desaparecer ' + id);
@@ -32,11 +32,23 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
       assert.equal(catalog.models[id].estimate.kind, 'per_second_matrix');
       continue;
     }
+    if (id === 'seed-audio') {
+      // Cambio versionado en 2.3.13: el servidor reserva siempre el tope de 100 cr y cobra la duración real.
+      // Solo cambia `estimate`; con el estimate original el contrato es idéntico al de la línea base.
+      assert.deepEqual(catalog.models[id].estimate, { kind: 'flat_credits', credits: 100, approximate: true, note: catalog.models[id].estimate.note });
+      assert.match(catalog.models[id].estimate.note, /^reserva maxima: la duracion la decide el modelo y no se puede fijar\. Se cobra la duracion real a 0,625 cr\/s \(10 s = 7 cr, 1 min = 38 cr\) y nunca mas de 100 cr\./);
+      assert.ok(catalog.models[id].params.estimated_duration_seconds, 'el parámetro orientativo se conserva');
+      assert.equal(catalog.models[id].min_cli_version, '1.0.0', 'las CLI anteriores siguen pudiendo usar el modelo con el catálogo nuevo');
+      const original = { approximate: true, credits_per_unit: 0.625, kind: 'unit_credits', minimum_credits: 1, note: 'la duracion real la decide el modelo', units_param: 'estimated_duration_seconds' };
+      const restored = crypto.createHash('sha256').update(stableStringify({ ...catalog.models[id], estimate: original })).digest('hex');
+      assert.equal(restored, expected, 'Seed Audio solo puede cambiar su estimate');
+      continue;
+    }
     const actual = crypto.createHash('sha256').update(stableStringify(catalog.models[id])).digest('hex');
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
   assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'ideogram-v45', 'krea-3', 'nano-banana-2-1']);
-  assert.equal(catalog.catalog_version, '1.24.0');
+  assert.equal(catalog.catalog_version, '1.25.0');
   assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
@@ -71,8 +83,8 @@ test('los nuevos contratos públicos no contienen costes o endpoints privados', 
   }
 });
 
-test('una instalación 2.3.12 no retrocede al runtime estable anterior', async () => {
-  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.12');
+test('una instalación 2.3.13 no retrocede al runtime estable anterior', async () => {
+  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.13');
   let installations = 0;
   const checked = await checkAndMaybeUpdate({
     force: true,
@@ -80,7 +92,7 @@ test('una instalación 2.3.12 no retrocede al runtime estable anterior', async (
     releaseInstaller: async () => { installations++; throw new Error('No debe instalar una versión anterior'); },
   });
   assert.equal(checked.ok, true);
-  assert.equal(checked.current, '2.3.12');
+  assert.equal(checked.current, '2.3.13');
   assert.equal(checked.update, null);
   assert.equal(installations, 0);
 });

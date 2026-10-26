@@ -58,7 +58,7 @@ const run = (given) => { const v = validateParams(model, given); return {...v, e
 test('el contrato publicado exige la skill 2.3.12, no añade campos privados y arranca sin semilla', () => {
   assert.equal(model.min_cli_version, '2.3.12');
   assert.equal(catalog.min_cli_version, '2.3.7', 'el resto del catálogo sigue disponible para las CLI 2.3.7 a 2.3.11');
-  assert.equal(catalog.catalog_version, '1.24.0');
+  assert.equal(catalog.catalog_version, '1.25.0');
   assert.equal(model.params.seed.default, undefined);
   assert.equal(model.params.nsfw_checker, undefined);
   assert.deepEqual(model.params.duration, {type: 'int', min: 2, max: 30, default: 5, help: model.params.duration.help});
@@ -73,15 +73,15 @@ test('el contrato publicado exige la skill 2.3.12, no añade campos privados y a
 });
 
 test('una CLI anterior a 2.3.12 no ofrece Wan 3.0 en vez de autorizar un precio por debajo del servidor', async () => {
-  assert.equal(modelUsable({...model, min_cli_version: '2.3.13'}).ok, false);
+  assert.equal(modelUsable({...model, min_cli_version: '2.3.14'}).ok, false);
   const config = await import('../skills/ailab/scripts/lib/config.mjs');
-  assert.equal(config.CLI_VERSION, '2.3.12');
+  assert.equal(config.CLI_VERSION, '2.3.13');
   const updater = await import('../skills/ailab/scripts/lib/updater.mjs');
-  assert.equal(updater.BUNDLED_RUNTIME_VERSION, '2.3.12');
-  // Las CLI 2.3.7 a 2.3.11 siguen validando el catálogo v2 completo (sin claves ni tipos nuevos).
+  assert.equal(updater.BUNDLED_RUNTIME_VERSION, '2.3.13');
+  // Las CLI 2.3.7 a 2.3.12 siguen validando el catálogo v2 completo (sin claves ni tipos nuevos).
   const canonical = process.env.AILAB_CANONICAL_REPO;
   if (!canonical) return;
-  for (const version of ['2.3.7', '2.3.11']) {
+  for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12']) {
     const old = await import(pathToFileURL(path.join(canonical, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
     const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
     assert.equal(parsed.models['wan-3-video'].min_cli_version, '2.3.12');

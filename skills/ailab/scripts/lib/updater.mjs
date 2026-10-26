@@ -8,11 +8,19 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { CONFIG_DIR, RELEASE_MANIFEST_URL, SKILL_ROOT, UPDATE_CHANNEL, ensureConfigDir } from './config.mjs';
 
-export const BOOTSTRAP_VERSION = '1.0.0';
-export const BUNDLED_RUNTIME_VERSION = '2.3.12';
+// 1.1.0: acepta varias claves publicas de confianza (rotacion futura), anuncia su
+// version al runtime y no se rompe cuando la carpeta de estado no es escribible.
+export const BOOTSTRAP_VERSION = '1.1.0';
+export const BUNDLED_RUNTIME_VERSION = '2.3.13';
 export const UPDATE_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAVjnUJTcIxxRRvRTo83RpaCI7eaPwTg5KIz65p49UZs0=
 -----END PUBLIC KEY-----`;
+// Claves publicas de confianza. Hoy solo hay una. Para preparar una rotacion se
+// anade AQUI la nueva clave publica (nunca una privada) en una version nueva del
+// arranque; stable.json conserva su forma y su unica firma, asi que las releases
+// solo pueden firmarse con la clave nueva cuando los arranques ya instalados la
+// incluyan. Ver docs/rotacion-de-claves.md.
+export const UPDATE_PUBLIC_KEYS_PEM = [UPDATE_PUBLIC_KEY_PEM];
 
 const CHECK_INTERVAL_MS = Number(process.env.AILAB_UPDATE_CHECK_MS || 6 * 60 * 60 * 1000);
 const FETCH_TIMEOUT_MS = Number(process.env.AILAB_UPDATE_TIMEOUT_MS || 30000);
@@ -66,13 +74,25 @@ export function safeReleasePath(value) {
   return value;
 }
 
-export function validateReleaseEnvelope(value, { publicKey = UPDATE_PUBLIC_KEY_PEM, manifestUrl = RELEASE_MANIFEST_URL } = {}) {
+function trustedKeys(publicKey) {
+  const keys = publicKey === undefined ? UPDATE_PUBLIC_KEYS_PEM : [].concat(publicKey);
+  return keys.filter((key) => typeof key === 'string' || (key && typeof key === 'object'));
+}
+
+function signatureValid(signed, signature, publicKey) {
+  const message = Buffer.from(stableStringify(signed));
+  return trustedKeys(publicKey).some((key) => {
+    try { return crypto.verify(null, message, key, signature); } catch { return false; }
+  });
+}
+
+export function validateReleaseEnvelope(value, { publicKey, manifestUrl = RELEASE_MANIFEST_URL } = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Manifiesto de actualizacion no valido.');
   exactKeys(value, new Set(['signed', 'signature']), 'raiz');
   if (!value.signed || typeof value.signed !== 'object' || Array.isArray(value.signed)) throw new Error('Falta el contenido firmado.');
   if (typeof value.signature !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(value.signature)) throw new Error('Firma no valida.');
   const signature = Buffer.from(value.signature, 'base64');
-  if (signature.length !== 64 || !crypto.verify(null, Buffer.from(stableStringify(value.signed)), publicKey, signature)) {
+  if (signature.length !== 64 || !signatureValid(value.signed, signature, publicKey)) {
     throw new Error('La firma de la actualizacion no es valida.');
   }
   const signed = value.signed;
@@ -254,7 +274,7 @@ function currentRuntime(options = {}) {
   if (!envelope) return null;
   try {
     validateReleaseEnvelope(envelope, {
-      publicKey: options.publicKey || UPDATE_PUBLIC_KEY_PEM,
+      publicKey: options.publicKey,
       manifestUrl: options.manifestUrl || RELEASE_MANIFEST_URL,
     });
   } catch { return null; }
@@ -283,7 +303,7 @@ function runSelfTest(root, envelope) {
 }
 
 export async function installRelease(envelope, manifestUrl = RELEASE_MANIFEST_URL, options = {}) {
-  validateReleaseEnvelope(envelope, { manifestUrl, publicKey: options.publicKey || UPDATE_PUBLIC_KEY_PEM });
+  validateReleaseEnvelope(envelope, { manifestUrl, publicKey: options.publicKey });
   ensureConfigDir();
   if (!acquireLock()) return { ok: false, busy: true, message: 'Otro proceso esta actualizando AILAB.' };
   const version = envelope.signed.version;
@@ -393,7 +413,7 @@ export function rollbackRuntime(options = {}) {
   if (!envelope) return { ok: false, message: 'La version anterior ya no esta disponible.' };
   try {
     validateReleaseEnvelope(envelope, {
-      publicKey: options.publicKey || UPDATE_PUBLIC_KEY_PEM,
+      publicKey: options.publicKey,
       manifestUrl: options.manifestUrl || RELEASE_MANIFEST_URL,
     });
   } catch (e) { return { ok: false, message: e.message }; }

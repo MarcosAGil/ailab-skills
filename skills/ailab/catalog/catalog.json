@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.24.0",
+  "catalog_version": "1.25.0",
   "min_cli_version": "2.3.7",
   "models": {
     "krea-3": {
@@ -3766,11 +3766,9 @@
       "enabled": true,
       "estimate": {
         "approximate": true,
-        "credits_per_unit": 0.625,
-        "kind": "unit_credits",
-        "minimum_credits": 1,
-        "note": "la duracion real la decide el modelo",
-        "units_param": "estimated_duration_seconds"
+        "credits": 100,
+        "kind": "flat_credits",
+        "note": "reserva maxima: la duracion la decide el modelo y no se puede fijar. Se cobra la duracion real a 0,625 cr/s (10 s = 7 cr, 1 min = 38 cr) y nunca mas de 100 cr. estimated_duration_seconds no cambia ni la duracion ni la reserva."
       },
       "expensive": true,
       "id": "seed-audio",

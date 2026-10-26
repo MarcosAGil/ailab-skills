@@ -203,7 +203,7 @@ export async function refreshCatalog({ maxAgeMs, requireNetwork }) {
     }
   } catch (e) {
     if (!requireNetwork && fs.existsSync(cacheFile) && age <= maxAgeMs) return loadCatalog();
-    throw new Error('No se pudo validar un catalogo fresco: ' + (e && e.message ? e.message : e));
+    throw new Error('No se pudo validar un catalogo fresco: ' + (e && e.message ? e.message : e), { cause: e });
   }
 }
 

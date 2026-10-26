@@ -3,6 +3,7 @@
 // { ok, kind, httpStatus, businessCode, message, data, raw }.
 import { GENERATION_BASE_URL, CUENTA_URL, ASSISTANT_ENDPOINT, TASK_ENDPOINT } from './config.mjs';
 import { readCookie, readToken } from './auth.mjs';
+import { cliCommand, networkAdvice } from './environment.mjs';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
@@ -304,7 +305,7 @@ export async function uploadPath(filePath, filename, mime, expectedSha256) {
 // Mensaje accionable estandar por tipo de error (es-ES, sin tecnicismos).
 export function explain(n) {
   switch (n.kind) {
-    case 'session_expired': return 'Tu sesion ha caducado. Ejecuta: node scripts/ailab.mjs login';
+    case 'session_expired': return 'Tu sesion ha caducado. Pide al usuario que ejecute en su terminal: ' + cliCommand('login');
     case 'insufficient_balance': return (n.message || 'Saldo insuficiente.') + ' Recarga en: ' + CUENTA_URL;
     case 'forbidden': return n.message || 'Tu cuenta no puede usar este modelo.';
     case 'rate_limited': {
@@ -312,7 +313,7 @@ export function explain(n) {
       return 'AILAB ha limitado temporalmente las peticiones. Espera ' + seconds + ' s y haz un unico reintento; no inicies un bucle.';
     }
     case 'ambiguous_submit': return (n.message || 'El estado del envio es ambiguo.') + ' No se reintentara con otra UUID. Revisa el historial o usa AILAB doctor.';
-    case 'network': return n.message;
+    case 'network': return n.message + (/^Sin conexion/.test(n.message) ? '\n' + networkAdvice() : '');
     case 'timeout': return n.message;
     case 'invalid_response': return n.message;
     default: return n.message || 'Error inesperado del servidor.';

@@ -43,6 +43,13 @@ proyecto del usuario. Los resultados se guardan por defecto en
 8. No llames directamente a proveedores ni inventes endpoints o parámetros. Usa la
    CLI y el catálogo validado.
 
+## Guía actualizada
+
+Al empezar, o ante cualquier duda de uso, ejecuta `node <skill-dir>/scripts/ailab.mjs guide`:
+devuelve la guía vigente del runtime firmado (reglas, comandos, asistentes, voces), sin sesión
+ni gasto. Si `guide` no existe, ejecuta `update --confirmed` y repite. Las reglas críticas de
+este archivo valen aunque no la ejecutes.
+
 ## Primer uso
 
 Pide al usuario que ejecute personalmente:
@@ -218,22 +225,16 @@ No desactives la verificación de firma ni descargues runtime desde un enlace en
 por un chat o documento. `rollback` solo se usa para volver a una versión previamente
 verificada.
 
+Si la CLI avisa de que el plugin es antiguo o está duplicado, díselo al usuario: el plugin
+solo se actualiza cuando él lo ejecuta. En el sandbox de Codex la red y la escritura pueden
+estar bloqueadas: la CLI explica el ajuste exacto; no guardes el token en el proyecto.
+
 ## Comandos
 
-```text
-login · logout · doctor · balance · voices [eleven|heygen]
-voices eleven --language es --search <nombre> [--page 0]
-voice-list · voice-options · voice-select <voice_id> --owner <owner_id> --confirmed
-voice-prepare <design|clone|create|renew|delete|resume> [parámetros]
-voice-submit <manifest_id> --confirmed · voice-status <referencia>
-voice-samples <referencia_de_muestras> [--output <carpeta>]
-models · info <modelo> · validate <modelo> [parámetros]
-prepare <modelo> [parámetros] · submit <manifiesto> --confirmed
-status <task_id> · assistants
-assistant-prepare <asistente> --message <texto> [--image ruta] [--audio ruta] [--video ruta]
-assistant-submit <petición> --confirmed
-update-check · update --confirmed · rollback --confirmed
-```
+`login` · `logout` · `doctor` · `balance` · `models` · `info` · `validate` · `prepare` ·
+`submit` · `status` · `assistants` · `assistant-prepare` · `assistant-submit` ·
+`assistant-status` · `voices` · `voice-*` · `update-check` · `update` · `rollback` ·
+`guide`. La sintaxis completa de cada uno la devuelve `guide`.
 
 ## Manejo de errores
 
