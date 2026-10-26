@@ -10,7 +10,10 @@
     "check": "npm run validate && npm test",
     "package:ailab": "node tools/package.mjs ailab",
     "package:vervideo": "node tools/package.mjs vervideo",
-    "package:ugc-bajo-coste-ailab": "node tools/package.mjs ugc-bajo-coste-ailab"
+    "package:ugc-bajo-coste-ailab": "node tools/package.mjs ugc-bajo-coste-ailab",
+    "build:plugin": "node tools/build-plugin.mjs",
+    "check:plugin": "node tools/build-plugin.mjs --check",
+    "migrate:plugin": "node tools/migrate-to-plugin.mjs"
   },
   "engines": {
     "node": ">=18.17"
