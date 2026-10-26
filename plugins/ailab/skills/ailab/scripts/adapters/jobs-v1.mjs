@@ -2,8 +2,14 @@
 // del gateway del wallet. Construye el payload de forma DECLARATIVA desde el
 // catalogo (params validados + fixed) y extrae el resultado del record.
 import { gatewayPost, gatewayGet, apiPost } from '../lib/http.mjs';
+import { KLING4_ID, kling4Input } from '../lib/kling4.mjs';
+import { LITE_ID, liteInput } from '../lib/seedance-lite.mjs';
 
 export function buildPayload(model, params, uploadedByParam) {
+  // Kling 4.0 y Seedance 2.5 Lite: el servidor normaliza una forma exacta (sujetos y voces en listas de
+  // objetos, campos que solo existen en una modalidad); la construye el módulo del modelo.
+  if (model.id === KLING4_ID) return { model: model.id, input: kling4Input(params, uploadedByParam) };
+  if (model.id === LITE_ID) return { model: model.id, input: liteInput(params, uploadedByParam) };
   const input = { ...(model.fixed || {}) };
   for (const [k, v] of Object.entries(params)) input[k] = v;
   for (const [k, urls] of Object.entries(uploadedByParam)) {

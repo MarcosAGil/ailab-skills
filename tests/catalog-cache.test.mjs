@@ -78,7 +78,7 @@ test('una release nueva no queda oculta por un catálogo cacheado anterior', (t)
   });
   assert.ifError(loaded.error);
   assert.equal(loaded.status, 0, loaded.stderr);
-  assert.equal(loaded.stdout, '1.25.0:65');
+  assert.equal(loaded.stdout, '1.25.0:69');
 });
 
 test('refreshCatalog usa v2 y reemplaza una caché legacy con su ETag anterior', t => {
@@ -95,7 +95,7 @@ test('refreshCatalog usa v2 y reemplaza una caché legacy con su ETag anterior',
     const refreshed = await refreshCatalog({ maxAgeMs: 600000, requireNetwork: true });
     assert.equal(requests, 1);
     assert.equal(refreshed.catalog_version, '1.25.0');
-    assert.equal(Object.keys(refreshed.models).length, 65);
+    assert.equal(Object.keys(refreshed.models).length, 69);
     assert.deepEqual(catalogCompatible(refreshed), { ok: true });
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'catalog.json'), 'utf8')), current);
     assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'catalog-meta.json'), 'utf8')).etag, '"catalog-1.25.0"');
@@ -108,7 +108,7 @@ test('una caché legacy reciente no oculta el catálogo 1.25.0 incluido en 2.3.7
     globalThis.fetch = async () => { throw new Error('Una caché reciente no necesita red'); };
     const refreshed = await refreshCatalog({ maxAgeMs: 3600000, requireNetwork: true });
     assert.equal(refreshed.catalog_version, '1.25.0');
-    assert.equal(Object.keys(refreshed.models).length, 65);
+    assert.equal(Object.keys(refreshed.models).length, 69);
     assert.deepEqual(catalogCompatible(refreshed), { ok: true });
   `);
 });

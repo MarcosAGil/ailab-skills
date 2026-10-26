@@ -47,7 +47,7 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
     const actual = crypto.createHash('sha256').update(stableStringify(catalog.models[id])).digest('hex');
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
-  assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'ideogram-v45', 'krea-3', 'nano-banana-2-1']);
+  assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'higgsfield-marketing-studio-image', 'higgsfield-soul-cinema', 'ideogram-v45', 'kling-4-0', 'krea-3', 'nano-banana-2-1', 'seedance-2-5-lite']);
   assert.equal(catalog.catalog_version, '1.25.0');
   assert.equal(catalog.min_cli_version, '2.3.7');
 });

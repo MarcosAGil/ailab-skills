@@ -5300,6 +5300,648 @@
         "approximate": false,
         "note": "Consulta exacta por modo y calidad; el coste se redondea una sola vez sobre el lote."
       }
+    },
+    "kling-4-0": {
+      "label": "Kling 4.0",
+      "description": "Vídeo de 3 a 30 s con audio nativo en 720p o 1080p. Referencias (texto, imágenes, vídeos, sujetos de imagen y voces) o Fotogramas clave en orden. Los vídeos de referencia se cobran: suman su duración al precio.",
+      "section": "video",
+      "vendor": "Kuaishou",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.13",
+      "aliases": [
+        "kling 4",
+        "kling 4.0",
+        "kling v4",
+        "kling-4.0"
+      ],
+      "modes": [
+        "ref",
+        "keyframe"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "ref",
+            "keyframe"
+          ],
+          "default": "ref",
+          "help": "ref: Referencias (también solo texto), con imágenes, vídeos, sujetos y voces. keyframe: Fotogramas clave en orden."
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 8000,
+          "help": "Hasta 8.000 caracteres. Menciona los materiales con @image_1, @video_1 o el nombre de un sujeto o una voz (@ana). En keyframe usa @first_frame, @keyframe_1 y @last_frame. Un @ sin material correspondiente se rechaza."
+        },
+        "duration": {
+          "type": "int",
+          "min": 3,
+          "max": 30,
+          "default": 5,
+          "help": "Duración de salida en segundos, de 3 a 30. Con vídeos de referencia, el cobro suma también su duración."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p"
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "16:9",
+            "9:16",
+            "1:1",
+            "21:9"
+          ],
+          "default": "auto",
+          "help": "Solo ref. Auto sigue tus materiales y, sin ellos, equivale a 16:9. En keyframe lo marca el primer fotograma: no lo uses."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 10,
+          "help": "Solo ref. Hasta 10 imágenes JPG, PNG o WebP de hasta 10 MB; cada lado de 300 a 65.536 px y proporción de 0,4 a 2,5. Se mencionan @image_1, @image_2..."
+        },
+        "video_urls": {
+          "type": "file[]",
+          "accept": "video",
+          "max": 5,
+          "help": "Solo ref. Hasta 5 vídeos MP4 o MOV de hasta 10 MB; cada uno de 2 a 30 s y 30 s en total. Se mencionan @video_1... Su duración se factura."
+        },
+        "keep_original_sound": {
+          "type": "bool",
+          "default": false,
+          "help": "Solo ref y solo con vídeos de referencia: conserva su audio original en lugar de generar audio nuevo."
+        },
+        "first_frame_url": {
+          "type": "file",
+          "accept": "image",
+          "required_when": {
+            "mode": "keyframe"
+          },
+          "help": "Solo keyframe. Primer fotograma JPG, PNG o WebP de hasta 10 MB (@first_frame)."
+        },
+        "keyframe_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 8,
+          "help": "Solo keyframe. Hasta 8 fotogramas intermedios en orden cronológico (@keyframe_1...). Caben 4 con 3 s, hasta 10 desde 9 s contando primero y último."
+        },
+        "last_frame_url": {
+          "type": "file",
+          "accept": "image",
+          "help": "Solo keyframe. Último fotograma opcional (@last_frame)."
+        },
+        "subject_1_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Solo ref. Sujeto de imagen (hasta 7, ranuras subject_1 a subject_7): nombre de 1 a 20 letras sin tildes, números o guion bajo. Se menciona @nombre. Exige --subject_1_images."
+        },
+        "subject_1_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "De 2 a 4 imágenes del sujeto (JPG, PNG o WebP de hasta 10 MB; cada lado desde 300 px y proporción de 0,4 a 2,5)."
+        },
+        "subject_1_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del sujeto."
+        },
+        "subject_1_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del sujeto, hasta 100 caracteres."
+        },
+        "subject_2_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Sujeto 2: igual que el sujeto 1."
+        },
+        "subject_2_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del sujeto 2."
+        },
+        "subject_2_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del sujeto 2."
+        },
+        "subject_2_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del sujeto 2."
+        },
+        "subject_3_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Sujeto 3: igual que el sujeto 1."
+        },
+        "subject_3_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del sujeto 3."
+        },
+        "subject_3_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del sujeto 3."
+        },
+        "subject_3_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del sujeto 3."
+        },
+        "subject_4_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Sujeto 4: igual que el sujeto 1."
+        },
+        "subject_4_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del sujeto 4."
+        },
+        "subject_4_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del sujeto 4."
+        },
+        "subject_4_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del sujeto 4."
+        },
+        "subject_5_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Sujeto 5: igual que el sujeto 1."
+        },
+        "subject_5_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del sujeto 5."
+        },
+        "subject_5_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del sujeto 5."
+        },
+        "subject_5_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del sujeto 5."
+        },
+        "subject_6_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Sujeto 6: igual que el sujeto 1."
+        },
+        "subject_6_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del sujeto 6."
+        },
+        "subject_6_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del sujeto 6."
+        },
+        "subject_6_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del sujeto 6."
+        },
+        "subject_7_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Sujeto 7: igual que el sujeto 1."
+        },
+        "subject_7_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del sujeto 7."
+        },
+        "subject_7_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del sujeto 7."
+        },
+        "subject_7_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del sujeto 7."
+        },
+        "voice_1_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Solo ref. Voz propia (hasta 3, ranuras voice_1 a voice_3): nombre de 1 a 20 letras sin tildes, números o guion bajo, distinto de los sujetos. Se menciona @nombre. Exige --voice_1_audio."
+        },
+        "voice_1_audio": {
+          "type": "file",
+          "accept": "audio",
+          "help": "Audio MP3 o WAV de la voz, de 1 a 60 s y hasta 10 MB."
+        },
+        "voice_2_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Voz 2: igual que la voz 1."
+        },
+        "voice_2_audio": {
+          "type": "file",
+          "accept": "audio",
+          "help": "Audio de la voz 2."
+        },
+        "voice_3_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Voz 3: igual que la voz 1."
+        },
+        "voice_3_audio": {
+          "type": "file",
+          "accept": "audio",
+          "help": "Audio de la voz 3."
+        }
+      },
+      "estimate": {
+        "kind": "per_second_table",
+        "by_param": "resolution",
+        "seconds_param": "duration",
+        "credits_per_second": {
+          "720p": 29.07,
+          "1080p": 43.35
+        },
+        "credits_with_video": {
+          "720p": 17.34,
+          "1080p": 26.01
+        },
+        "video_param": "video_urls",
+        "approximate": true,
+        "note": "Tarifa AILAB por segundo con el 2 % de servicio. Sin vídeo de entrada se cobra la salida y es exacto. Con vídeos de entrada: si suman menos que la salida se facturan 2 x salida, y si no, entrada + salida (cada vídeo al segundo superior, medido por el servidor, a la tarifa con vídeo). Es el máximo reservado; el cargo final es el consumo confirmado."
+      },
+      "id": "kling-4-0"
+    },
+    "seedance-2-5-lite": {
+      "label": "Seedance 2.5 Lite",
+      "description": "Seedance 2.5 en torno a un 27 % más barato, en prueba. Texto, primer y último fotograma o referencias (imágenes, un vídeo y un audio), de 4 a 30 s. No edita vídeo: para editar usa Seedance 2.5 Normal.",
+      "section": "video",
+      "vendor": "ByteDance",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.13",
+      "aliases": [
+        "seedance 2.5 lite",
+        "seedance2.5lite",
+        "seedance-2.5-lite"
+      ],
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref"
+          ],
+          "default": "t2v",
+          "help": "t2v: solo texto. i2v: primer fotograma y, si quieres, último. ref: imágenes, vídeo y audio de referencia. No se combinan fotogramas y referencias."
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 15000,
+          "help": "Hasta 15.000 caracteres. Menciona los materiales con @Image1, @Video1 o @Audio1."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "adaptive",
+            "16:9",
+            "9:16",
+            "1:1",
+            "4:3",
+            "3:4",
+            "21:9"
+          ],
+          "default": "adaptive",
+          "help": "Con primer fotograma se usa adaptive obligatoriamente."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p",
+            "1080p"
+          ],
+          "default": "720p"
+        },
+        "duration": {
+          "type": "int",
+          "min": 4,
+          "max": 30,
+          "default": 5,
+          "help": "Entre 4 y 30 segundos. No hay duración automática."
+        },
+        "generate_audio": {
+          "type": "bool",
+          "default": true
+        },
+        "first_frame_url": {
+          "type": "file",
+          "accept": "image",
+          "required_when": {
+            "mode": "i2v"
+          },
+          "help": "Primer fotograma de i2v. No se combina con referencias."
+        },
+        "last_frame_url": {
+          "type": "file",
+          "accept": "image",
+          "help": "Último fotograma opcional; exige primer fotograma."
+        },
+        "reference_image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 30,
+          "help": "Solo ref. Hasta 30 imágenes."
+        },
+        "reference_video_urls": {
+          "type": "file[]",
+          "accept": "video",
+          "max": 1,
+          "help": "Solo ref. Un vídeo MP4 o MOV de hasta 30 s. Su duración se suma a la de salida en el máximo reservado; se cobra el coste real."
+        },
+        "reference_audio_urls": {
+          "type": "file[]",
+          "accept": "audio",
+          "max": 1,
+          "help": "Solo ref. Un audio de referencia (Sume admite hasta 30,2 s)."
+        }
+      },
+      "estimate": {
+        "kind": "per_second_table",
+        "by_param": "resolution",
+        "seconds_param": "duration",
+        "credits_per_second": {
+          "480p": 20.9712,
+          "720p": 47.1648,
+          "1080p": 115.9944
+        },
+        "approximate": true,
+        "note": "Tarifa de Sume con el servicio de AILAB. Sin vídeo de referencia es exacto. Con él se reserva la salida más los segundos del vídeo (al segundo superior, medidos por el servidor) y se cobra el coste real del proveedor, nunca más."
+      },
+      "id": "seedance-2-5-lite"
+    },
+    "higgsfield-soul-cinema": {
+      "label": "Higgsfield SOUL Cinema",
+      "description": "Imágenes cinematográficas desde texto con SOUL Cinema. Pendiente de activación en la skill: el servidor todavía no lo admite desde la terminal.",
+      "section": "image",
+      "vendor": "Higgsfield",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": false,
+      "expensive": true,
+      "driver": "higgsfield-v1",
+      "min_cli_version": "2.3.13",
+      "aliases": [
+        "soul cinema",
+        "higgsfield soul cinema"
+      ],
+      "modes": [
+        "t2i"
+      ],
+      "params": {
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 5000,
+          "help": "Descripción cinematográfica de la imagen."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9",
+            "4:3",
+            "3:4",
+            "1:1",
+            "2:3",
+            "3:2"
+          ],
+          "default": "4:3"
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p"
+        },
+        "batch_size": {
+          "type": "enum",
+          "values": [
+            "1",
+            "4"
+          ],
+          "default": "1"
+        },
+        "enhance_prompt": {
+          "type": "bool",
+          "default": true
+        },
+        "seed": {
+          "type": "int",
+          "min": 1,
+          "max": 1000000,
+          "help": "Opcional. Déjala vacía para una semilla aleatoria."
+        }
+      },
+      "estimate": {
+        "kind": "higgsfield_quote",
+        "approximate": true,
+        "note": "Higgsfield no publica tarifa fija: el servidor cotiza antes de generar."
+      },
+      "id": "higgsfield-soul-cinema"
+    },
+    "higgsfield-marketing-studio-image": {
+      "label": "Higgsfield Marketing Studio Image",
+      "description": "Imágenes de campaña y edición con referencias de producto y modelo. Pendiente de activación en la skill: el servidor todavía no lo admite desde la terminal.",
+      "section": "image",
+      "vendor": "Higgsfield",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": false,
+      "expensive": true,
+      "driver": "higgsfield-v1",
+      "min_cli_version": "2.3.13",
+      "aliases": [
+        "marketing studio image",
+        "higgsfield marketing studio"
+      ],
+      "params": {
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 5000,
+          "help": "Instrucciones de campaña."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 16,
+          "help": "Referencias de producto y modelo; el modo mejorado (enhance_prompt) exige una o dos."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1k",
+            "2k",
+            "4k"
+          ],
+          "default": "2k"
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "21:9"
+          ],
+          "default": "1:1"
+        },
+        "quality": {
+          "type": "enum",
+          "values": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "high"
+        },
+        "moderation": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "low"
+          ],
+          "default": "auto"
+        },
+        "enhance_prompt": {
+          "type": "bool",
+          "default": false
+        },
+        "preset_id": {
+          "type": "string",
+          "max_len": 160,
+          "required_when": {
+            "enhance_prompt": true
+          },
+          "help": "Preset oficial de Marketing Studio; solo con enhance_prompt."
+        }
+      },
+      "estimate": {
+        "kind": "higgsfield_quote",
+        "approximate": true,
+        "note": "Higgsfield no publica tarifa fija: el servidor cotiza antes de generar."
+      },
+      "id": "higgsfield-marketing-studio-image"
     }
   },
   "server_contract_version": "2"

@@ -23,7 +23,8 @@ import { servicePost, serviceGet, apiPost } from '../lib/http.mjs';
 
 const ENDPOINT = 'api/skill/higgsfield.php';
 
-// IDs publicos del servidor de AILAB. El catalogo usa nombres locales cortos;
+// IDs publicos del servidor de AILAB. SOUL Cinema y Marketing Studio Image usan el mismo ID en el
+// catalogo y en el servidor (prefijo `higgsfield-`). El catalogo usa nombres locales cortos;
 // la traduccion vive aqui para que el catalogo pueda renombrarse sin tocar el
 // contrato del servidor. Si el catalogo ya usa el ID del servidor se respeta.
 const SERVER_MODEL_IDS = {
@@ -35,6 +36,8 @@ const SERVER_MODEL_IDS = {
 // (max_credits / hard_cap_credits); estos valores son el respaldo verificado.
 const HARD_CREDIT_CAPS = {
   'higgsfield-soul-2': 1000,
+  'higgsfield-soul-cinema': 1000,
+  'higgsfield-marketing-studio-image': 1000,
   'higgsfield-genjutsu-motion-transfer': 2100,
 };
 

@@ -614,7 +614,7 @@ async function cmdPrepare(cat, name, opts) {
   const ceiling = creditCeiling(opts);
   const serverQuote = requiresServerQuote(m, v.params);
   const est = estimateCredits(m, { ...v.params, ...v.fileParams });
-  if (['flux-3', 'ideogram-v45', 'wan-3-video'].includes(m.id)) {
+  if (['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite'].includes(m.id)) {
     if (!Number.isFinite(est.credits) || est.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Actualiza AILAB o consulta el catálogo; no se ha enviado nada.');
     if (ceiling !== null && est.credits > ceiling) fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
   }
@@ -780,7 +780,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   } else if (estimateAgain.credits !== m0.estimated_credits || estimateAgain.credits !== m0.max_credits_authorized) {
     fail('La estimacion o el maximo autorizado del manifiesto no coincide con el plan confirmado. Vuelve a preparar.');
   }
-  if (['flux-3', 'ideogram-v45', 'wan-3-video'].includes(model.id)) {
+  if (['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite'].includes(model.id)) {
     const ceiling = creditCeiling(opts);
     if (!Number.isFinite(estimateAgain.credits) || estimateAgain.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Vuelve a preparar; no se ha enviado nada.');
     if (ceiling !== null && estimateAgain.credits > ceiling) fail('El coste (' + estimateAgain.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
@@ -1001,8 +1001,10 @@ async function main() {
     const compatibility = catalogCompatible(local);
     if (!compatibility.ok) fail(compatibility.reason);
     for (const [id, model] of Object.entries(local.models)) {
+      // Un modelo con `enabled: false` es una decision del catalogo (entregado a la espera de que el servidor
+      // lo admita), no una incompatibilidad del runtime: el adaptador se comprueba igual.
       const usable = modelUsable(model);
-      if (!usable.ok) fail('SELF_TEST_FAIL ' + id + ': ' + usable.reason);
+      if (!usable.ok && model.enabled !== false) fail('SELF_TEST_FAIL ' + id + ': ' + usable.reason);
       if (!ADAPTERS[model.driver] || typeof ADAPTERS[model.driver].buildPayload !== 'function') fail('SELF_TEST_FAIL driver ' + model.driver + '.');
     }
     out('SELF_TEST_OK ' + CLI_VERSION + ' · ' + Object.keys(local.models).length + ' modelos');

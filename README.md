@@ -66,7 +66,7 @@ la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza
 
 - 2.3.13: `guide` devuelve la guía de uso vigente; Seed Audio reserva 100 cr y cobra la duración
   real (0,625 cr/s, nunca más de 100 cr); el arranque avisa de plugin antiguo, doble instalación y
-  sandbox de Codex. Las versiones anteriores están en el historial de Git.
+  sandbox de Codex; nuevos Kling 4.0 (referencias, sujetos, voces y fotogramas clave) y Seedance 2.5 Lite. Las versiones anteriores están en el historial de Git.
 
 Una fuente nueva requiere empaquetado, publicación firmada y verificación del catálogo servido: no
 acredita por sí sola disponibilidad en producción.

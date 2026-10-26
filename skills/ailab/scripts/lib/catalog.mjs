@@ -6,6 +6,8 @@ import crypto from 'node:crypto';
 import { CATALOG_PATH, CATALOG_URL, CLI_VERSION, CONFIG_DIR, SERVER_CONTRACT_VERSION, ensureConfigDir } from './config.mjs';
 import { inspectPricingMetadata } from './files.mjs';
 import { WAN3_ID, wan3Estimate, wan3Problems } from './wan3.mjs';
+import { KLING4_ID, kling4Estimate, kling4Problems } from './kling4.mjs';
+import { LITE_ID, liteEstimate, liteProblems } from './seedance-lite.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1', 'higgsfield-v1'];
 
@@ -207,6 +209,13 @@ export async function refreshCatalog({ maxAgeMs, requireNetwork }) {
   }
 }
 
+// Ids con los que el Playground y el servidor conocen modelos que la skill publica con un id corto desde la
+// 2.3.0. Viven en el runtime y no en el catalogo: el contrato publicado de esos modelos no puede cambiar.
+export const PLAYGROUND_ID_ALIASES = {
+  'higgsfield-soul-2': 'soul-2',
+  'higgsfield-genjutsu-motion-transfer': 'genjutsu',
+};
+
 export function resolveModel(cat, nameOrAlias) {
   const q = String(nameOrAlias || '').trim().toLowerCase();
   if (cat.models[q]) return { id: q, model: cat.models[q] };
@@ -214,6 +223,8 @@ export function resolveModel(cat, nameOrAlias) {
     if ((m.label || '').toLowerCase() === q) return { id, model: m };
     if (Array.isArray(m.aliases) && m.aliases.some((a) => a.toLowerCase() === q)) return { id, model: m };
   }
+  const mapped = Object.hasOwn(PLAYGROUND_ID_ALIASES, q) ? PLAYGROUND_ID_ALIASES[q] : null;
+  if (mapped && cat.models[mapped]) return { id: mapped, model: cat.models[mapped] };
   return null;
 }
 
@@ -265,7 +276,7 @@ export function validateParams(model, given) {
     switch (spec.type) {
       case 'string': {
         v = String(v);
-        const count = (model.id === 'eleven-tts' && given.version === 'v4' && key === 'text') || (model.id === 'nano-banana-2-1' && key === 'prompt') ? Array.from(v.trim()).length : v.length;
+        const count = (model.id === 'eleven-tts' && given.version === 'v4' && key === 'text') || (['nano-banana-2-1', KLING4_ID].includes(model.id) && key === 'prompt') ? Array.from(v.trim()).length : (model.id === LITE_ID && key === 'prompt' ? Array.from(v).length : v.length);
         const limit = model.id === 'eleven-tts' && given.version === 'v4' && key === 'text' ? 10000 : spec.max_len;
         if (limit && count > limit) errors.push('--' + key + ' supera ' + limit + ' caracteres (' + count + ').');
         params[key] = v; break;
@@ -400,6 +411,17 @@ export function validateParams(model, given) {
     if (!String(params.prompt || '').trim()) errors.push('El prompt no puede estar vacío.');
     errors.push(...wan3Problems(params, fileParams));
   }
+  if (model.id === KLING4_ID) {
+    // Kling 4.0: reglas de materiales, sujetos, voces y menciones del servidor, más los segundos de
+    // vídeo de entrada que se facturan. Los dos parámetros que solo existen en Referencias no viajan
+    // en Fotogramas clave (el servidor los rechaza) y se retiran para que el manifiesto sea estable.
+    errors.push(...kling4Problems(params, fileParams, given));
+    if (params.mode === 'keyframe') { delete params.aspect_ratio; delete params.keep_original_sound; }
+  }
+  if (model.id === LITE_ID) {
+    // Seedance 2.5 Lite: modalidades excluyentes y vídeo de referencia medido en local.
+    errors.push(...liteProblems(params, fileParams));
+  }
   if (model.driver === 'topaz-v1') {
     const frames = Number(params.frame_count);
     const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : '';
@@ -465,6 +487,8 @@ export function estimateCredits(model, params, now = Date.now()) {
     };
   }
   if (model.id === WAN3_ID) return wan3Estimate(model, params);
+  if (model.id === KLING4_ID) return kling4Estimate(model, params);
+  if (model.id === LITE_ID) return liteEstimate(model, params);
   if (e.kind === 'topaz_image') {
     const megapixels = Number(params[e.megapixels_param]);
     const tiers = e.provider_credits_by_max_megapixels || {};
