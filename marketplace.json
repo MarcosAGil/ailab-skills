@@ -107,7 +107,7 @@
       "workflow": "Audita, pregunta y refina. Por defecto 9:16, una toma, imperfección natural y cortes duros solo si se solicitan. Cubre once formatos, incluidos alguien graba, ponencia, trípode y podcast. No escribe guion, ganchos o CTA, no genera vídeos y no sirve para extensiones o ediciones."
     },
     {
-      "id": "ugc-ailab",
+      "id": "ugc-bajo-coste-ailab",
       "category": "Workflow UGC",
       "icon": "workflow",
       "summary": "De tu guion y referencias a un vídeo UGC con las pistas de voz y ambiente separadas, listo para montar.",
@@ -122,11 +122,11 @@
         "Cuenta y créditos de AILAB"
       ],
       "billing": "Utiliza tus créditos de AILAB por cada etapa. No requiere claves adicionales.",
-      "setup": "El comando instala UGC AILAB y su dependencia AILAB. Configura primero el acceso de AILAB con login y doctor. Comprueba que ffmpeg y ffprobe están disponibles en tu terminal.",
-      "example": "Usa $ugc-ailab con este guion y estas referencias. Quiero un vídeo vertical de 10 segundos y las pistas de voz y ambiente por separado.",
+      "setup": "El comando instala UGC Bajo Coste AILAB y su dependencia AILAB. Configura primero el acceso de AILAB con login y doctor. Comprueba que ffmpeg y ffprobe están disponibles en tu terminal.",
+      "example": "Usa $ugc-bajo-coste-ailab con este guion y estas referencias. Quiero un vídeo vertical de 10 segundos y las pistas de voz y ambiente por separado.",
       "install_ids": [
         "ailab",
-        "ugc-ailab"
+        "ugc-bajo-coste-ailab"
       ],
       "workflow": "Video Prompter prepara la dirección. Gemini Omni genera el vídeo. FFmpeg extrae localmente el audio original. SAM Audio separa ambiente; Voice Isolator aísla la voz y Voice Changer cambia su timbre. No monta ni sustituye el audio del vídeo automáticamente, y no incluye upscale. Si solo pides un prompt, no autoriza generar un vídeo."
     },

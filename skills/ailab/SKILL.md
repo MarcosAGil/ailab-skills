@@ -60,13 +60,15 @@ el resto del estado de AILAB permanece separado.
 
 Para **Krea 3** (`krea-3`), consulta [su contrato](references/krea-3.md). Texto y edición tienen Berry o Jam; solo Berry admite prompt negativo. `prepare` sube las referencias y obtiene del servidor una cotización vinculada a sus dimensiones, modalidad y parámetros. El razonamiento Alto solo existe en edición y añade coste. No añadas semilla ni repitas un envío incierto.
 
+Para **Wan 3.0 Video** (`wan-3-video`, `normal` y `prime`), consulta [su contrato](references/wan-3.md): Kie factura también los vídeos de referencia (1 a 15 s cada uno, 15 s en total; con la salida, 30 s). `prepare` los mide y el precio con vídeo es un máximo. No uses `--duration -1`.
+
 Para voz individual con v4, aplica [el contrato y la recuperación de v4](references/eleven-v4.md). Para buscar voces, clonar una grabación autorizada, diseñar por prompt o gestionar Mis voces, lee [ElevenLabs y voces privadas](references/eleven-voices.md). El catálogo y los permisos del servidor deciden qué está disponible.
 
-Para **Ideogram 4.5** (`ideogram-v45`), aplica [su contrato y precios](references/ideogram-v45.md) y consulta el catálogo actual: `--mode t2i` crea imágenes desde texto y `--mode edit` edita la primera imagen adjunta, con hasta cuatro referencias adicionales. Calidad, cantidad, formato y tarifa dependen de la modalidad; usa `info` y `prepare` para ver los valores vigentes y el coste agregado. La edición precisa (`--edit_precision high`) requiere `--image_size auto`. No afirmes que la generación funciona en producción hasta que el modelo esté publicado y verificado.
+Para **Ideogram 4.5** (`ideogram-v45`), aplica [su contrato y precios](references/ideogram-v45.md): `--mode t2i` crea desde texto y `--mode edit` edita la primera imagen adjunta, con hasta cuatro referencias adicionales; la precisión `high` exige `--image_size auto`. No afirmes que funciona en producción hasta que esté publicado y verificado.
 
 Para **Flux 3** (`flux-3`), consulta [su contrato](references/flux-3.md): `t2i` genera una imagen y `edit` utiliza de 1 a 10 referencias ordenadas. La CLI verifica cada referencia antes de subirla: mínimo 256 px por lado y máximo 4 megapíxeles. No añadas seed, lotes ni opciones privadas del proveedor. El catálogo vigente y la publicación firmada determinan su disponibilidad.
 
-Para **Nano Banana 2.1** (`nano-banana-2-1`), lee [su contrato](references/nano-banana-21.md): `t2i` genera desde texto y `edit` admite de 1 a 14 referencias ordenadas, hasta 30 MB cada una. El prompt admite hasta 20.000 caracteres y la resolución puede ser 1K, 2K o 4K. No añadas lotes, seed ni controles de razonamiento. Consulta `info` y `prepare` para comprobar disponibilidad y coste antes de enviar.
+Para **Nano Banana 2.1** (`nano-banana-2-1`), lee [su contrato](references/nano-banana-21.md): `t2i` genera desde texto y `edit` admite de 1 a 14 referencias ordenadas, hasta 30 MB cada una. El prompt admite hasta 20.000 caracteres y la resolución puede ser 1K, 2K o 4K. No añadas lotes, seed ni controles de razonamiento.
 
 Primero consulta el contrato del modelo. Pasa los archivos mediante el nombre exacto
 que muestra `info`; un parámetro `file[]` puede repetirse.

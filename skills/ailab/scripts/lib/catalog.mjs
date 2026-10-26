@@ -5,6 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { CATALOG_PATH, CATALOG_URL, CLI_VERSION, CONFIG_DIR, SERVER_CONTRACT_VERSION, ensureConfigDir } from './config.mjs';
 import { inspectPricingMetadata } from './files.mjs';
+import { WAN3_ID, wan3Estimate, wan3Problems } from './wan3.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1', 'higgsfield-v1'];
 
@@ -393,6 +394,12 @@ export function validateParams(model, given) {
       }
     }
   }
+  if (model.id === WAN3_ID) {
+    // Wan 3.0: compatibilidad de modalidades, límites de los materiales y duración medida de los
+    // vídeos de entrada (Kie los factura). El servidor repite todo esto con su propia medición.
+    if (!String(params.prompt || '').trim()) errors.push('El prompt no puede estar vacío.');
+    errors.push(...wan3Problems(params, fileParams));
+  }
   if (model.driver === 'topaz-v1') {
     const frames = Number(params.frame_count);
     const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : '';
@@ -457,6 +464,7 @@ export function estimateCredits(model, params, now = Date.now()) {
       note: e.note || 'El coste lo cotiza el servidor antes de generar.',
     };
   }
+  if (model.id === WAN3_ID) return wan3Estimate(model, params);
   if (e.kind === 'topaz_image') {
     const megapixels = Number(params[e.megapixels_param]);
     const tiers = e.provider_credits_by_max_megapixels || {};

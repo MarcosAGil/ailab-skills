@@ -12,7 +12,7 @@ import test from 'node:test';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const execute = promisify(execFile);
 const cli = process.env.AILAB_TEST_RUNTIME || path.join(root, 'skills/ailab/scripts/ailab.mjs');
-const helper = path.join(root, 'skills/ugc-ailab/scripts/extract-audio.mjs');
+const helper = path.join(root, 'skills/ugc-bajo-coste-ailab/scripts/extract-audio.mjs');
 const available = ['ffmpeg', 'ffprobe'].every(command => spawnSync(command, ['-version']).status === 0);
 const sha = buffer => crypto.createHash('sha256').update(buffer).digest('hex');
 
@@ -137,7 +137,7 @@ test('UGC completo con AILAB simulado: referencias ordenadas, dos ramas, costes 
     AILAB_TASK_ENDPOINT: base + 'api/v1/skill/task.php', AILAB_CATALOG_PATH: path.join(root, 'skills/ailab/catalog/catalog.json'),
     AILAB_CONFIG_DIR: path.join(temp, 'config'), AILAB_CREDENTIALS_DIR: credentials };
   const run = async (...args) => (await execute(process.execPath, [cli, ...args], { env, timeout: 30000 })).stdout;
-  assert.match(await run('self-test'), /SELF_TEST_OK 2\.3\.11/);
+  assert.match(await run('self-test'), /SELF_TEST_OK 2\.3\.12/);
   const filesFrom = output => [...output.matchAll(/(?:Guardado|Recuperado del servidor): (.+) \(/g)].map(match => match[1]);
   const brief = path.join(temp, 'brief.txt');
   fs.writeFileSync(brief, 'Testimonial, diálogo literal "Hola", cámara estática, 4 segundos, 9:16, 1080p.');

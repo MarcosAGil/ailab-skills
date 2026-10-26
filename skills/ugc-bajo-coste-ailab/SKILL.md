@@ -1,5 +1,5 @@
 ---
-name: ugc-ailab
+name: ugc-bajo-coste-ailab
 description: >-
   Produce un vídeo UGC desde el guion, formato, referencias visuales y dirección
   del usuario con Video Prompter y Gemini Omni Flash 1.1 en AILAB; extrae el audio,
@@ -7,7 +7,7 @@ description: >-
   Voice Isolator y Voice Changer. Entrega vídeo y pistas separadas.
 ---
 
-# UGC con AILAB
+# UGC Bajo Coste AILAB
 
 Ejecuta este flujo completo a partir del material del usuario:
 

@@ -1,15 +1,24 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-16",
+  "updated_at": "2026-10-23",
   "skills": [
     {
       "id": "ailab",
       "name": "AILAB",
-      "version": "2.3.11",
+      "version": "2.3.12",
       "channel": "beta",
       "path": "skills/ailab",
       "description": "Playground y asistentes de AILAB desde agentes de código.",
       "minimum_node": "18.17.0",
+      "guide_references": [
+        "references/approval-flows.md",
+        "references/eleven-v4.md",
+        "references/eleven-voices.md",
+        "references/flux-3.md",
+        "references/ideogram-v45.md",
+        "references/krea-3.md",
+        "references/nano-banana-21.md"
+      ],
       "clients": [
         "claude-code",
         "codex"
@@ -53,11 +62,11 @@
       ]
     },
     {
-      "id": "ugc-ailab",
-      "name": "UGC AILAB",
-      "version": "1.0.1",
+      "id": "ugc-bajo-coste-ailab",
+      "name": "UGC Bajo Coste AILAB",
+      "version": "1.1.0",
       "channel": "beta",
-      "path": "skills/ugc-ailab",
+      "path": "skills/ugc-bajo-coste-ailab",
       "description": "Vídeo UGC con Gemini Omni y pistas separadas de ambiente y voz mediante AILAB.",
       "minimum_node": "18.17.0",
       "clients": [
