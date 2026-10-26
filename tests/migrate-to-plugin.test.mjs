@@ -155,3 +155,24 @@ test('sin --home usa el HOME del entorno (HOME temporal) y deja intacto el real'
   assert.ok(fs.readdirSync(dir).some((name) => name.startsWith('ailab-skill-backup-')));
   assert.ok(result.stdout.includes(dir));
 });
+
+test('un SKILL.md con saltos de línea CRLF (clon de Windows, con o sin BOM) se reconoce y se mueve', () => {
+  const dir = home('crlf');
+  const claude = install(dir, 'claude');
+  const codex = install(dir, 'codex');
+  const crlf = fs.readFileSync(path.join(claude, 'SKILL.md'), 'utf8').replace(/\r?\n/g, '\r\n');
+  assert.ok(crlf.startsWith('---\r\nname: ailab\r\n'));
+  fs.writeFileSync(path.join(claude, 'SKILL.md'), crlf);
+  fs.writeFileSync(path.join(codex, 'SKILL.md'), '﻿' + crlf);
+  assert.equal(inspectSkill(claude).ok, true);
+  assert.equal(inspectSkill(codex).ok, true, 'con BOM tambien');
+  // Una skill ajena en CRLF sigue sin tocarse.
+  fs.writeFileSync(path.join(codex, 'SKILL.md'), crlf.replace('name: ailab', 'name: otra-cosa'));
+  assert.match(inspectSkill(codex).reason, /no declara name: ailab/);
+  fs.writeFileSync(path.join(codex, 'SKILL.md'), crlf);
+  const result = run(['--home', dir, '--apply']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.existsSync(claude), false);
+  assert.equal(fs.existsSync(codex), false);
+  assert.ok(fs.readdirSync(dir).some((name) => name.startsWith('ailab-skill-backup-')));
+});

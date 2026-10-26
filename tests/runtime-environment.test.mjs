@@ -148,7 +148,8 @@ test('carpeta de estado sin permisos: explica el ajuste de escritura y nunca esc
   });
 
 test('bootstrapInfo deduce la version del arranque 1.0.0 desde argv y clasifica la ubicacion', async () => {
-  const { bootstrapInfo, environmentNotices, semverLess } = await import('../skills/ailab/scripts/lib/environment.mjs');
+  const { bootstrapInfo, environmentNotices, semverLess, INSTALL_GUIDE_URL } = await import('../skills/ailab/scripts/lib/environment.mjs');
+  assert.equal(INSTALL_GUIDE_URL, 'https://github.com/MarcosAGil/ailab-skills/blob/main/docs/instalacion-plugin.md');
   const home = path.join(temporary, 'info-home');
   const legacy = path.join(home, '.claude', 'skills', 'ailab');
   fs.cpSync(path.join(ROOT, 'tests', 'fixtures', 'bootstrap-1.0.0'), legacy, { recursive: true });
@@ -163,7 +164,11 @@ test('bootstrapInfo deduce la version del arranque 1.0.0 desde argv y clasifica 
   assert.equal(semverLess('1.10.0', '1.2.0'), false);
   const notices = environmentNotices({ env: {}, home, info });
   assert.deepEqual(notices.map((notice) => notice.id), ['minimum_bootstrap']);
-  assert.match(notices[0].text, /Instala el plugin y retira la skill manual/);
+  // Skill manual: no se le manda "actualizar el plugin" (no tiene plugin), se le dice que existe y se le da la guia.
+  assert.match(notices[0].text, /AILAB ya está disponible como plugin/);
+  assert.match(notices[0].text, /solo se actualiza sola en modelos y precios/);
+  assert.ok(notices[0].text.includes(INSTALL_GUIDE_URL));
+  assert.doesNotMatch(notices[0].text, /Actualiza el plugin de AILAB|claude plugin update|codex plugin marketplace upgrade/);
   assert.equal(environmentNotices({ env: {}, home, info: { ...info, version: '1.1.0' } }).length, 0);
 });
 
@@ -175,7 +180,7 @@ function fakePluginCache(home, agent, version = '2.3.13') {
 }
 
 test('doble instalacion: avisa desde la skill manual y desde el plugin, y no avisa cuando solo hay una', async () => {
-  const { environmentNotices, bootstrapInfo } = await import('../skills/ailab/scripts/lib/environment.mjs');
+  const { environmentNotices, bootstrapInfo, INSTALL_GUIDE_URL } = await import('../skills/ailab/scripts/lib/environment.mjs');
   const home = path.join(temporary, 'double-home');
   const manual = path.join(home, '.codex', 'skills', 'ailab');
   fs.cpSync(SKILL, manual, { recursive: true });
@@ -187,13 +192,16 @@ test('doble instalacion: avisa desde la skill manual y desde el plugin, y no avi
   const warned = environmentNotices({ env: {}, home, info: infoManual });
   assert.deepEqual(warned.map((notice) => notice.id), ['double_install']);
   assert.ok(warned[0].text.includes(manual) && warned[0].text.includes(claudePlugin));
-  assert.match(warned[0].text, /migrate-to-plugin\.mjs --apply/);
+  assert.ok(warned[0].text.includes(INSTALL_GUIDE_URL), 'la guia con URL absoluta');
+  assert.match(warned[0].text, /desde una copia del repositorio, node tools\/migrate-to-plugin\.mjs --apply/);
 
   const infoPlugin = bootstrapInfo({ env: { AILAB_BOOTSTRAP_VERSION: '1.1.0', AILAB_BOOTSTRAP_DIR: claudePlugin }, home });
   assert.equal(infoPlugin.kind, 'plugin');
   const fromPlugin = environmentNotices({ env: {}, home, info: infoPlugin });
   assert.deepEqual(fromPlugin.map((notice) => notice.id), ['double_install']);
   assert.ok(fromPlugin[0].text.includes(manual));
+  assert.ok(fromPlugin[0].text.includes(INSTALL_GUIDE_URL), 'tambien desde el plugin se da la guia con URL absoluta');
+  assert.match(fromPlugin[0].text, /desde una copia del repositorio/);
 
   fs.rmSync(manual, { recursive: true, force: true });
   assert.deepEqual(environmentNotices({ env: {}, home, info: infoPlugin }), [], 'solo el plugin: sin aviso');
@@ -247,4 +255,118 @@ test('describeEnvironmentError no confunde un archivo ilegible del usuario con u
   assert.equal(describeEnvironmentError(new Error('otro fallo'), {}), null);
   const wrapped = new Error('No se pudo validar un catalogo fresco: fetch failed', { cause: Object.assign(new Error('fetch failed'), { cause: Object.assign(new Error('getaddrinfo'), { code: 'ENOTFOUND' }) }) });
   assert.match(describeEnvironmentError(wrapped, {}), /No hay conexión con AILAB/);
+});
+
+test('aviso de arranque antiguo: la skill manual recibe la guia; el plugin antiguo conserva los comandos exactos', async () => {
+  const { environmentNotices, bootstrapInfo, INSTALL_GUIDE_URL } = await import('../skills/ailab/scripts/lib/environment.mjs');
+  const home = path.join(temporary, 'old-notice-home');
+  const manualClaude = path.join(home, '.claude', 'skills', 'ailab');
+  const manualCodex = path.join(home, '.codex', 'skills', 'ailab');
+  for (const manual of [manualClaude, manualCodex]) {
+    const info = { dir: manual, version: '1.0.0', kind: manual === manualClaude ? 'manual-claude' : 'manual-codex' };
+    const [notice] = environmentNotices({ env: {}, home, info });
+    assert.equal(notice.id, 'minimum_bootstrap');
+    assert.match(notice.text, /AILAB ya está disponible como plugin/);
+    assert.match(notice.text, /solo se actualiza sola en modelos y precios/);
+    assert.ok(notice.text.includes(INSTALL_GUIDE_URL));
+    assert.doesNotMatch(notice.text, /Actualiza el plugin/);
+    assert.equal(notice.text.includes(LONG_DASH), false);
+  }
+  // Una carpeta cualquiera (copia local) tampoco es un plugin: mismo mensaje de migracion.
+  assert.match(environmentNotices({ env: {}, home, info: { dir: '/x/ailab', version: '1.0.0', kind: 'other' } })[0].text, /AILAB ya está disponible como plugin/);
+  const pluginDir = fakePluginCache(home, 'claude', '2.3.13');
+  const pluginInfo = bootstrapInfo({ env: { AILAB_BOOTSTRAP_VERSION: '1.0.0', AILAB_BOOTSTRAP_DIR: pluginDir }, home });
+  assert.equal(pluginInfo.kind, 'plugin');
+  const [old] = environmentNotices({ env: {}, home, info: pluginInfo });
+  assert.equal(old.id, 'minimum_bootstrap');
+  assert.match(old.text, /^Actualiza el plugin de AILAB/);
+  assert.ok(old.text.includes('claude plugin marketplace update ailendra-labs && claude plugin update ailab@ailendra-labs'));
+  assert.ok(old.text.includes('codex plugin marketplace upgrade ailendra-labs'));
+  assert.doesNotMatch(old.text, /disponible como plugin/);
+});
+
+test('el aviso de skill manual con arranque antiguo sale una sola vez al dia y siempre en help', () => {
+  const box = sandbox('cli-old-manual');
+  const manual = path.join(box.home, '.claude', 'skills', 'ailab');
+  fs.cpSync(SKILL, manual, { recursive: true });
+  // pg.mjs es el runtime que el arranque importa: recibe por entorno la version y la carpeta que anunciaria un 1.0.0.
+  const entry = path.join(manual, 'scripts', 'pg.mjs');
+  const old = { AILAB_BOOTSTRAP_VERSION: '1.0.0', AILAB_BOOTSTRAP_DIR: manual, AILAB_CATALOG_PATH: path.join(SKILL, 'catalog', 'catalog.json') };
+  const first = cli(box, ['models'], old, entry);
+  assert.match(first.stderr, /AILAB ya está disponible como plugin/);
+  assert.ok(first.stderr.includes('https://github.com/MarcosAGil/ailab-skills/blob/main/docs/instalacion-plugin.md'));
+  assert.doesNotMatch(first.stderr, /Actualiza el plugin de AILAB/);
+  const again = cli(box, ['models'], old, entry);
+  assert.doesNotMatch(again.stderr, /disponible como plugin/, 'una vez cada 24 h');
+  const help = cli(box, ['help'], old, entry);
+  assert.match(help.stderr, /AILAB ya está disponible como plugin/, 'help siempre avisa');
+  const current = cli(box, ['help'], { ...old, AILAB_BOOTSTRAP_VERSION: '1.1.0' }, entry);
+  assert.doesNotMatch(current.stderr, /disponible como plugin/, 'con el arranque al dia no hay aviso');
+});
+
+test('SKILL.md en CRLF (clon de Windows) se reconoce como skill de AILAB en las instalaciones manuales', async () => {
+  const { findManualInstalls, skillFrontmatter } = await import('../skills/ailab/scripts/lib/environment.mjs');
+  const home = path.join(temporary, 'crlf-home');
+  const manual = path.join(home, '.claude', 'skills', 'ailab');
+  fs.cpSync(SKILL, manual, { recursive: true });
+  const text = fs.readFileSync(path.join(manual, 'SKILL.md'), 'utf8').replace(/\r?\n/g, '\r\n');
+  assert.ok(text.includes('\r\n---\r\n'));
+  fs.writeFileSync(path.join(manual, 'SKILL.md'), text);
+  assert.deepEqual(findManualInstalls({ env: {}, home }).map((item) => item.agent), ['claude']);
+  fs.writeFileSync(path.join(manual, 'SKILL.md'), '\uFEFF' + text);
+  assert.equal(findManualInstalls({ env: {}, home }).length, 1, 'con BOM tambien');
+  fs.writeFileSync(path.join(manual, 'SKILL.md'), text.replace('name: ailab', 'name: otra'));
+  assert.equal(findManualInstalls({ env: {}, home }).length, 0, 'otra skill no cuenta');
+  assert.equal(skillFrontmatter('---\r\nname: ailab\r\n---\r\n# x'), 'name: ailab');
+  assert.equal(skillFrontmatter('---\nname: ailab\n---\n# x'), 'name: ailab');
+  assert.equal(skillFrontmatter('# sin frontmatter'), null);
+});
+
+test('pathKind respeta CLAUDE_CONFIG_DIR, CODEX_HOME y CLAUDE_CODE_PLUGIN_CACHE_DIR, y reconoce el plugin aunque la variable no llegue', async () => {
+  const { pathKind } = await import('../skills/ailab/scripts/lib/environment.mjs');
+  const home = path.join(temporary, 'kind-home');
+  const claudeDir = path.join(temporary, 'kind-claude');
+  const codexDir = path.join(temporary, 'kind-codex');
+  const cacheDir = path.join(temporary, 'kind-cache');
+  const skillIn = (root) => path.join(root, 'plugins', 'cache', 'ailendra-labs', 'ailab', '2.3.13', 'skills', 'ailab');
+  for (const root of [claudeDir, codexDir]) fs.mkdirSync(skillIn(root), { recursive: true });
+  fs.mkdirSync(path.join(cacheDir, 'ailendra-labs', 'ailab', '2.3.13', 'skills', 'ailab'), { recursive: true });
+  // Con la variable apuntando a otra carpeta.
+  assert.equal(pathKind(skillIn(claudeDir), { CLAUDE_CONFIG_DIR: claudeDir }, home), 'plugin');
+  assert.equal(pathKind(skillIn(codexDir), { CODEX_HOME: codexDir }, home), 'plugin');
+  assert.equal(pathKind(path.join(cacheDir, 'ailendra-labs', 'ailab', '2.3.13', 'skills', 'ailab'), { CLAUDE_CODE_PLUGIN_CACHE_DIR: cacheDir }, home), 'plugin');
+  // La skill manual tambien vive bajo la carpeta configurada.
+  fs.mkdirSync(path.join(claudeDir, 'skills', 'ailab'), { recursive: true });
+  fs.mkdirSync(path.join(codexDir, 'skills', 'ailab'), { recursive: true });
+  assert.equal(pathKind(path.join(claudeDir, 'skills', 'ailab'), { CLAUDE_CONFIG_DIR: claudeDir }, home), 'manual-claude');
+  assert.equal(pathKind(path.join(codexDir, 'skills', 'ailab'), { CODEX_HOME: codexDir }, home), 'manual-codex');
+  // Sin la variable (otra terminal): la estructura plugins/cache/<marketplace>/ailab/<version> basta.
+  assert.equal(pathKind(skillIn(claudeDir), {}, home), 'plugin');
+  assert.equal(pathKind(skillIn(codexDir), {}, home), 'plugin');
+  // Un directorio de plugin con su manifiesto (claude --plugin-dir) tambien es un plugin.
+  const dev = path.join(temporary, 'kind-dev');
+  fs.mkdirSync(path.join(dev, '.claude-plugin'), { recursive: true });
+  fs.mkdirSync(path.join(dev, 'skills', 'ailab'), { recursive: true });
+  fs.writeFileSync(path.join(dev, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'ailab' }));
+  assert.equal(pathKind(path.join(dev, 'skills', 'ailab'), {}, home), 'plugin');
+  // Lo demas sigue siendo "otra ubicacion".
+  assert.equal(pathKind(path.join(temporary, 'kind-elsewhere', 'ailab'), {}, home), 'other');
+  assert.equal(pathKind(path.join(temporary, 'kind-elsewhere', 'plugins', 'cache', 'x', 'otra', '1.0.0', 'skills', 'ailab'), {}, home), 'other');
+  assert.equal(pathKind(null, {}, home), 'unknown');
+});
+
+test('doctor desde una instalacion del plugin bajo CLAUDE_CONFIG_DIR o CODEX_HOME propios dice "plugin", no "otra ubicación"', () => {
+  const box = sandbox('doctor-kind');
+  for (const [agent, variable] of [['claude', 'CLAUDE_CONFIG_DIR'], ['codex', 'CODEX_HOME']]) {
+    const configHome = path.join(box.home, 'otra-' + agent);
+    const skillDir = path.join(configHome, 'plugins', 'cache', 'ailendra-labs', 'ailab', '2.3.13', 'skills', 'ailab');
+    fs.cpSync(SKILL, skillDir, { recursive: true });
+    const entry = path.join(skillDir, 'scripts', 'ailab.mjs');
+    for (const env of [{ [variable]: configHome }, {}]) {
+      const result = cli(box, ['doctor'], { ...env, AILAB_BASE_URL: 'http://127.0.0.1:1/', AILAB_CATALOG_PATH: path.join(SKILL, 'catalog', 'catalog.json') }, entry);
+      assert.match(result.stdout, /INFO · Arranque: 1\.1\.0 · plugin · /, agent + ' ' + JSON.stringify(Object.keys(env)) + '\n' + result.stdout);
+      assert.doesNotMatch(result.stdout, /otra ubicación/);
+      assert.doesNotMatch(result.stdout, /AVISO/);
+    }
+  }
 });

@@ -125,6 +125,10 @@ test('el arranque 1.0.0 congelado actualiza a la release 2.3.13 y el runtime nue
   assert.match(first.stdout, /REGLAS CRÍTICAS/);
   // El runtime deduce la version del arranque a partir de process.argv[1] porque el 1.0.0 no la anuncia.
   assert.match(first.stdout + first.stderr, /arranque 1\.0\.0 es anterior al mínimo recomendado 1\.1\.0/);
+  // Una skill manual (o una copia local) no tiene plugin que actualizar: se le dice que existe y se le da la guia.
+  assert.match(first.stderr, /AILAB ya está disponible como plugin/);
+  assert.ok(first.stderr.includes('https://github.com/MarcosAGil/ailab-skills/blob/main/docs/instalacion-plugin.md'));
+  assert.doesNotMatch(first.stderr, /Actualiza el plugin de AILAB/);
 
   const current = JSON.parse(fs.readFileSync(path.join(env.config, 'runtime', 'current.json'), 'utf8'));
   assert.equal(current.version, VERSION);

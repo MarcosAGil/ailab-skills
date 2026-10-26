@@ -12,9 +12,10 @@ caché y la actualizan con sus propios comandos.
 | El runtime de la CLI (release firmada, se comprueba como máximo cada seis horas) | |
 | La guía de uso (`guide`) y la documentación de los asistentes | |
 
-La CLI avisa cuando haga falta actualizar el plugin (arranque antiguo) o cuando haya dos
-instalaciones de AILAB. No actives la actualización automática del plugin: así un cambio de las
-instrucciones nunca llega a tu agente sin que lo decidas.
+La CLI avisa, como máximo una vez al día, cuando el arranque instalado es antiguo (plugin que
+actualizar, o skill manual que conviene sustituir por el plugin) y cuando hay dos instalaciones de
+AILAB. No actives la actualización automática del plugin: así un cambio de las instrucciones nunca
+llega a tu agente sin que lo decidas.
 
 ## Requisitos
 
@@ -24,31 +25,53 @@ instrucciones nunca llega a tu agente sin que lo decidas.
 
 ## 1. Retira la skill antigua (solo si la instalaste a mano)
 
-No tengas `ailab` por las dos vías a la vez: el agente podría cargar la copia antigua.
+No tengas `ailab` por las dos vías a la vez: el agente podría cargar la copia antigua. Si nunca
+instalaste `ailab` a mano (no existe `~/.claude/skills/ailab` ni `~/.codex/skills/ailab`), pasa al
+paso 2.
+
+La herramienta de migración vive en el repositorio. Si ya lo tienes de la instalación antigua, basta
+con actualizarlo; si no, se clona. Estos comandos sirven en los dos casos. Ejecútalos en la carpeta
+donde tengas (o quieras tener) tus repositorios.
 
 macOS y Linux:
 
 ```bash
-git clone https://github.com/MarcosAGil/ailab-skills.git
-cd ailab-skills
+if [ -d ailab-skills/.git ]; then
+  cd ailab-skills && git pull --ff-only
+else
+  git clone https://github.com/MarcosAGil/ailab-skills.git && cd ailab-skills
+fi
 node tools/migrate-to-plugin.mjs            # simulación: muestra lo que haría
 node tools/migrate-to-plugin.mjs --apply    # mueve las skills a una copia de seguridad
 ```
 
-Windows (PowerShell), mismo flujo desde la carpeta clonada:
+Windows (PowerShell):
 
 ```powershell
-git clone https://github.com/MarcosAGil/ailab-skills.git
-cd ailab-skills
+if (Test-Path ailab-skills\.git) {
+  Set-Location ailab-skills
+  git pull --ff-only
+} else {
+  git clone https://github.com/MarcosAGil/ailab-skills.git
+  Set-Location ailab-skills
+}
 node tools\migrate-to-plugin.mjs
 node tools\migrate-to-plugin.mjs --apply
 ```
+
+Si `git pull --ff-only` falla porque cambiaste archivos de tu copia, o porque la carpeta
+`ailab-skills` no es un clon de Git (por ejemplo, la descargaste como ZIP), clona en otra carpeta o
+renombra la antigua y repite el bloque. La migración es la misma desde cualquier copia reciente.
 
 La herramienta mueve (no borra) `~/.claude/skills/ailab` y `~/.codex/skills/ailab` a
 `ailab-skill-backup-AAAAMMDD-HHMMSS` en tu carpeta personal. Solo toca una carpeta si su `SKILL.md`
 declara `name: ailab` y su `package.json` es el de la skill de AILAB; un enlace simbólico se deja
 donde está. No toca `~/.config/ailab` ni `~/.config/ailendra`: tu sesión y tu estado se conservan.
 Borra la copia de seguridad tú, cuando quieras.
+
+Sin el repositorio también puedes retirarla a mano: mueve (no borres) la carpeta `ailab` de
+`~/.claude/skills/` y de `~/.codex/skills/` a un sitio fuera de esas carpetas y no toques
+`~/.config/ailab` ni `~/.config/ailendra`. Comprueba antes que no sea un enlace a un proyecto tuyo.
 
 ## 2. Añade el marketplace e instala
 
@@ -178,7 +201,8 @@ ejecuta `logout` y revoca el dispositivo desde tu cuenta de AILAB.
 
 | Síntoma | Qué hacer |
 |---|---|
-| «AILAB está instalada dos veces» | Ejecuta `node tools/migrate-to-plugin.mjs --apply` (paso 1). |
+| «AILAB está instalada dos veces» | Retira la skill manual: paso 1 (`node tools/migrate-to-plugin.mjs --apply` desde una copia del repositorio, o mueve la carpeta a mano). |
+| «AILAB ya está disponible como plugin» | Tienes la skill manual con un arranque antiguo. Instala el plugin (pasos 1 a 3). Mientras tanto la CLI sigue funcionando y recibe modelos y precios. |
 | «Actualiza el plugin de AILAB» | Sigue «Actualizar el plugin a mano». Mientras tanto la CLI sigue funcionando. |
 | El agente no ve la skill | Abre una sesión nueva y comprueba `claude plugin list` / `codex plugin list`. |
 | «El sandbox de Codex impide que AILAB funcione» | Aplica el ajuste de la sección del sandbox. |

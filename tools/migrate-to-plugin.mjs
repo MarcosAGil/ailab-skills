@@ -32,7 +32,8 @@ export function inspectSkill(dir) {
   if (!stat.isDirectory()) return { ok: false, reason: 'no es una carpeta' };
   let skill;
   try { skill = fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8'); } catch { return { ok: false, reason: 'no tiene SKILL.md' }; }
-  const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(skill);
+  // Tolera CRLF (clones en Windows) y BOM.
+  const frontmatter = /^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(skill);
   if (!frontmatter || !/^name:\s*ailab\s*$/m.test(frontmatter[1])) return { ok: false, reason: 'su SKILL.md no declara name: ailab' };
   const pkg = readJson(path.join(dir, 'package.json'));
   if (!pkg || pkg.name !== SKILL_PACKAGE_NAME) return { ok: false, reason: 'su package.json no es el de la skill de AILAB' };

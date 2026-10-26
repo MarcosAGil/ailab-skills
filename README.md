@@ -66,21 +66,10 @@ la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza
 
 - 2.3.13: `guide` devuelve la guía de uso vigente; Seed Audio reserva 100 cr y cobra la duración
   real (0,625 cr/s, nunca más de 100 cr); el arranque avisa de plugin antiguo, doble instalación y
-  sandbox de Codex.
-- 2.3.12: Wan 3.0 factura también los segundos de los vídeos de referencia.
-- 2.3.10: los asistentes consultan los límites de referencias del servidor y `assistant-status
-  <UUID>` recupera un envío incierto sin repetirlo.
-- 2.3.8: ElevenLabs con biblioteca, voces privadas, clonación autorizada y diseño por prompt. La
-  gestión exige un token con el permiso opcional `voices_manage`.
-- 2.3.7: Flux 3 e Ideogram 4.5. El runtime lee `api/v1/skill/catalog-v2.json`; `catalog.json`
-  conserva el catálogo 1.18.0 para las instalaciones anteriores.
-- 2.3.4: Eleven v4 para voz individual, con reserva y recuperación de una única solicitud.
-- 2.3.1 y 2.3.2: cotizaciones y recuperación de resultados de Higgsfield y Midjourney.
-- 2.2.9: GPT Image 2.5, los cuatro modelos Topaz y VEED Lipsync v2.
+  sandbox de Codex. Las versiones anteriores están en el historial de Git.
 
-El detalle de cada cambio está en el historial de Git. Una fuente nueva requiere empaquetado,
-publicación firmada y verificación del catálogo servido: no acredita por sí sola disponibilidad
-en producción.
+Una fuente nueva requiere empaquetado, publicación firmada y verificación del catálogo servido: no
+acredita por sí sola disponibilidad en producción.
 
 ## Requisitos
 
@@ -94,65 +83,33 @@ en producción.
 
 ## Instalación manual (alternativa al plugin)
 
-Para el resto de skills, o si prefieres no usar el plugin, clona o descarga este repositorio y ejecuta los comandos desde su raíz:
+Para el resto de skills, o si prefieres no usar el plugin, clona o descarga este repositorio y ejecuta
+los comandos desde su raíz:
 
 ```bash
 git clone https://github.com/MarcosAGil/ailab-skills.git
 cd ailab-skills
-```
-
-Para Claude Code (`ailab` en `~/.claude/skills/`):
-
-```bash
-node tools/install.mjs ailab --target claude
-```
-
-Para Codex (`ailab` en `~/.codex/skills/`):
-
-```bash
-node tools/install.mjs ailab --target codex
+node tools/install.mjs ailab --target claude     # ~/.claude/skills/ailab
+node tools/install.mjs ailab --target codex      # ~/.codex/skills/ailab
+node tools/install.mjs --all --target claude     # todas las skills
+node tools/install.mjs vervideo --target claude  # solo el analizador de vídeo
 ```
 
 No instales `ailab` por las dos vías a la vez. Si ya la tienes como skill manual, retírala con
 `node tools/migrate-to-plugin.mjs` (simulación) y `--apply` (la mueve a una copia de seguridad).
 
-Para instalar todas las skills disponibles:
+El instalador valida el registro, rechaza enlaces simbólicos y realiza una copia atómica. Ejecuta el
+autodiagnóstico de las skills ejecutables; en las de solo instrucciones valida archivos y referencias
+sin ejecutar comandos de la skill.
 
-```bash
-node tools/install.mjs --all --target claude
-```
-
-Para instalar únicamente el analizador de vídeo:
-
-```bash
-node tools/install.mjs vervideo --target claude
-```
-
-El instalador valida el registro, rechaza enlaces simbólicos y realiza una copia
-atómica. Ejecuta el autodiagnóstico de las skills ejecutables; en las de solo
-instrucciones valida archivos y referencias sin ejecutar comandos de la skill.
-
-Para instalar Refinar prompt en Codex (o cambia `codex` por `claude`):
-
-```bash
-node tools/install.mjs refinar-prompt --target codex
-```
-
-Invoca `$refinar-prompt` con un prompt ya escrito y sus referencias. No requiere
-AILAB ni consume sus créditos; el agente sigue utilizando tu propio plan.
-
-Para instalar el workflow UGC junto a su dependencia en Codex:
-
-```bash
-node tools/install.mjs ailab ugc-bajo-coste-ailab --target codex
-```
-
-Invoca `$ugc-bajo-coste-ailab` y aporta guion, formato, referencias visuales y dirección del
-vídeo. Prepara un plan único para Video Prompter, Gemini Omni Flash 1.1, SAM Audio,
-Voice Isolator y Voice Changer. Entrega el vídeo original, ambiente y voz separados;
-no incluye montaje ni upscale. Cristina es la voz predeterminada, resuelta desde
-el catálogo disponible. El autodiagnóstico de instalación comprueba el helper,
-no la disponibilidad de la cuenta, los proveedores o los binarios de vídeo.
+- `refinar-prompt` (Codex o Claude Code): invoca `$refinar-prompt` con un prompt ya escrito y sus
+  referencias. No requiere AILAB ni consume sus créditos.
+- `ugc-bajo-coste-ailab` junto a su dependencia: `node tools/install.mjs ailab ugc-bajo-coste-ailab
+  --target codex`. Invoca `$ugc-bajo-coste-ailab` con guion, formato, referencias visuales y dirección.
+  Prepara un plan único (Video Prompter, Gemini Omni Flash 1.1, SAM Audio, Voice Isolator y Voice
+  Changer) y entrega el vídeo original, ambiente y voz separados, sin montaje ni upscale. Cristina es
+  la voz predeterminada, resuelta desde el catálogo. Su autodiagnóstico comprueba el helper, no la
+  disponibilidad de la cuenta, los proveedores ni los binarios de vídeo.
 
 ## Primer uso
 

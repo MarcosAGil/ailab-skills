@@ -1,8 +1,8 @@
 ---
 name: ailab
 description: >-
-  Usa AILAB desde Claude Code para generar imagen, vídeo, upscale, voz, audio,
-  música, lipsync, avatares y utilidades con la cuenta y créditos del usuario, o
+  Usa AILAB desde Claude Code o Codex para generar imagen, vídeo, upscale, voz,
+  audio, música, lipsync, avatares y utilidades con la cuenta y créditos del usuario, o
   para trabajar con Image Prompter, Audio Prompter, Video Prompter y el asistente
   libre. Actívala cuando el usuario pida crear con un modelo del Playground de
   AILAB, consultar modelos o saldo, recuperar una tarea, o usar un Prompter.

@@ -13,6 +13,7 @@ import { CONFIG_DIR, CREDENTIALS_DIR, OUTPUT_DIR } from './config.mjs';
 export const MINIMUM_BOOTSTRAP_VERSION = '1.1.0';
 export const PLUGIN_NAME = 'ailab';
 export const MARKETPLACE_NAME = 'ailendra-labs';
+export const INSTALL_GUIDE_URL = 'https://github.com/MarcosAGil/ailab-skills/blob/main/docs/instalacion-plugin.md';
 
 const FS_BLOCKED = new Set(['EPERM', 'EACCES', 'EROFS']);
 const NETWORK_CODES = new Set(['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ENETUNREACH', 'EHOSTUNREACH', 'ECONNRESET', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT']);
@@ -124,15 +125,36 @@ export function describeEnvironmentError(error, env = process.env) {
 
 // ---------------------------------------------------------------- arranque instalado
 
+// Clasifica la carpeta del arranque: plugin, skill manual de Claude Code o de Codex, u otra.
+// Respeta CLAUDE_CONFIG_DIR, CODEX_HOME y CLAUDE_CODE_PLUGIN_CACHE_DIR. Si la persona ejecuta la CLI
+// desde una terminal que no exporta esas variables, el plugin instalado bajo otra carpeta se
+// reconoce igualmente por su estructura (plugins/cache/<marketplace>/ailab/<version> o un
+// directorio de plugin con su manifiesto).
 export function pathKind(dir, env = process.env, home = os.homedir()) {
   if (!dir) return 'unknown';
   const resolved = safeReal(dir);
-  const plugins = [path.join(claudeHome(env, home), 'plugins') + path.sep, path.join(codexHome(env, home), 'plugins') + path.sep]
-    .map(safeReal);
-  if (plugins.some((root) => resolved.startsWith(root))) return 'plugin';
+  const roots = [path.join(claudeHome(env, home), 'plugins'), path.join(codexHome(env, home), 'plugins')];
+  if (env.CLAUDE_CODE_PLUGIN_CACHE_DIR) roots.push(path.resolve(env.CLAUDE_CODE_PLUGIN_CACHE_DIR));
+  if (roots.map(safeReal).some((root) => resolved === root || resolved.startsWith(root + path.sep))) return 'plugin';
   if (resolved === safeReal(path.join(claudeHome(env, home), 'skills', PLUGIN_NAME))) return 'manual-claude';
   if (resolved === safeReal(path.join(codexHome(env, home), 'skills', PLUGIN_NAME))) return 'manual-codex';
+  if (isPluginSkillDir(resolved)) return 'plugin';
   return 'other';
+}
+
+// <raiz del plugin>/skills/ailab dentro de un plugin de AILAB: la cache de Claude Code o de Codex
+// (<...>/plugins/cache/<marketplace>/ailab/<version>/skills/ailab) o cualquier raiz que declare
+// el plugin ailab en su manifiesto (p. ej. claude --plugin-dir).
+function isPluginSkillDir(resolved) {
+  if (path.basename(resolved) !== PLUGIN_NAME || path.basename(path.dirname(resolved)) !== 'skills') return false;
+  const pluginRoot = path.dirname(path.dirname(resolved));
+  const parts = pluginRoot.split(path.sep);
+  const n = parts.length;
+  if (n >= 5 && parseSemver(parts[n - 1]) && parts[n - 2] === PLUGIN_NAME && parts[n - 4] === 'cache' && parts[n - 5] === 'plugins') return true;
+  for (const manifest of [path.join(pluginRoot, '.claude-plugin', 'plugin.json'), path.join(pluginRoot, 'plugin.json')]) {
+    try { if (JSON.parse(fs.readFileSync(manifest, 'utf8')).name === PLUGIN_NAME) return true; } catch { /* sin manifiesto */ }
+  }
+  return false;
 }
 
 function safeReal(target) {
@@ -167,10 +189,16 @@ export function cliCommand(subcommand = '', info = bootstrapInfo()) {
   return 'node ' + quoted + (subcommand ? ' ' + subcommand : '');
 }
 
+// Frontmatter de un SKILL.md tolerante a saltos de linea CRLF (clones en Windows) y a BOM.
+export function skillFrontmatter(text) {
+  const match = /^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(String(text));
+  return match ? match[1] : null;
+}
+
 function manifestOf(dir) {
   try {
-    const skill = fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8');
-    if (!/^name:\s*ailab\s*$/m.test(skill.split(/\n---\n/)[0])) return null;
+    const frontmatter = skillFrontmatter(fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8'));
+    if (frontmatter === null || !/^name:\s*ailab\s*$/m.test(frontmatter)) return null;
     return true;
   } catch { return null; }
 }
@@ -229,34 +257,38 @@ export function findManualInstalls({ env = process.env, home = os.homedir() } = 
 
 export function environmentNotices({ env = process.env, home = os.homedir(), info = bootstrapInfo({ env, home }) } = {}) {
   const notices = [];
+  const isPlugin = info.kind === 'plugin';
   const manual = info.kind === 'manual-claude' || info.kind === 'manual-codex';
   if (info.version && semverLess(info.version, MINIMUM_BOOTSTRAP_VERSION)) {
     notices.push({
       id: 'minimum_bootstrap',
-      text: 'Actualiza el plugin de AILAB: tu arranque ' + info.version + ' es anterior al mínimo recomendado ' + MINIMUM_BOOTSTRAP_VERSION
-        + '. Los modelos y los precios siguen actualizándose solos, pero el arranque no.'
-        + (manual
-          ? ' Instala el plugin y retira la skill manual (docs/instalacion-plugin.md del repositorio MarcosAGil/ailab-skills).'
-          : ' Claude Code: claude plugin marketplace update ' + MARKETPLACE_NAME + ' && claude plugin update ' + PLUGIN_NAME + '@' + MARKETPLACE_NAME
-            + ' · Codex: codex plugin marketplace upgrade ' + MARKETPLACE_NAME + '.'),
+      text: isPlugin
+        ? 'Actualiza el plugin de AILAB: tu arranque ' + info.version + ' es anterior al mínimo recomendado ' + MINIMUM_BOOTSTRAP_VERSION
+          + '. Los modelos y los precios siguen actualizándose solos, pero el arranque no.'
+          + ' Claude Code: claude plugin marketplace update ' + MARKETPLACE_NAME + ' && claude plugin update ' + PLUGIN_NAME + '@' + MARKETPLACE_NAME
+          + ' · Codex: codex plugin marketplace upgrade ' + MARKETPLACE_NAME + '.'
+        : 'AILAB ya está disponible como plugin. Tu arranque ' + info.version + ' es anterior al mínimo recomendado ' + MINIMUM_BOOTSTRAP_VERSION
+          + ': esta instalación (' + (manual ? 'skill manual' : 'copia local') + ') solo se actualiza sola en modelos y precios; las mejoras del arranque y de las instrucciones de la skill llegan únicamente con el plugin.'
+          + ' Instálalo y retira esta copia con la guía: ' + INSTALL_GUIDE_URL,
     });
   }
   const plugins = findPluginInstalls({ env, home });
   const manuals = findManualInstalls({ env, home });
   const here = info.dir ? safeReal(info.dir) : null;
+  const removal = ' Retira la manual con la guía ' + INSTALL_GUIDE_URL + ' (paso 1; desde una copia del repositorio, node tools/migrate-to-plugin.mjs --apply mueve la carpeta a una copia de seguridad, no la borra).';
   if (manual && plugins.length) {
     notices.push({
       id: 'double_install',
       text: 'AILAB está instalada dos veces: esta skill manual (' + info.dir + ') y el plugin (' + plugins.map((item) => item.skillDir).join(', ')
-        + '). El agente puede cargar la copia antigua. Retira la manual con: node tools/migrate-to-plugin.mjs --apply (repositorio MarcosAGil/ailab-skills; mueve la carpeta a una copia de seguridad, no la borra).',
+        + '). El agente puede cargar la copia antigua.' + removal,
     });
-  } else if (info.kind === 'plugin' && manuals.length) {
+  } else if (isPlugin && manuals.length) {
     const others = manuals.filter((item) => !here || safeReal(item.skillDir) !== here);
     if (others.length) {
       notices.push({
         id: 'double_install',
         text: 'AILAB está instalada dos veces: este plugin y una skill manual (' + others.map((item) => item.skillDir).join(', ')
-          + '). Retira la manual con: node tools/migrate-to-plugin.mjs --apply (repositorio MarcosAGil/ailab-skills; la mueve a una copia de seguridad).',
+          + '). El agente puede cargar la copia antigua.' + removal,
       });
     }
   }
