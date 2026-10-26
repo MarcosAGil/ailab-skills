@@ -236,3 +236,15 @@ test('una actualizacion deja la version anterior en la cache: solo cuenta la mas
   assert.deepEqual(findPluginInstalls({ env: {}, home }).map((item) => item.skillDir), [newest], 'comparacion semver, no alfabetica');
   assert.equal(fs.existsSync(stale), true);
 });
+
+test('describeEnvironmentError no confunde un archivo ilegible del usuario con un fallo de la carpeta de estado', async () => {
+  const { describeEnvironmentError } = await import('../skills/ailab/scripts/lib/environment.mjs');
+  const denied = (target) => Object.assign(new Error('EACCES: permission denied, open ' + target), { code: 'EACCES', path: target, syscall: 'open' });
+  assert.equal(describeEnvironmentError(denied('/proyecto/referencia.png'), {}), null, 'fuera del sandbox: se conserva el error original');
+  const inSandbox = describeEnvironmentError(denied('/otra/carpeta/salida/x.png'), { CODEX_SANDBOX: 'seatbelt' });
+  assert.match(inSandbox, /AILAB no puede escribir en \/otra\/carpeta\/salida\/x\.png/);
+  assert.match(inSandbox, /writable_roots = \[.*"\/otra\/carpeta\/salida"/);
+  assert.equal(describeEnvironmentError(new Error('otro fallo'), {}), null);
+  const wrapped = new Error('No se pudo validar un catalogo fresco: fetch failed', { cause: Object.assign(new Error('fetch failed'), { cause: Object.assign(new Error('getaddrinfo'), { code: 'ENOTFOUND' }) }) });
+  assert.match(describeEnvironmentError(wrapped, {}), /No hay conexión con AILAB/);
+});

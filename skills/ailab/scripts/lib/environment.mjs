@@ -62,8 +62,8 @@ export function stateDirOf(target) {
   return [CONFIG_DIR, OUTPUT_DIR, CREDENTIALS_DIR].find((dir) => resolved === path.resolve(dir) || resolved.startsWith(path.resolve(dir) + path.sep)) || resolved;
 }
 
-export function codexSandboxAdvice({ network = true, write = true } = {}) {
-  const dirs = writableDirs();
+export function codexSandboxAdvice({ network = true, write = true, extra = [] } = {}) {
+  const dirs = [...new Set([...writableDirs(), ...extra])];
   const lines = [];
   lines.push('El sandbox de Codex impide que AILAB funcione: ' + (network && write ? 'bloquea la red y la escritura fuera del proyecto.' : network ? 'bloquea la red.' : 'impide escribir fuera del proyecto.'));
   lines.push('Ajuste en ~/.codex/config.toml (y reinicia Codex):');
@@ -98,14 +98,24 @@ export function isNetworkFailure(error) {
     || /fetch failed|Sin conexion con la plataforma|No se pudo validar un catalogo fresco: .*(fetch failed|ENOTFOUND)/i.test(String(item.message || ''))));
 }
 
+function isStatePath(target) {
+  if (!target) return false;
+  const resolved = path.resolve(String(target));
+  return [CONFIG_DIR, OUTPUT_DIR, CREDENTIALS_DIR].some((dir) => resolved === path.resolve(dir) || resolved.startsWith(path.resolve(dir) + path.sep));
+}
+
 // Traduce un fallo de entorno a un mensaje accionable. Devuelve null cuando el
-// error no es de red ni de permisos, para que el llamador conserve el original.
+// error no es de red ni de permisos sobre las carpetas de AILAB, para que el
+// llamador conserve el original (p. ej. un EACCES al leer un archivo del usuario).
 export function describeEnvironmentError(error, env = process.env) {
   if (isFsBlocked(error)) {
+    const blocked = causeChain(error).find((item) => item && FS_BLOCKED.has(item.code));
     const where = causeChain(error).map((item) => item && item.path).find(Boolean);
-    const head = 'AILAB no puede escribir' + (where ? ' en ' + stateDirOf(where) : ' en su carpeta de estado') + ' (' + (causeChain(error).find((item) => item && item.code).code) + ').';
-    return isCodexSandbox(env)
-      ? head + '\n' + codexSandboxAdvice({ network: env.CODEX_SANDBOX_NETWORK_DISABLED === '1', write: true })
+    const sandboxed = isCodexSandbox(env);
+    if (!isStatePath(where) && !sandboxed) return null;
+    const head = 'AILAB no puede escribir' + (where ? ' en ' + (isStatePath(where) ? stateDirOf(where) : where) : ' en su carpeta de estado') + ' (' + blocked.code + ').';
+    return sandboxed
+      ? head + '\n' + codexSandboxAdvice({ network: env.CODEX_SANDBOX_NETWORK_DISABLED === '1', write: true, extra: where && !isStatePath(where) ? [path.dirname(path.resolve(where))] : [] })
       : head + '\nDa permiso de escritura a ' + CONFIG_DIR + ' y a ' + OUTPUT_DIR + ', o define AILAB_CONFIG_DIR y AILAB_OUTPUT_DIR en una carpeta donde puedas escribir. No guardes el token dentro de un proyecto.';
   }
   if (isNetworkFailure(error)) return networkAdvice(env);
