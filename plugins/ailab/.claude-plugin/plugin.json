@@ -1,0 +1,25 @@
+{
+  "name": "ailab",
+  "displayName": "AILAB",
+  "version": "2.3.13",
+  "description": "Genera imagen, vídeo, voz, audio, música y más con AILAB desde Claude Code o Codex, con tu cuenta y tus créditos. Los modelos, los precios y las mejoras llegan solos desde el servidor.",
+  "author": {
+    "name": "Ailendra Labs",
+    "url": "https://ailendra.com"
+  },
+  "homepage": "https://ailendra.com/ailab/",
+  "repository": "https://github.com/MarcosAGil/ailab-skills",
+  "license": "MIT",
+  "keywords": [
+    "ailab",
+    "ailendra",
+    "ia-generativa",
+    "imagen",
+    "video",
+    "audio",
+    "voz",
+    "musica"
+  ],
+  "icon": "./assets/ailab-logo.png",
+  "skills": "./skills/"
+}

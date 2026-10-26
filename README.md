@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="plugins/ailab/assets/ailab-logo.png" alt="AILAB" width="120">
+</p>
+
 # AILAB Skills
 
 Repositorio público oficial de las skills de AILAB para Claude Code y Codex.
@@ -10,13 +14,34 @@ Las skills son clientes públicos. Descargar este repositorio no concede acceso 
 AILAB, créditos ni credenciales de proveedores. Cada miembro utiliza su propia
 cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 
+## Plugin de AILAB (recomendado)
+
+El plugin `ailab` instala la skill `ailab` en Claude Code y en Codex sin copiar carpetas a
+mano. Modelos, precios y mejoras llegan solos desde AILAB; el plugin solo cambia cuando tú lo
+actualizas.
+
+Claude Code:
+
+```bash
+claude plugin marketplace add MarcosAGil/ailab-skills
+claude plugin install ailab@ailendra-labs
+```
+
+(En Claude Code 2.1.275 o posterior también sirve `/plugin install ailab --marketplace MarcosAGil/ailab-skills`.)
+
+Codex:
+
+```bash
+codex plugin marketplace add MarcosAGil/ailab-skills
+codex plugin add ailab@ailendra-labs
+```
+
+Abre una sesión nueva, ejecuta `login` y `doctor` en tu terminal y pide al agente que prepare
+algo con AILAB. La guía completa (macOS, Linux, Windows, sandbox de Codex, actualización y
+migración desde la skill manual) está en [`docs/instalacion-plugin.md`](docs/instalacion-plugin.md).
+
 ## Skills disponibles
 
-La versión 2.3.10 consulta los límites efectivos de referencias de los asistentes,
-conserva los adjuntos en las continuaciones y permite consultar un envío incierto
-con `assistant-status <UUID>` sin repetir la generación. Los límites dependen de
-la modalidad, el tamaño conjunto y el servidor; no todas las combinaciones de
-50 archivos caben en una petición. Requiere el backend compatible de AILAB.
 
 | Skill | Estado | Descripción |
 |---|---|---|
@@ -37,49 +62,25 @@ su asistente de instalación. Las versiones proceden de `registry.json`; el desp
 de AILAB publica una copia validada junto a los ZIP, sin depender de GitHub al abrir
 la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza AILAB.
 
-La versión 2.3.4 incorporó Eleven v4 para voz individual con Cristina, hasta 10.000
-caracteres, estabilidad y similitud. La reserva y la recuperación conservan una única
-solicitud y un único cargo. La promoción cierra anticipadamente en AILAB el 11 de
-octubre de 2026, a las 00:00 UTC; después se aplica automáticamente la tarifa ordinaria.
+## Cambios relevantes
 
-La fuente 2.3.7 incorpora Flux 3 e Ideogram 4.5 con validación por modalidad,
-filtrado de parámetros públicos y recuperación de imágenes de la cola. Flux 3
-comprueba las dimensiones de sus referencias antes de subirlas; Ideogram conserva
-seed en la CLI y redondea el coste una sola vez sobre el lote. Esta fuente requiere
-empaquetado, publicación firmada y verificación del catálogo servido: no acredita
-por sí sola disponibilidad en producción.
+- 2.3.13: `guide` devuelve la guía de uso vigente; Seed Audio reserva 100 cr y cobra la duración
+  real (0,625 cr/s, nunca más de 100 cr); el arranque avisa de plugin antiguo, doble instalación y
+  sandbox de Codex.
+- 2.3.12: Wan 3.0 factura también los segundos de los vídeos de referencia.
+- 2.3.10: los asistentes consultan los límites de referencias del servidor y `assistant-status
+  <UUID>` recupera un envío incierto sin repetirlo.
+- 2.3.8: ElevenLabs con biblioteca, voces privadas, clonación autorizada y diseño por prompt. La
+  gestión exige un token con el permiso opcional `voices_manage`.
+- 2.3.7: Flux 3 e Ideogram 4.5. El runtime lee `api/v1/skill/catalog-v2.json`; `catalog.json`
+  conserva el catálogo 1.18.0 para las instalaciones anteriores.
+- 2.3.4: Eleven v4 para voz individual, con reserva y recuperación de una única solicitud.
+- 2.3.1 y 2.3.2: cotizaciones y recuperación de resultados de Higgsfield y Midjourney.
+- 2.2.9: GPT Image 2.5, los cuatro modelos Topaz y VEED Lipsync v2.
 
-El runtime 2.3.7 consulta `api/v1/skill/catalog-v2.json` (catálogo 1.20.0,
-63 modelos y CLI mínima 2.3.7). La ruta `api/v1/skill/catalog.json` conserva
-el catálogo 1.18.0 de 61 modelos para las instalaciones anteriores. Publica
-primero los archivos del runtime, después el catálogo v2 y finalmente el índice
-firmado `stable.json`; los overrides de URL explícitos siguen siendo compatibles.
-
-La fuente 2.3.8 amplía ElevenLabs: biblioteca paginada, voces privadas propias,
-clonación autorizada, diseño por prompt, muestras de pago, alta, conservación
-con fecha y borrado recuperable. La gestión exige un token nuevo con el permiso
-opcional `voices_manage`; los tokens anteriores no se amplían. V4 cotiza la voz
-y el texto en servidor antes de confirmar. El catálogo 1.21.0 conserva los 63
-modelos y versiona solo los dos contratos Eleven afectados. Su disponibilidad
-requiere el backend compatible y la release firmada 2.3.8 publicada en AILAB.
-
-La versión 2.3.2 recupera los resultados de Higgsfield en los formatos que recibe
-el historial y consulta la tarea guardada aunque exista un recibo local. Una URL
-ausente o un error de consulta no se presentan como fallo sin cargo. Las descargas
-parciales de Midjourney conservan el recibo para recuperar la misma tarea.
-
-La versión 2.3.1 corrige la lectura de cotizaciones de Higgsfield: la skill ahora
-extrae el precio del sobre `{ok, code, msg, data}` que devuelve AILAB, conservando
-la compatibilidad con las respuestas planas anteriores.
-
-La versión 2.2.9 incorpora **GPT Image 2.5**, los cuatro modelos Topaz y
-**VEED Lipsync v2** al catálogo.
-Topaz se ejecuta mediante el gateway seguro de AILAB y mide localmente los metadatos
-necesarios para cotizar antes de subir archivos. Un único modelo
-`gpt-image-2-5`, con `version=flare|sunburst` y `mode=t2i|i2i`. Admite 1K, 2K,
-4K y hasta 16 referencias. El precio provisional se consulta al preparar la
-operación; no se necesitan claves de proveedor. Las instalaciones compatibles también
-descubren el modelo al refrescar el catálogo remoto.
+El detalle de cada cambio está en el historial de Git. Una fuente nueva requiere empaquetado,
+publicación firmada y verificación del catálogo servido: no acredita por sí sola disponibilidad
+en producción.
 
 ## Requisitos
 
@@ -91,26 +92,29 @@ descubren el modelo al refrescar el catálogo remoto.
 - Para `ugc-bajo-coste-ailab`: la skill `ailab` instalada y configurada (runtime 2.2.4 o posterior), además de `ffmpeg`
   y `ffprobe`. Utiliza la cuenta y créditos de AILAB, sin claves adicionales.
 
-## Instalación
+## Instalación manual (alternativa al plugin)
 
-Clona o descarga este repositorio y ejecuta los comandos desde su raíz:
+Para el resto de skills, o si prefieres no usar el plugin, clona o descarga este repositorio y ejecuta los comandos desde su raíz:
 
 ```bash
 git clone https://github.com/MarcosAGil/ailab-skills.git
 cd ailab-skills
 ```
 
-Para Claude Code:
+Para Claude Code (`ailab` en `~/.claude/skills/`):
 
 ```bash
 node tools/install.mjs ailab --target claude
 ```
 
-Para Codex:
+Para Codex (`ailab` en `~/.codex/skills/`):
 
 ```bash
 node tools/install.mjs ailab --target codex
 ```
+
+No instales `ailab` por las dos vías a la vez. Si ya la tienes como skill manual, retírala con
+`node tools/migrate-to-plugin.mjs` (simulación) y `--apply` (la mueve a una copia de seguridad).
 
 Para instalar todas las skills disponibles:
 
@@ -179,9 +183,11 @@ Los modelos, parámetros, precios finales y asistentes se obtienen desde AILAB. 
 runtime comprueba releases firmadas y conserva la última versión válida si una
 actualización falla. No necesitas hacer `git pull` cada vez que se añade un modelo.
 
-Los cambios en las instrucciones de uso de `SKILL.md`, como la política de
-confirmaciones, requieren volver a ejecutar el instalador. El instalador conserva
-la sesión y la configuración personal, que viven fuera de la carpeta de la skill.
+Los cambios en las instrucciones de uso de `SKILL.md` requieren actualizar el plugin
+(`claude plugin marketplace update ailendra-labs` y `claude plugin update ailab@ailendra-labs`;
+en Codex, `codex plugin marketplace upgrade ailendra-labs`) o volver a ejecutar el instalador de
+la skill manual. La sesión y la configuración personal viven fuera de la carpeta de la skill y se
+conservan. La guía de uso vigente, siempre al día, la devuelve `guide`.
 
 Una nueva skill sí se publica como una carpeta adicional y una entrada nueva en
 `registry.json`.

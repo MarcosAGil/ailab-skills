@@ -1,0 +1,5306 @@
+{
+  "catalog_version": "1.25.0",
+  "min_cli_version": "2.3.7",
+  "models": {
+    "krea-3": {
+      "id": "krea-3",
+      "label": "Krea 3",
+      "description": "Genera y edita imágenes con Berry (calidad) o Jam (velocidad), referencias ordenadas y razonamiento configurable.",
+      "section": "image",
+      "vendor": "Krea · fal",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "driver": "labs-queue-v1",
+      "min_cli_version": "2.3.11",
+      "expensive": false,
+      "aliases": [
+        "krea 3",
+        "krea v3",
+        "berry",
+        "jam"
+      ],
+      "modes": [
+        "t2i",
+        "edit"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "edit"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 5000,
+          "help": "Describe la imagen o el cambio. Puedes nombrar <image-1>, <image-2> y las referencias siguientes."
+        },
+        "variant": {
+          "type": "enum",
+          "values": [
+            "berry",
+            "jam"
+          ],
+          "default": "berry",
+          "help": "Berry prioriza calidad y admite prompt negativo. Jam prioriza rapidez."
+        },
+        "reasoning_level": {
+          "type": "enum",
+          "values": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "low",
+          "help": "Bajo y Medio en texto; Alto solo en edición, con coste adicional y tamaño explícito."
+        },
+        "negative_prompt": {
+          "type": "string",
+          "max_len": 1024,
+          "help": "Elementos que quieres evitar. Solo funciona con Berry."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1k",
+            "2k",
+            "custom",
+            "auto"
+          ],
+          "default": "1k",
+          "help": "1K ≈ 1 MP; 2K ≈ 4 MP. El tamaño final depende de la proporción. Automático autoriza un presupuesto máximo."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "3:2",
+            "2:3",
+            "21:9"
+          ],
+          "default": "1:1"
+        },
+        "width": {
+          "type": "int",
+          "min": 256,
+          "max": 3200,
+          "default": 1024,
+          "help": "Solo en Personalizado. Se ajusta al múltiplo superior de 16."
+        },
+        "height": {
+          "type": "int",
+          "min": 256,
+          "max": 3200,
+          "default": 1024,
+          "help": "Solo en Personalizado. Máximo conjunto: 4.220.160 píxeles."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 1,
+          "max": 8,
+          "required_when": {
+            "mode": "edit"
+          },
+          "help": "Solo edición, de 1 a 8 imágenes ordenadas. Límite de AILAB: 30 MiB por archivo."
+        },
+        "output_format": {
+          "type": "enum",
+          "values": [
+            "png",
+            "jpeg"
+          ],
+          "default": "png"
+        }
+      },
+      "estimate": {
+        "kind": "unit_credits",
+        "credits_per_unit": 5.1,
+        "max_credits": 211,
+        "approximate": true,
+        "note": "Por megapíxeles de salida y referencias procesadas. Alto añade el equivalente a 5 MP. Cotización del servidor antes de enviar; máximo visible y liquidación única."
+      }
+    },
+    "nano-banana-2-1": {
+      "id": "nano-banana-2-1",
+      "label": "Nano Banana 2.1",
+      "description": "Generación y edición de imágenes con referencias ordenadas, hasta 4K.",
+      "section": "image",
+      "vendor": "Google",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.9",
+      "aliases": [
+        "nano banana 2.1",
+        "nano banana 2 1"
+      ],
+      "modes": [
+        "t2i",
+        "edit"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "edit"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000,
+          "help": "Hasta 20.000 caracteres."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "default": "1K"
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "21:9",
+            "16:9",
+            "3:2",
+            "4:3",
+            "5:4",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3",
+            "9:16",
+            "4:1",
+            "1:4",
+            "8:1",
+            "1:8"
+          ],
+          "default": "auto"
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 14,
+          "required_when": {
+            "mode": "edit"
+          },
+          "help": "Edición: de 1 a 14 referencias JPG, PNG o WebP, hasta 30 MB cada una. El orden se conserva."
+        }
+      },
+      "estimate": {
+        "kind": "param_table",
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 5,
+          "2K": 7,
+          "4K": 10
+        },
+        "approximate": true,
+        "note": "Por generación según resolución, con o sin referencias. Incluye el servicio de AILAB y el redondeo al crédito superior. Liquidación según consumo confirmado."
+      }
+    },
+    "gpt-image-2-5": {
+      "id": "gpt-image-2-5",
+      "label": "GPT Image 2.5",
+      "description": "Genera y edita imágenes con Flare o Sunburst, de 1K a 4K y hasta 16 referencias. Ambas versiones tienen la misma tarifa estimada.",
+      "section": "image",
+      "vendor": "OpenAI",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.1.0",
+      "aliases": [
+        "gpt image 2.5",
+        "gpt image 2 5",
+        "gpt 2.5 flare",
+        "gpt 2.5 sunburst"
+      ],
+      "modes": [
+        "t2i",
+        "i2i"
+      ],
+      "params": {
+        "version": {
+          "type": "enum",
+          "values": [
+            "flare",
+            "sunburst"
+          ],
+          "default": "flare",
+          "help": "Flare y Sunburst son dos versiones del mismo modelo. Misma tarifa estimada por resolución."
+        },
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 16,
+          "required_when": {
+            "mode": "i2i"
+          },
+          "help": "Solo en imagen a imagen: de 1 a 16 imágenes JPEG, PNG o WebP, hasta 30 MB cada una. En texto a imagen no adjuntes referencias."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "21:9",
+            "27:16",
+            "16:27",
+            "9:8",
+            "8:9"
+          ],
+          "default": "auto"
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "default": "1K"
+        }
+      },
+      "estimate": {
+        "kind": "param_table",
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 7,
+          "2K": 11,
+          "4K": 17
+        },
+        "approximate": true,
+        "note": "Tarifa provisional comprobada el 09/09/2026: igual para Flare y Sunburst, con o sin referencias. Se liquida según el consumo real al terminar."
+      }
+    },
+    "avatar-photo-video": {
+      "aliases": [
+        "avatar photo",
+        "avatar iv"
+      ],
+      "description": "Anima una foto con un guion y voz o con un audio propio.",
+      "driver": "heygen-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 11,
+        "kind": "unit_credits",
+        "minimum_credits": 31,
+        "note": "el coste real usa la duracion final",
+        "units_param": "estimated_duration_seconds"
+      },
+      "expensive": true,
+      "id": "avatar-photo-video",
+      "label": "Avatar IV Photo-to-Video",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "4:5",
+            "5:4",
+            "1:1",
+            "auto"
+          ]
+        },
+        "audio_url": {
+          "accept": "audio",
+          "required_when": {
+            "mode": "audio"
+          },
+          "type": "file"
+        },
+        "estimated_duration_seconds": {
+          "max": 180,
+          "min": 3,
+          "required": true,
+          "type": "number"
+        },
+        "image_url": {
+          "accept": "image",
+          "required": true,
+          "type": "file"
+        },
+        "mode": {
+          "default": "script",
+          "type": "enum",
+          "values": [
+            "script",
+            "audio"
+          ]
+        },
+        "resolution": {
+          "default": "1080p",
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p",
+            "4k"
+          ]
+        },
+        "script": {
+          "max_len": 5000,
+          "required_when": {
+            "mode": "script"
+          },
+          "type": "string"
+        },
+        "title": {
+          "max_len": 120,
+          "type": "string"
+        },
+        "voice_id": {
+          "max_len": 64,
+          "required_when": {
+            "mode": "script"
+          },
+          "type": "string"
+        }
+      },
+      "section": "avatars",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "HeyGen"
+    },
+    "crystal-upscaler": {
+      "aliases": [
+        "crystal image",
+        "crystal upscale"
+      ],
+      "description": "Upscale premium de imagen entre 2x y 16x.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 3.2,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "coste real por megapixeles de salida",
+        "units_param": "output_megapixels"
+      },
+      "expensive": false,
+      "id": "crystal-upscaler",
+      "label": "Crystal Upscaler",
+      "min_cli_version": "1.0.0",
+      "output": "image",
+      "params": {
+        "creativity": {
+          "default": 0,
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "image_url": {
+          "accept": "image",
+          "required": true,
+          "type": "file"
+        },
+        "output_format": {
+          "default": "jpg",
+          "type": "enum",
+          "values": [
+            "jpg",
+            "png"
+          ]
+        },
+        "output_megapixels": {
+          "help": "Megapixeles estimados de salida para autorizar el coste",
+          "max": 500,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "scale_factor": {
+          "default": "2",
+          "type": "enum",
+          "values": [
+            "2",
+            "4",
+            "8",
+            "16"
+          ]
+        }
+      },
+      "section": "upscale",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "AiLendra Labs"
+    },
+    "crystal-video-upscaler": {
+      "aliases": [
+        "crystal video"
+      ],
+      "description": "Upscale de video de maxima fidelidad, facturado por megapixel y segundo.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 20,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "modelo muy caro: verifica resolucion, factor y duracion",
+        "units_param": "est_mps"
+      },
+      "expensive": true,
+      "id": "crystal-video-upscaler",
+      "label": "Crystal Video Upscaler",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "est_mps": {
+          "help": "Megapixeles de salida multiplicados por segundos",
+          "max": 3000,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "upscale_factor": {
+          "default": "2",
+          "type": "enum",
+          "values": [
+            "2",
+            "3",
+            "4"
+          ]
+        },
+        "video_url": {
+          "accept": "video",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "upscale",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "AiLendra Labs"
+    },
+    "depth-anything-video": {
+      "aliases": [
+        "depth video",
+        "depth anything"
+      ],
+      "description": "Convierte un video en un mapa de profundidad animado.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 8.16,
+        "kind": "unit_credits",
+        "minimum_credits": 9,
+        "units_param": "duration_seconds"
+      },
+      "expensive": true,
+      "id": "depth-anything-video",
+      "label": "Depth Anything Video",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "colormap": {
+          "default": "grayscale",
+          "type": "enum",
+          "values": [
+            "grayscale",
+            "turbo",
+            "inferno",
+            "magma",
+            "viridis"
+          ]
+        },
+        "duration_seconds": {
+          "max": 600,
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "model": {
+          "default": "VDA-Base",
+          "type": "enum",
+          "values": [
+            "VDA-Small",
+            "VDA-Base",
+            "VDA-Large"
+          ]
+        },
+        "resolution": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "360p",
+            "480p",
+            "720p",
+            "1080p"
+          ]
+        },
+        "side_by_side": {
+          "default": false,
+          "type": "bool"
+        },
+        "video_url": {
+          "accept": "video",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "other",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "AiLendra Labs"
+    },
+    "eleven-audio-isolation": {
+      "aliases": [
+        "audio isolation",
+        "aislar voz",
+        "voice isolator",
+        "limpiar voz"
+      ],
+      "description": "Aisla la voz de ruido, ambiente y música en un archivo de audio o vídeo.",
+      "driver": "eleven-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 0.17,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "1.000 caracteres de cuota por minuto, margen AILAB del 2% y redondeo final al crédito superior.",
+        "round_up": true,
+        "units_param": "duration_seconds"
+      },
+      "expensive": false,
+      "id": "eleven-audio-isolation",
+      "label": "Voice Isolator",
+      "min_cli_version": "2.2.1",
+      "output": "audio",
+      "params": {
+        "audio_url": {
+          "accept": [
+            "audio",
+            "video"
+          ],
+          "help": "Audio de hasta 150 MB o vídeo de hasta 200 MB. Máximo 1 hora.",
+          "required": true,
+          "type": "file"
+        },
+        "duration_seconds": {
+          "help": "Duración real medida automáticamente y verificada por el servidor.",
+          "internal": true,
+          "max": 3600,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        }
+      },
+      "section": "other",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ElevenLabs"
+    },
+    "eleven-dialogue-v3": {
+      "aliases": [
+        "dialogue v3",
+        "dialogo eleven"
+      ],
+      "description": "Dialogo de dos voces con expresividad y estabilidad configurables.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "characters_params": [
+          "text_1",
+          "text_2"
+        ],
+        "credits_per_1000": 20,
+        "kind": "per_1000_chars",
+        "minimum_credits": 19
+      },
+      "expensive": false,
+      "id": "eleven-dialogue-v3",
+      "label": "ElevenLabs Dialogue V3",
+      "min_cli_version": "1.0.0",
+      "output": "audio",
+      "params": {
+        "language_code": {
+          "max_len": 10,
+          "type": "string"
+        },
+        "stability": {
+          "default": "0.5",
+          "type": "enum",
+          "values": [
+            "0",
+            "0.5",
+            "1"
+          ]
+        },
+        "text_1": {
+          "max_len": 2500,
+          "required": true,
+          "type": "string"
+        },
+        "text_2": {
+          "max_len": 2500,
+          "required": true,
+          "type": "string"
+        },
+        "voice_id_1": {
+          "max_len": 40,
+          "required": true,
+          "type": "string"
+        },
+        "voice_id_2": {
+          "max_len": 40,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "section": "voice",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ElevenLabs"
+    },
+    "eleven-music": {
+      "aliases": [
+        "eleven music"
+      ],
+      "description": "Musica original por descripcion, instrumental o con letra personalizada.",
+      "driver": "eleven-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 0.51,
+        "kind": "unit_credits",
+        "minimum_credits": 2,
+        "units_param": "duration_seconds"
+      },
+      "expensive": true,
+      "id": "eleven-music",
+      "label": "ElevenLabs Music",
+      "min_cli_version": "1.0.0",
+      "output": "audio",
+      "params": {
+        "duration_seconds": {
+          "default": 30,
+          "max": 600,
+          "min": 3,
+          "type": "int"
+        },
+        "lyrics": {
+          "max_len": 10000,
+          "type": "string"
+        },
+        "lyrics_mode": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "custom",
+            "instrumental"
+          ]
+        },
+        "model_id": {
+          "default": "music_v2",
+          "type": "enum",
+          "values": [
+            "music_v2",
+            "music_v1"
+          ]
+        },
+        "prompt": {
+          "max_len": 2000,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "section": "music",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ElevenLabs"
+    },
+    "eleven-sound-fx": {
+      "aliases": [
+        "sound fx",
+        "efectos de sonido"
+      ],
+      "description": "Genera efectos de sonido desde una descripcion.",
+      "driver": "eleven-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits": 26,
+        "kind": "flat_credits"
+      },
+      "expensive": false,
+      "id": "eleven-sound-fx",
+      "label": "ElevenLabs Efectos de Sonido",
+      "min_cli_version": "1.0.0",
+      "output": "audio",
+      "params": {
+        "duration_seconds": {
+          "default": 5,
+          "max": 30,
+          "min": 0.5,
+          "type": "number"
+        },
+        "loop": {
+          "default": false,
+          "type": "bool"
+        },
+        "prompt_influence": {
+          "default": 0.3,
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "text": {
+          "max_len": 500,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "section": "music",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ElevenLabs"
+    },
+    "eleven-speech-to-text": {
+      "aliases": [
+        "stt",
+        "speech to text"
+      ],
+      "description": "Transcribe audio con diarizacion y eventos opcionales.",
+      "driver": "jobs-text-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 0.22,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "units_param": "duration_seconds"
+      },
+      "expensive": false,
+      "id": "eleven-speech-to-text",
+      "label": "ElevenLabs Speech to Text",
+      "min_cli_version": "1.0.0",
+      "output": "text",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "required": true,
+          "type": "file"
+        },
+        "diarize": {
+          "default": false,
+          "type": "bool"
+        },
+        "duration_seconds": {
+          "max": 7200,
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "tag_audio_events": {
+          "default": false,
+          "type": "bool"
+        }
+      },
+      "section": "voice",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ElevenLabs"
+    },
+    "eleven-tts": {
+      "aliases": [
+        "tts",
+        "eleven tts"
+      ],
+      "description": "Texto a voz con Flash, Multilingual, v3 y v4. Biblioteca y voces privadas propias, según compatibilidad y tarifa verificada por AILAB.",
+      "driver": "eleven-v1",
+      "enabled": true,
+      "estimate": {
+        "kind": "per_1000_chars",
+        "characters_param": "text",
+        "rate_param": "version",
+        "credits_per_1000": 10.2,
+        "credits_per_1000_by_value": {
+          "flash": 10.2,
+          "multi": 20.4,
+          "v3": 20.4,
+          "v4": 16.32
+        },
+        "minimum_credits": 1,
+        "round_up": true,
+        "approximate": false,
+        "promo": {
+          "label": "Cierre anticipado de AILAB",
+          "until": "2026-10-11T00:00:00Z",
+          "credits_per_1000_by_value": {
+            "v4": 4.488
+          }
+        },
+        "note": "Precio por caracteres de entrada, mínimo 1 cr y total redondeado al crédito superior. V4 requiere cotización del servidor por voz. La promoción termina el 11 de octubre de 2026, a las 00:00 UTC; después 16,32 cr por 1.000 caracteres."
+      },
+      "expensive": false,
+      "id": "eleven-tts",
+      "label": "ElevenLabs TTS",
+      "min_cli_version": "2.3.8",
+      "output": "audio",
+      "params": {
+        "text": {
+          "type": "string",
+          "required": true,
+          "max_len": 40000,
+          "help": "V4 admite hasta 10.000 caracteres Unicode; las versiones anteriores conservan sus límites."
+        },
+        "version": {
+          "type": "enum",
+          "values": [
+            "flash",
+            "multi",
+            "v3",
+            "v4"
+          ],
+          "default": "flash"
+        },
+        "voice_id": {
+          "type": "string",
+          "max_len": 40,
+          "help": "ID de una voz disponible. Consulta voices; para voces propias usa private_voice_id."
+        },
+        "private_voice_id": {
+          "type": "string",
+          "max_len": 32,
+          "help": "Referencia AILAB de una voz privada propia, activa y compatible. Consulta voice-list. No se combina con voice_id."
+        },
+        "stability": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0.5
+        },
+        "similarity_boost": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0.75
+        },
+        "style": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0
+        },
+        "speed": {
+          "type": "number",
+          "min": 0.7,
+          "max": 1.2,
+          "default": 1
+        }
+      },
+      "section": "voice",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ElevenLabs"
+    },
+    "eleven-voice-changer": {
+      "aliases": [
+        "voice changer",
+        "cambiar voz"
+      ],
+      "description": "Transforma un audio conservando el ritmo y el contenido hablado.",
+      "driver": "eleven-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 0.408,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "units_param": "duration_seconds",
+        "note": "Duración real del audio de entrada; no depende del tamaño ni del bitrate."
+      },
+      "expensive": true,
+      "id": "eleven-voice-changer",
+      "label": "Cambiador de Voz",
+      "min_cli_version": "2.3.8",
+      "output": "audio",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "required": true,
+          "type": "file"
+        },
+        "duration_seconds": {
+          "max": 300,
+          "min": 0.01,
+          "required": true,
+          "type": "number",
+          "internal": true,
+          "help": "Se mide automáticamente en el archivo de audio."
+        },
+        "remove_background_noise": {
+          "default": false,
+          "type": "bool"
+        },
+        "voice_id": {
+          "max_len": 40,
+          "type": "string"
+        },
+        "private_voice_id": {
+          "type": "string",
+          "max_len": 32,
+          "help": "Solo si voice-list indica compatibilidad voice-changer. El servidor comprueba propiedad y vigencia."
+        }
+      },
+      "section": "voice",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ElevenLabs"
+    },
+    "flux-2-flex": {
+      "aliases": [
+        "flux 2 flex",
+        "flux flex"
+      ],
+      "description": "Imagen con control granular y hasta ocho referencias.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 15,
+          "2K": 25
+        },
+        "kind": "param_table"
+      },
+      "expensive": false,
+      "id": "flux-2-flex",
+      "label": "Flux.2 Flex",
+      "min_cli_version": "1.0.0",
+      "output": "image",
+      "params": {
+        "aspect_ratio": {
+          "default": "Auto",
+          "type": "enum",
+          "values": [
+            "Auto",
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 8,
+          "type": "file[]"
+        },
+        "output_format": {
+          "default": "png",
+          "type": "enum",
+          "values": [
+            "png",
+            "jpeg"
+          ]
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "1K",
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Black Forest Labs"
+    },
+    "flux-2-pro": {
+      "aliases": [
+        "flux 2 pro",
+        "flux pro"
+      ],
+      "description": "Texto a imagen fotorrealista de 1K o 2K.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 6,
+          "2K": 8
+        },
+        "kind": "param_table"
+      },
+      "expensive": false,
+      "id": "flux-2-pro",
+      "label": "Flux.2 Pro",
+      "min_cli_version": "1.0.0",
+      "output": "image",
+      "params": {
+        "aspect_ratio": {
+          "default": "1:1",
+          "type": "enum",
+          "values": [
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16"
+          ]
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "1K",
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Black Forest Labs"
+    },
+    "flux-video-upscale": {
+      "aliases": [
+        "flux upscale",
+        "flux video upscale",
+        "flux video"
+      ],
+      "description": "Mejora vídeos con FLUX en modo preciso o creativo y salida de hasta 4K.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "column_param": "output_resolution",
+        "credits_matrix": {
+          "0": {
+            "1080p": 28.56,
+            "2K": 51,
+            "4K": 112.2
+          },
+          "1": {
+            "1080p": 40.8,
+            "2K": 71.4,
+            "4K": 161.16
+          }
+        },
+        "kind": "per_second_matrix",
+        "note": "Importe por segundo de vídeo entregado, resolución final y modo, con el margen vigente de AILAB.",
+        "row_param": "creativity",
+        "seconds_param": "duration_seconds"
+      },
+      "expensive": true,
+      "id": "flux-video-upscale",
+      "label": "FLUX Video Upscale",
+      "min_cli_version": "2.1.0",
+      "output": "video",
+      "params": {
+        "creativity": {
+          "default": "0",
+          "help": "0 conserva el original; 1 reconstruye detalle guiado por el prompt.",
+          "type": "enum",
+          "values": [
+            "0",
+            "1"
+          ]
+        },
+        "duration_seconds": {
+          "help": "Duración real del vídeo de entrada.",
+          "max": 20,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "output_resolution": {
+          "help": "Tramo de facturación obligatorio. Calcula el lado mayor de salida: lado mayor original × factor; hasta 1920 = 1080p, hasta 2560 = 2K y por encima = 4K.",
+          "required": true,
+          "type": "enum",
+          "values": [
+            "1080p",
+            "2K",
+            "4K"
+          ]
+        },
+        "prompt": {
+          "help": "Opcional. En modo creativo, describe el detalle que quieres reforzar sin cambiar la escena.",
+          "max_len": 5000,
+          "type": "string"
+        },
+        "upscale_factor": {
+          "default": "2",
+          "type": "enum",
+          "values": [
+            "1.5",
+            "2",
+            "3"
+          ]
+        },
+        "video_url": {
+          "accept": "video",
+          "help": "Vídeo MP4 de hasta 20 segundos y 50 MB.",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "upscale",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Black Forest Labs"
+    },
+    "gemini-omni-flash-1-1": {
+      "aliases": [
+        "omni video",
+        "gemini omni",
+        "gemini omni flash",
+        "gemini-omni-video",
+        "google/gemini-omni-flash-1-1"
+      ],
+      "description": "Vídeo con texto, First/Last Frame o referencias multimodales. Admite Voice IDs y Character IDs creados previamente en la web de AILAB.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "column_param": "duration",
+        "credits_matrix": {
+          "1080p": {
+            "4": 65,
+            "6": 86,
+            "8": 108,
+            "10": 129
+          },
+          "360p": {
+            "4": 65,
+            "6": 86,
+            "8": 108,
+            "10": 129
+          },
+          "4k": {
+            "4": 150,
+            "6": 172,
+            "8": 193,
+            "10": 215
+          },
+          "720p": {
+            "4": 65,
+            "6": 86,
+            "8": 108,
+            "10": 129
+          }
+        },
+        "credits_with_video": {
+          "1080p": 172,
+          "360p": 172,
+          "4k": 258,
+          "720p": 172
+        },
+        "kind": "matrix_table",
+        "note": "Con vídeo la tarifa es plana por resolución y Gemini decide la duración final. Precio final AILAB con el 2% de servicio.",
+        "row_param": "resolution",
+        "video_param": "video_url"
+      },
+      "expensive": true,
+      "id": "gemini-omni-flash-1-1",
+      "label": "Gemini Omni Flash 1.1",
+      "min_cli_version": "2.1.0",
+      "output": "video",
+      "modes": [
+        "t2v",
+        "frames",
+        "reference"
+      ],
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16"
+          ]
+        },
+        "audio_ids": {
+          "help": "Hasta 3 Voice IDs creados previamente con Gemini Omni Audio",
+          "max": 3,
+          "max_len": 255,
+          "type": "string[]"
+        },
+        "character_ids": {
+          "help": "Hasta 3 Character IDs creados previamente con Gemini Omni Character. Cada uno consume una unidad visual.",
+          "max": 3,
+          "max_len": 255,
+          "type": "string[]"
+        },
+        "duration": {
+          "default": "8",
+          "type": "enum",
+          "values": [
+            "4",
+            "6",
+            "8",
+            "10"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "help": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7 unidades de cuota de Kie)",
+          "max": 7,
+          "type": "file[]"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "help": "Primer frame obligatorio en modo frames. No se combina con otras referencias.",
+          "required_when": {
+            "mode": "frames"
+          },
+          "type": "file"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "help": "Último frame opcional. Requiere first_frame_url.",
+          "type": "file"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "frames",
+            "reference"
+          ]
+        },
+        "prompt": {
+          "max_len": 20000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "1080p",
+          "type": "enum",
+          "values": [
+            "360p",
+            "720p",
+            "1080p",
+            "4k"
+          ]
+        },
+        "seed": {
+          "help": "Opcional. Déjala vacía para una semilla aleatoria.",
+          "max": 2147483647,
+          "min": 0,
+          "type": "int"
+        },
+        "video_end": {
+          "help": "Segundo final; maximo 10 s despues de video_start",
+          "max": 30,
+          "min": 1,
+          "type": "int"
+        },
+        "video_start": {
+          "help": "Segundo inicial del clip",
+          "max": 29,
+          "min": 0,
+          "type": "int"
+        },
+        "video_url": {
+          "accept": "video",
+          "help": "Clip de hasta 30 s; selecciona un intervalo de hasta 10 s",
+          "type": "file"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Google"
+    },
+    "gemini-omni-video": {
+      "aliases": [
+        "omni video",
+        "gemini omni"
+      ],
+      "description": "Video multimodal con texto, hasta siete imagenes y clip opcional.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "column_param": "duration",
+        "credits_matrix": {
+          "1080p": {
+            "4": 65,
+            "6": 86,
+            "8": 108,
+            "10": 129
+          },
+          "4k": {
+            "4": 150,
+            "6": 172,
+            "8": 193,
+            "10": 215
+          },
+          "720p": {
+            "4": 65,
+            "6": 86,
+            "8": 108,
+            "10": 129
+          }
+        },
+        "credits_with_video": {
+          "1080p": 172,
+          "4k": 258,
+          "720p": 172
+        },
+        "kind": "matrix_table",
+        "note": "con clip de video la tarifa es plana por calidad (la duracion la decide el modelo)",
+        "row_param": "resolution",
+        "video_param": "video_url"
+      },
+      "expensive": true,
+      "id": "gemini-omni-video",
+      "label": "Gemini Omni Video",
+      "min_cli_version": "2.1.0",
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16"
+          ]
+        },
+        "audio_ids": {
+          "help": "ID de audio generado previamente con Gemini Omni Audio",
+          "max": 1,
+          "max_len": 255,
+          "type": "string[]"
+        },
+        "duration": {
+          "default": "8",
+          "type": "enum",
+          "values": [
+            "4",
+            "6",
+            "8",
+            "10"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "help": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7 unidades de cuota de Kie)",
+          "max": 7,
+          "type": "file[]"
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "720p",
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p",
+            "4k"
+          ]
+        },
+        "video_end": {
+          "help": "Segundo final; maximo 10 s despues de video_start",
+          "max": 30,
+          "min": 1,
+          "type": "int"
+        },
+        "video_start": {
+          "help": "Segundo inicial del clip",
+          "max": 29,
+          "min": 0,
+          "type": "int"
+        },
+        "video_url": {
+          "accept": "video",
+          "help": "Clip de hasta 30 s; selecciona un intervalo de hasta 10 s",
+          "type": "file"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Google"
+    },
+    "genjutsu": {
+      "id": "genjutsu",
+      "label": "Higgsfield Genjutsu",
+      "description": "Transfiere el movimiento de un video a tus imagenes o cambia un objeto por otro. El servidor mide el video y las referencias antes de cotizar.",
+      "section": "video",
+      "vendor": "Higgsfield",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "higgsfield-v1",
+      "min_cli_version": "2.3.0",
+      "aliases": [
+        "higgsfield genjutsu",
+        "motion transfer",
+        "transferencia de movimiento",
+        "cambio de objeto"
+      ],
+      "modes": [
+        "character_swap",
+        "object_swap"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "character_swap",
+            "object_swap"
+          ],
+          "default": "character_swap",
+          "help": "character_swap transfiere el movimiento (Motion Transfer); object_swap cambia un objeto (Cambio de objeto)."
+        },
+        "prompt": {
+          "type": "string",
+          "max_len": 5000,
+          "help": "Opcional. Si lo dejas vacio, el modelo usa solo el video y las imagenes."
+        },
+        "video_url": {
+          "type": "file",
+          "accept": "video",
+          "required": true,
+          "help": "Video del movimiento que se transfiere."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "required": true,
+          "min": 1,
+          "max": 8,
+          "help": "De 1 a 8 imagenes de referencia."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p"
+          ],
+          "default": "720p"
+        }
+      },
+      "estimate": {
+        "kind": "higgsfield_quote",
+        "approximate": true,
+        "note": "Higgsfield no publica tarifa fija: el servidor cotiza midiendo el video y las referencias antes de generar."
+      }
+    },
+    "gpt-image-2": {
+      "aliases": [
+        "gpt image",
+        "gpt image 2"
+      ],
+      "description": "Generacion y edicion de imagen con resoluciones de 1K a 4K.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 7,
+          "2K": 11,
+          "4K": 17
+        },
+        "kind": "param_table"
+      },
+      "expensive": false,
+      "id": "gpt-image-2",
+      "label": "GPT Image 2",
+      "min_cli_version": "1.0.0",
+      "modes": [
+        "t2i",
+        "i2i"
+      ],
+      "output": "image",
+      "params": {
+        "aspect_ratio": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "1:1",
+            "9:16",
+            "16:9",
+            "4:3",
+            "3:4"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 10,
+          "required_when": {
+            "mode": "i2i"
+          },
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "t2i",
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i"
+          ]
+        },
+        "prompt": {
+          "max_len": 32000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "1K",
+          "help": "1K, 2K o 4K. Ojo: el ratio 1:1 no admite 4K (limite de Kie)",
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K",
+            "4K"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "OpenAI"
+    },
+    "grok-imagine-image-2": {
+      "aliases": [
+        "grok imagine image",
+        "grok image 2",
+        "grok imagine image 2"
+      ],
+      "description": "Generacion precisa con tipografia solida (top-3 del Text-to-Image Arena). Edicion por task_id con mascaras del segment-map, o Image to Image con 1-3 imagenes subidas (calidad low/medium, 1K/2K).",
+      "driver": "hybrid-grok-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "column_param": "resolution",
+        "credits_by_value": {
+          "edit": 5,
+          "segment": 0,
+          "t2i": 5
+        },
+        "credits_matrix": {
+          "low": {
+            "1K": 8,
+            "2K": 12
+          },
+          "medium": {
+            "1K": 12,
+            "2K": 16
+          }
+        },
+        "credits_per_file": 2,
+        "files_param": "image_urls",
+        "kind": "mixed_mode",
+        "matrix_mode": "i2i",
+        "mode_param": "mode",
+        "note": "Image to Image usa la matriz y suma 2 cr por imagen de entrada. Text to Image y edit cuestan aproximadamente 4,08 cr; segment-map es gratuito",
+        "row_param": "quality"
+      },
+      "expensive": false,
+      "id": "grok-imagine-image-2",
+      "label": "Grok Imagine Image 2.0",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2i",
+        "edit",
+        "segment",
+        "i2i"
+      ],
+      "output": "multi-image",
+      "params": {
+        "aspect_ratio": {
+          "default": "1:1",
+          "help": "Solo en t2i; en edit lo impone la imagen original",
+          "type": "enum",
+          "values": [
+            "1:1",
+            "2:3",
+            "3:2",
+            "16:9",
+            "9:16"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "help": "Solo en i2i: de 1 a 3 imagenes; cada una suma 2 cr",
+          "max": 3,
+          "required_when": {
+            "mode": "i2i"
+          },
+          "type": "file[]"
+        },
+        "mask_indexs": {
+          "help": "Solo en edit: indices de segmento separados por comas (del segment-map gratuito de Kie); vacio = edita toda la imagen",
+          "type": "string"
+        },
+        "mode": {
+          "default": "t2i",
+          "type": "enum",
+          "values": [
+            "t2i",
+            "edit",
+            "segment",
+            "i2i"
+          ]
+        },
+        "prompt": {
+          "required_when": {
+            "mode": [
+              "t2i",
+              "edit",
+              "i2i"
+            ]
+          },
+          "type": "string"
+        },
+        "quality": {
+          "default": "medium",
+          "help": "Solo en i2i (motor premium)",
+          "type": "enum",
+          "values": [
+            "low",
+            "medium"
+          ]
+        },
+        "resolution": {
+          "default": "1K",
+          "help": "Solo en i2i",
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K"
+          ]
+        },
+        "task_id": {
+          "help": "Task ID de una generacion previa de Grok Imagine Image 2.0; edit y segment NO reciben imagenes subidas",
+          "required_when": {
+            "mode": [
+              "edit",
+              "segment"
+            ]
+          },
+          "type": "string"
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "xAI"
+    },
+    "grok-imagine-video": {
+      "aliases": [
+        "grok video",
+        "grok imagine"
+      ],
+      "description": "Texto o imagen a video con audio y modos creativos.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "480p": 1.63,
+          "720p": 4
+        },
+        "kind": "per_second_table",
+        "note": "estimacion de autorizacion; el cobro final usa el coste real informado por el proveedor",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "grok-imagine-video",
+      "label": "Grok Imagine Video",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "2:3",
+            "3:2",
+            "1:1"
+          ]
+        },
+        "duration": {
+          "default": "6",
+          "type": "enum",
+          "values": [
+            "6",
+            "10",
+            "15"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 1,
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "normal",
+          "type": "enum",
+          "values": [
+            "fun",
+            "normal",
+            "spicy"
+          ]
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "480p",
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "xAI"
+    },
+    "grok-imagine-video-1-5": {
+      "aliases": [
+        "grok video 1.5",
+        "grok preview"
+      ],
+      "description": "Imagen a video de uno a quince segundos en 480p o 720p.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_per_file": 2,
+        "credits_per_second": {
+          "480p": 16,
+          "720p": 26
+        },
+        "files_param": "image_urls",
+        "kind": "per_second_table",
+        "note": "incluye una pequena tarifa adicional por la imagen de entrada",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "grok-imagine-video-1-5",
+      "label": "Grok Imagine Video 1.5 Preview",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4",
+            "3:2",
+            "2:3"
+          ]
+        },
+        "duration": {
+          "default": 8,
+          "max": 15,
+          "min": 1,
+          "type": "int"
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 1,
+          "required": true,
+          "type": "file[]"
+        },
+        "prompt": {
+          "max_len": 5000,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "480p",
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "xAI"
+    },
+    "happyhorse-1-0": {
+      "aliases": [
+        "happyhorse",
+        "happy horse"
+      ],
+      "description": "Texto, imagen, referencias o edicion de video en 720p y 1080p.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "1080p": 50,
+          "720p": 29
+        },
+        "kind": "per_second_table",
+        "note": "estimacion conservadora; el cobro final usa el coste real informado por el proveedor",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "happyhorse-1-0",
+      "label": "HappyHorse 1.0",
+      "min_cli_version": "1.0.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "r2v",
+        "edit"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ]
+        },
+        "audio_setting": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "keep",
+            "replace"
+          ]
+        },
+        "duration": {
+          "default": 5,
+          "max": 15,
+          "min": 3,
+          "type": "int"
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 1,
+          "required_when": {
+            "mode": "i2v"
+          },
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "r2v",
+            "edit"
+          ]
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "reference_image": {
+          "accept": "image",
+          "max": 9,
+          "required_when": {
+            "mode": "r2v"
+          },
+          "type": "file[]"
+        },
+        "resolution": {
+          "default": "1080p",
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ]
+        },
+        "video_url": {
+          "accept": "video",
+          "required_when": {
+            "mode": "edit"
+          },
+          "type": "file"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "HappyHorse"
+    },
+    "kling-2-5-turbo-pro": {
+      "aliases": [
+        "kling 2.5",
+        "kling turbo pro"
+      ],
+      "description": "Texto o imagen a video con primer y ultimo frame en 5 o 10 segundos.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "duration",
+        "credits_by_value": {
+          "5": 72,
+          "10": 143
+        },
+        "kind": "param_table",
+        "note": "el coste real se liquida al terminar"
+      },
+      "expensive": true,
+      "id": "kling-2-5-turbo-pro",
+      "label": "Kling 2.5 Turbo Pro",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ]
+        },
+        "cfg_scale": {
+          "default": 0.5,
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "duration": {
+          "default": "5",
+          "type": "enum",
+          "values": [
+            "5",
+            "10"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 2,
+          "type": "file[]"
+        },
+        "negative_prompt": {
+          "max_len": 2500,
+          "type": "string"
+        },
+        "prompt": {
+          "max_len": 2500,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Kuaishou"
+    },
+    "kling-2-6-motion-control": {
+      "aliases": [
+        "kling motion 2.6"
+      ],
+      "description": "Transfiere movimiento desde un video a una imagen de personaje.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "mode",
+        "credits_per_second": {
+          "1080p": 19,
+          "720p": 12
+        },
+        "kind": "per_second_table",
+        "note": "estimacion conservadora; el cobro final usa el coste real informado por el proveedor",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "kling-2-6-motion-control",
+      "label": "Kling 2.6 Motion Control",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "character_orientation": {
+          "default": "video",
+          "help": "A quien sigue la orientacion del personaje: video (hasta 30 s) o image (hasta 10 s)",
+          "type": "enum",
+          "values": [
+            "video",
+            "image"
+          ]
+        },
+        "duration": {
+          "default": 5,
+          "help": "Duracion estimada en segundos. SOLO se usa para calcular el coste (no se envia al modelo; el video de referencia debe durar de 3 a 30 s)",
+          "max": 30,
+          "min": 3,
+          "type": "int"
+        },
+        "input_urls": {
+          "accept": "image",
+          "max": 1,
+          "required": true,
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "720p",
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ]
+        },
+        "prompt": {
+          "max_len": 2500,
+          "type": "string"
+        },
+        "video_urls": {
+          "accept": "video",
+          "max": 1,
+          "required": true,
+          "type": "file[]"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Kuaishou"
+    },
+    "kling-3-0": {
+      "aliases": [
+        "kling 3",
+        "kling 3.0"
+      ],
+      "description": "Texto o imagen a video de 720p a 4K con audio opcional.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "mode",
+        "credits_per_second": {
+          "4K": 69,
+          "pro": 29,
+          "std": 21
+        },
+        "kind": "per_second_table",
+        "note": "estimacion conservadora con audio",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "kling-3-0",
+      "label": "Kling 3.0",
+      "min_cli_version": "2.1.0",
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ]
+        },
+        "cfg_scale": {
+          "default": 0.5,
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "duration": {
+          "default": 5,
+          "max": 15,
+          "min": 3,
+          "type": "int"
+        },
+        "image_url": {
+          "accept": "image",
+          "type": "file"
+        },
+        "mode": {
+          "default": "std",
+          "type": "enum",
+          "values": [
+            "std",
+            "pro",
+            "4K"
+          ]
+        },
+        "negative_prompt": {
+          "max_len": 2500,
+          "type": "string"
+        },
+        "prompt": {
+          "max_len": 2500,
+          "required": true,
+          "type": "string"
+        },
+        "scenes": {
+          "help": "Repite --scenes con el formato segundos|prompt (1-15 s por toma, prompt maximo 512 caracteres)",
+          "max": 6,
+          "max_len": 516,
+          "required_when": {
+            "shot": "custom"
+          },
+          "type": "string[]"
+        },
+        "shot": {
+          "default": "single",
+          "help": "custom acepta hasta 6 tomas mediante --scenes segundos|prompt; la suma debe coincidir con duration",
+          "type": "enum",
+          "values": [
+            "single",
+            "custom"
+          ]
+        },
+        "sound": {
+          "default": false,
+          "type": "bool"
+        },
+        "tail_image_url": {
+          "accept": "image",
+          "type": "file"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Kuaishou"
+    },
+    "kling-3-0-motion-control": {
+      "aliases": [
+        "kling motion 3",
+        "kling motion 3.0"
+      ],
+      "description": "Control de movimiento v3 con identidad y expresiones estables.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "mode",
+        "credits_per_second": {
+          "1080p": 29,
+          "720p": 21
+        },
+        "kind": "per_second_table",
+        "note": "estimacion conservadora; el cobro final usa el coste real informado por el proveedor",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "kling-3-0-motion-control",
+      "label": "Kling 3.0 Motion Control",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "background_source": {
+          "default": "input_video",
+          "help": "Fondo del resultado: el del video o el de la imagen",
+          "type": "enum",
+          "values": [
+            "input_video",
+            "input_image"
+          ]
+        },
+        "character_orientation": {
+          "default": "video",
+          "help": "A quien sigue la orientacion del personaje: video (hasta 30 s) o image (hasta 10 s)",
+          "type": "enum",
+          "values": [
+            "video",
+            "image"
+          ]
+        },
+        "duration": {
+          "default": 5,
+          "help": "Duracion estimada en segundos. SOLO se usa para calcular el coste (no se envia al modelo; el video de referencia debe durar de 3 a 30 s)",
+          "max": 30,
+          "min": 3,
+          "type": "int"
+        },
+        "input_urls": {
+          "accept": "image",
+          "max": 1,
+          "required": true,
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "720p",
+          "help": "El ejemplo oficial de Kie y la web usan 720p/1080p (la ficha tambien menciona std/pro como etiquetas)",
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ]
+        },
+        "prompt": {
+          "max_len": 2500,
+          "type": "string"
+        },
+        "video_urls": {
+          "accept": "video",
+          "max": 1,
+          "required": true,
+          "type": "file[]"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Kuaishou"
+    },
+    "kling-o3": {
+      "aliases": [
+        "kling omni",
+        "kling o3"
+      ],
+      "description": "Kling 3.0 Omni: texto, imagen (primer/ultimo frame), transformacion de video o referencias, con audio nativo y multitoma de hasta 6 tomas.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "audio_param": "audio",
+        "by_param": "resolution",
+        "credits_per_second": {
+          "1080p": 18.36,
+          "4k": 68.34,
+          "720p": 14.28
+        },
+        "credits_with_audio": {
+          "1080p": 23.46,
+          "4k": 68.34,
+          "720p": 18.36
+        },
+        "credits_with_video": {
+          "1080p": 27.54,
+          "4k": 68.34,
+          "720p": 20.4
+        },
+        "duration_by_mode": {
+          "transform": 16
+        },
+        "kind": "per_second_table",
+        "mode_param": "mode",
+        "note": "Tarifa base sin audio. Con audio nativo: 18,36 (720p) / 23,46 (1080p) cr/s. Con video de entrada (transform siempre; ref con video): 20,4 / 27,54 cr/s. En 4K la tarifa es unica (68,34 cr/s). Coste real al terminar",
+        "seconds_param": "duration",
+        "video_param": "video_urls"
+      },
+      "expensive": true,
+      "id": "kling-o3",
+      "label": "Kling O3",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "transform",
+        "ref"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "help": "auto es OBLIGATORIO con primer+ultimo frame o con video sin imagenes, y no esta permitido en t2v",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1",
+            "auto"
+          ]
+        },
+        "audio": {
+          "default": false,
+          "help": "Audio nativo; sube la tarifa salvo en 4K o con video de entrada",
+          "type": "bool"
+        },
+        "customize_multi_shots": {
+          "default": false,
+          "help": "Tomas personalizadas (solo t2v/ref); exige --scenes y es excluyente con prefer_multi_shots",
+          "type": "bool"
+        },
+        "duration": {
+          "default": 5,
+          "help": "No aplica en transform: la salida sigue al video de origen (3-15,5 s)",
+          "max": 15,
+          "min": 3,
+          "type": "int"
+        },
+        "image_urls": {
+          "accept": "image",
+          "help": "i2v: 1 imagen (primer frame) o exactamente 2 (primer+ultimo). transform: hasta 4 refs de estilo. ref: hasta 7 (4 si hay video)",
+          "max": 7,
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "transform",
+            "ref"
+          ]
+        },
+        "prefer_multi_shots": {
+          "default": false,
+          "help": "Storyboard inteligente (solo t2v/i2v); excluyente con las tomas personalizadas de la web",
+          "type": "bool"
+        },
+        "prompt": {
+          "max_len": 3072,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "720p",
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p",
+            "4k"
+          ]
+        },
+        "scenes": {
+          "help": "Repite --scenes con segundos|prompt; la suma debe coincidir con duration y quedar entre 3 y 15 s",
+          "max": 6,
+          "max_len": 516,
+          "required_when": {
+            "customize_multi_shots": true
+          },
+          "type": "string[]"
+        },
+        "video_urls": {
+          "accept": "video",
+          "help": "transform: obligatorio (MP4/MOV, 3-15,5 s). ref: opcional",
+          "max": 1,
+          "type": "file[]"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Kuaishou"
+    },
+    "kling-v3": {
+      "aliases": [
+        "kling v3",
+        "kling v3 turbo"
+      ],
+      "description": "Texto o imagen a video en Turbo o Pro, con audio en Pro.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "variant",
+        "credits_per_second": {
+          "pro-i2v": 34,
+          "pro-t2v": 34,
+          "turbo-i2v": 23,
+          "turbo-t2v": 23
+        },
+        "kind": "per_second_table",
+        "note": "estimacion conservadora; Pro presupone audio",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "kling-v3",
+      "label": "Kling v3 Turbo",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ]
+        },
+        "cfg_scale": {
+          "default": 0.5,
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "duration": {
+          "default": "5",
+          "type": "enum",
+          "values": [
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15"
+          ]
+        },
+        "generate_audio": {
+          "default": false,
+          "type": "bool"
+        },
+        "image_url": {
+          "accept": "image",
+          "type": "file"
+        },
+        "negative_prompt": {
+          "max_len": 2500,
+          "type": "string"
+        },
+        "prompt": {
+          "max_len": 3072,
+          "required": true,
+          "type": "string"
+        },
+        "variant": {
+          "default": "turbo-t2v",
+          "type": "enum",
+          "values": [
+            "turbo-t2v",
+            "turbo-i2v",
+            "pro-t2v",
+            "pro-i2v"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Kuaishou"
+    },
+    "krea-2": {
+      "aliases": [
+        "krea",
+        "krea2"
+      ],
+      "description": "Imagen con versiones Turbo, Medium y Large y referencias de estilo.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "version",
+        "credits_by_value": {
+          "large": 12,
+          "medium": 6,
+          "turbo": 3
+        },
+        "credits_with_files": {
+          "large": 13,
+          "medium": 7,
+          "turbo": 4
+        },
+        "files_param": "style_refs",
+        "kind": "param_table"
+      },
+      "expensive": false,
+      "id": "krea-2",
+      "label": "Krea 2",
+      "min_cli_version": "1.0.0",
+      "modes": [
+        "turbo",
+        "medium",
+        "large"
+      ],
+      "output": "image",
+      "params": {
+        "aspect_ratio": {
+          "default": "1:1",
+          "type": "enum",
+          "values": [
+            "1:1",
+            "4:3",
+            "3:2",
+            "16:9",
+            "2.35:1",
+            "4:5",
+            "2:3",
+            "9:16"
+          ]
+        },
+        "creativity": {
+          "default": "medium",
+          "type": "enum",
+          "values": [
+            "raw",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "style_refs": {
+          "accept": "image",
+          "max": 10,
+          "type": "file[]"
+        },
+        "version": {
+          "default": "turbo",
+          "type": "enum",
+          "values": [
+            "turbo",
+            "medium",
+            "large"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Krea"
+    },
+    "lipsync-heygen-precision": {
+      "aliases": [
+        "lipsync precision"
+      ],
+      "description": "Sincronizacion labial de mayor precision.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 20,
+        "kind": "unit_credits",
+        "minimum_credits": 20,
+        "units_param": "duration_sec"
+      },
+      "expensive": true,
+      "id": "lipsync-heygen-precision",
+      "label": "HeyGen Lipsync Precision v3",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "required": true,
+          "type": "file"
+        },
+        "disable_music_track": {
+          "default": false,
+          "type": "bool"
+        },
+        "duration_sec": {
+          "max": 1800,
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "enable_caption": {
+          "default": false,
+          "type": "bool"
+        },
+        "enable_dynamic_duration": {
+          "default": true,
+          "type": "bool"
+        },
+        "enable_speech_enhancement": {
+          "default": false,
+          "type": "bool"
+        },
+        "video_url": {
+          "accept": "video",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "lipsync",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "HeyGen"
+    },
+    "lipsync-heygen-speed": {
+      "aliases": [
+        "lipsync speed"
+      ],
+      "description": "Sincronizacion labial rapida y economica.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 10,
+        "kind": "unit_credits",
+        "minimum_credits": 10,
+        "units_param": "duration_sec"
+      },
+      "expensive": true,
+      "id": "lipsync-heygen-speed",
+      "label": "HeyGen Lipsync Speed v3",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "required": true,
+          "type": "file"
+        },
+        "disable_music_track": {
+          "default": false,
+          "type": "bool"
+        },
+        "duration_sec": {
+          "max": 1800,
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "enable_caption": {
+          "default": false,
+          "type": "bool"
+        },
+        "enable_dynamic_duration": {
+          "default": true,
+          "type": "bool"
+        },
+        "enable_speech_enhancement": {
+          "default": false,
+          "type": "bool"
+        },
+        "video_url": {
+          "accept": "video",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "lipsync",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "HeyGen"
+    },
+    "lipsync-sync-v3": {
+      "aliases": [
+        "sync lipsync",
+        "lipsync sync"
+      ],
+      "description": "Lipsync de maxima calidad con control de ajuste de duraciones.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 26.6667,
+        "kind": "unit_credits",
+        "minimum_credits": 27,
+        "units_param": "duration_sec"
+      },
+      "expensive": true,
+      "id": "lipsync-sync-v3",
+      "label": "Sync Lipsync v3",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "required": true,
+          "type": "file"
+        },
+        "duration_sec": {
+          "max": 1800,
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "sync_mode": {
+          "default": "cut_off",
+          "type": "enum",
+          "values": [
+            "cut_off",
+            "loop",
+            "bounce",
+            "silence",
+            "remap"
+          ]
+        },
+        "video_url": {
+          "accept": "video",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "lipsync",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Sync"
+    },
+    "lipsync-veed-v2": {
+      "aliases": [
+        "veed lipsync",
+        "lipsync veed"
+      ],
+      "description": "Lipsync de calidad de produccion, sin ajustes: sube video y audio y listo.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 14,
+        "kind": "unit_credits",
+        "minimum_credits": 14,
+        "round_up": true,
+        "unit_label": "cr/s",
+        "unit_name": "Duración",
+        "units_param": "duration_sec"
+      },
+      "expensive": true,
+      "id": "lipsync-veed-v2",
+      "label": "VEED Lipsync v2",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "required": true,
+          "type": "file"
+        },
+        "duration_sec": {
+          "internal": true,
+          "max": 1800,
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "video_url": {
+          "accept": "video",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "lipsync",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "VEED"
+    },
+    "midjourney": {
+      "aliases": [
+        "mj"
+      ],
+      "description": "Genera cuatro imagenes por solicitud con controles creativos avanzados.",
+      "driver": "labs-queue-multi-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "speed",
+        "credits_by_value": {
+          "fast": 12,
+          "relax": 10,
+          "turbo": 21
+        },
+        "kind": "param_table",
+        "note": "cuatro imagenes por solicitud; coste real al terminar"
+      },
+      "expensive": false,
+      "id": "midjourney",
+      "label": "Midjourney",
+      "min_cli_version": "1.0.0",
+      "output": "multi-image",
+      "params": {
+        "chaos": {
+          "default": 0,
+          "max": 100,
+          "min": 0,
+          "type": "int"
+        },
+        "draft": {
+          "default": false,
+          "type": "bool"
+        },
+        "hd": {
+          "default": false,
+          "type": "bool"
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 8,
+          "type": "file[]"
+        },
+        "iw": {
+          "max": 3,
+          "min": 0,
+          "type": "number"
+        },
+        "negative_prompt": {
+          "max_len": 2000,
+          "type": "string"
+        },
+        "niji": {
+          "default": false,
+          "type": "bool"
+        },
+        "prompt": {
+          "max_len": 4000,
+          "required": true,
+          "type": "string"
+        },
+        "quality": {
+          "default": "1",
+          "type": "enum",
+          "values": [
+            "0.25",
+            "0.5",
+            "1",
+            "2"
+          ]
+        },
+        "seed": {
+          "max": 2147483647,
+          "min": 0,
+          "type": "int"
+        },
+        "size": {
+          "default": "1:1",
+          "type": "enum",
+          "values": [
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:5",
+            "5:4",
+            "4:3",
+            "3:4",
+            "3:2",
+            "2:3",
+            "21:9",
+            "2:1",
+            "1:2"
+          ]
+        },
+        "speed": {
+          "default": "relax",
+          "type": "enum",
+          "values": [
+            "relax",
+            "fast",
+            "turbo"
+          ]
+        },
+        "style": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "raw"
+          ]
+        },
+        "stylize": {
+          "default": 100,
+          "max": 1000,
+          "min": 0,
+          "type": "int"
+        },
+        "tile": {
+          "default": false,
+          "type": "bool"
+        },
+        "version": {
+          "default": "7",
+          "type": "enum",
+          "values": [
+            "7",
+            "8.1",
+            "8.2"
+          ]
+        },
+        "weird": {
+          "default": 0,
+          "max": 3000,
+          "min": 0,
+          "type": "int"
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Midjourney"
+    },
+    "minimax-h3-max": {
+      "aliases": [
+        "h3 max",
+        "minimax h3 max"
+      ],
+      "description": "Vídeo premium con Texto a vídeo, First/Last Frame y referencias multimodales de imagen, vídeo y audio.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits_by_value": {
+          "t2v": 245,
+          "i2v": 245,
+          "ref": 1300
+        },
+        "kind": "mixed_mode",
+        "matrix_mode": "__none__",
+        "mode_param": "mode",
+        "note": "Autorización máxima conservadora. El servidor reserva y cobra el cálculo exacto según duración, resolución y tokens de imagen/vídeo; el audio de referencia no añade cargo AILAB."
+      },
+      "expensive": true,
+      "id": "minimax-h3-max",
+      "label": "H3 Max",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "help": "Texto a vídeo admite ratios fijos; Referencias también permite adaptive; Imagen a vídeo usa el primer fotograma.",
+          "type": "enum",
+          "values": [
+            "adaptive",
+            "21:9",
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16"
+          ]
+        },
+        "duration": {
+          "default": 5,
+          "help": "Duración de salida entre 5 y 15 segundos.",
+          "max": 15,
+          "min": 5,
+          "type": "int"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "help": "Primer fotograma obligatorio en Imagen a vídeo.",
+          "required_when": {
+            "mode": "i2v"
+          },
+          "type": "file"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "help": "Último fotograma opcional. Requiere el primer fotograma.",
+          "type": "file"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "help": "Solo ref. Hasta 3 audios de 2 a 15 segundos; 15 segundos combinados. Necesitan además imagen o vídeo.",
+          "max": 3,
+          "type": "file[]"
+        },
+        "reference_image_urls": {
+          "accept": "image",
+          "help": "Solo ref. Hasta 9 imágenes; máximo 4.096 px por lado.",
+          "max": 9,
+          "type": "file[]"
+        },
+        "reference_video_urls": {
+          "accept": "video",
+          "help": "Solo ref. Hasta 3 vídeos MP4 de 2 a 15 segundos; 15 segundos combinados.",
+          "max": 3,
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref"
+          ]
+        },
+        "prompt": {
+          "help": "Describe sujeto, acción, cámara, ritmo, diálogo y sonido. En ref nombra archivos como @Image1, @Video1 y @Audio1.",
+          "max_len": 50000,
+          "required": true,
+          "type": "string"
+        },
+        "prompt_expansion_mode": {
+          "default": "balanced",
+          "help": "Equilibrada mantiene buen control; quality desarrolla más el prompt; disabled lo conserva literal.",
+          "type": "enum",
+          "values": [
+            "disabled",
+            "balanced",
+            "quality"
+          ]
+        },
+        "resolution": {
+          "default": "768P",
+          "type": "enum",
+          "values": [
+            "480P",
+            "768P"
+          ]
+        },
+        "seed": {
+          "help": "Opcional. Omite este parámetro para usar una semilla aleatoria.",
+          "max": 2147483647,
+          "min": 0,
+          "type": "int"
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "MiniMax"
+    },
+    "minimax-h3": {
+      "aliases": [
+        "minimax",
+        "hailuo",
+        "hailuo 03",
+        "minimax h3"
+      ],
+      "description": "Hailuo 03: texto, imagen (primer y ultimo frame) o referencias multimodales, con audio estereo nativo, en 768P o 2K.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "2K": 26.52,
+          "768P": 16.32
+        },
+        "kind": "per_second_table",
+        "note": "el video de referencia suma su duracion al cobro a la misma tarifa; a partir de la sexta imagen de entrada, 8.16 cr por imagen extra; el audio de entrada es gratis. Coste real al terminar",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "minimax-h3",
+      "label": "MiniMax H3",
+      "min_cli_version": "1.0.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "help": "Solo en t2v y ref (adaptive solo en ref); en i2v el ratio lo impone la imagen",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "21:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16",
+            "adaptive"
+          ]
+        },
+        "duration": {
+          "default": 6,
+          "max": 15,
+          "min": 4,
+          "type": "int"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "help": "Solo i2v; obligatorio en ese modo",
+          "type": "file"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "help": "Solo i2v; opcional, exige first_frame_url",
+          "type": "file"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref"
+          ]
+        },
+        "prompt": {
+          "required": true,
+          "type": "string"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "help": "Solo ref; gratis",
+          "max": 3,
+          "type": "file[]"
+        },
+        "reference_image_urls": {
+          "accept": "image",
+          "help": "Solo ref; las 5 primeras gratis, extra 8.16 cr por imagen",
+          "max": 9,
+          "type": "file[]"
+        },
+        "reference_video_urls": {
+          "accept": "video",
+          "help": "Solo ref; su duracion se suma al cobro a la tarifa de la resolucion",
+          "max": 3,
+          "type": "file[]"
+        },
+        "resolution": {
+          "default": "768P",
+          "type": "enum",
+          "values": [
+            "768P",
+            "2K"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "MiniMax"
+    },
+    "nano-banana-2": {
+      "aliases": [
+        "nb2",
+        "nano banana 2"
+      ],
+      "description": "Imagen de alta calidad con referencias y salida de 1K a 4K.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 9,
+          "2K": 13,
+          "4K": 19
+        },
+        "kind": "param_table"
+      },
+      "expensive": false,
+      "id": "nano-banana-2",
+      "label": "Nano Banana 2",
+      "min_cli_version": "1.0.0",
+      "output": "image",
+      "params": {
+        "aspect_ratio": {
+          "default": "1:1",
+          "type": "enum",
+          "values": [
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "5:4",
+            "4:5",
+            "16:9",
+            "9:16",
+            "4:1",
+            "1:4",
+            "8:1"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 10,
+          "type": "file[]"
+        },
+        "output_format": {
+          "default": "png",
+          "type": "enum",
+          "values": [
+            "png",
+            "jpeg",
+            "webp"
+          ]
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "1K",
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K",
+            "4K"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Google"
+    },
+    "nano-banana-2-lite": {
+      "aliases": [
+        "nb2 lite",
+        "nano banana lite",
+        "banana lite"
+      ],
+      "description": "Imagen rapida y economica con hasta 10 referencias.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits": 5,
+        "kind": "flat_credits",
+        "note": "coste real habitual validado en produccion"
+      },
+      "expensive": false,
+      "id": "nano-banana-2-lite",
+      "label": "Nano Banana 2 Lite",
+      "min_cli_version": "1.0.0",
+      "output": "image",
+      "params": {
+        "aspect_ratio": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "1:1",
+            "4:3",
+            "3:4",
+            "3:2",
+            "2:3",
+            "5:4",
+            "4:5",
+            "16:9",
+            "9:16",
+            "21:9",
+            "4:1",
+            "1:4",
+            "8:1",
+            "1:8"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "help": "Imagenes de referencia",
+          "max": 10,
+          "type": "file[]"
+        },
+        "prompt": {
+          "help": "Que quieres generar",
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Google"
+    },
+    "nano-banana-pro": {
+      "aliases": [
+        "banana pro",
+        "nano pro"
+      ],
+      "description": "Imagen premium con referencias, texto preciso y salida hasta 4K.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 19,
+          "2K": 19,
+          "4K": 25
+        },
+        "kind": "param_table"
+      },
+      "expensive": false,
+      "id": "nano-banana-pro",
+      "label": "Nano Banana Pro",
+      "min_cli_version": "1.0.0",
+      "output": "image",
+      "params": {
+        "aspect_ratio": {
+          "default": "1:1",
+          "type": "enum",
+          "values": [
+            "auto",
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "5:4",
+            "4:5",
+            "16:9",
+            "9:16",
+            "21:9"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 8,
+          "type": "file[]"
+        },
+        "output_format": {
+          "default": "png",
+          "type": "enum",
+          "values": [
+            "png",
+            "jpg"
+          ]
+        },
+        "prompt": {
+          "max_len": 20000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "1K",
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K",
+            "4K"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Google"
+    },
+    "qwen-image-3": {
+      "aliases": [
+        "qwen 3",
+        "qwen image 3",
+        "qwen3"
+      ],
+      "description": "Realismo, tipografia y layouts en 1K o 2K, texto o edicion con hasta 3 imagenes (el orden importa) y negative prompt. Motor premium: prompts de hasta 5000 caracteres.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "by_param": "resolution",
+        "credits_by_value": {
+          "1K": 8,
+          "2K": 15
+        },
+        "kind": "param_table",
+        "note": "Por imagen generada, igual en texto y edicion; sin recargo por imagenes de entrada. El prompt_expansion va apagado y sin seed (decision de la plataforma)"
+      },
+      "expensive": false,
+      "id": "qwen-image-3",
+      "label": "Qwen Image 3.0",
+      "min_cli_version": "1.0.0",
+      "modes": [
+        "t2i",
+        "i2i"
+      ],
+      "output": "image",
+      "params": {
+        "image_size": {
+          "default": "1:1",
+          "type": "enum",
+          "values": [
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "21:9"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "help": "Solo en i2i: de 1 a 3 imagenes; el ORDEN importa (nombralas en el prompt como imagen 1, imagen 2, imagen 3)",
+          "max": 3,
+          "required_when": {
+            "mode": "i2i"
+          },
+          "type": "file[]"
+        },
+        "mode": {
+          "default": "t2i",
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i"
+          ]
+        },
+        "negative_prompt": {
+          "help": "Lo que NO debe aparecer (opcional, hasta 500 caracteres)",
+          "max_len": 500,
+          "type": "string"
+        },
+        "prompt": {
+          "help": "Espanol/ingles y chino; hasta 5000 caracteres (el antiguo limite de 800 desaparecio con el motor premium)",
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "1K",
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Alibaba"
+    },
+    "recraft-v41": {
+      "aliases": [
+        "recraft",
+        "recraft 4.1"
+      ],
+      "description": "Imagen de marca o vector SVG en cuatro niveles de calidad.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "by_param": "version",
+        "credits_by_value": {
+          "image": 8,
+          "image-pro": 50,
+          "vector": 16,
+          "vector-pro": 60
+        },
+        "kind": "param_table"
+      },
+      "expensive": false,
+      "id": "recraft-v41",
+      "label": "Recraft v4.1",
+      "min_cli_version": "1.0.0",
+      "modes": [
+        "image",
+        "image-pro",
+        "vector",
+        "vector-pro"
+      ],
+      "output": "image",
+      "params": {
+        "image_size": {
+          "default": "square_hd",
+          "type": "enum",
+          "values": [
+            "square_hd",
+            "square",
+            "portrait_4_3",
+            "portrait_16_9",
+            "landscape_4_3",
+            "landscape_16_9"
+          ]
+        },
+        "prompt": {
+          "max_len": 10000,
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "default": "image",
+          "type": "enum",
+          "values": [
+            "image",
+            "image-pro",
+            "vector",
+            "vector-pro"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Recraft"
+    },
+    "resemble-audio-enhancement": {
+      "aliases": [
+        "resemble",
+        "audio enhancement",
+        "mejorar audio",
+        "limpiar audio",
+        "eliminar ruido",
+        "studio sound"
+      ],
+      "description": "Limpia ruido de fondo, normaliza el volumen y aplica un acabado de estudio a un archivo de audio.",
+      "driver": "resemble-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 0.306,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "Tarifa Flex pública de 0,0015 USD/s, margen AILAB del 2% y redondeo final.",
+        "round_up": true,
+        "units_param": "duration_seconds"
+      },
+      "expensive": false,
+      "id": "resemble-audio-enhancement",
+      "label": "Resemble Audio Enhancement",
+      "min_cli_version": "2.1.13",
+      "modes": [
+        "enhance"
+      ],
+      "output": "audio",
+      "params": {
+        "audio_url": {
+          "accept": [
+            "audio/mpeg",
+            "audio/wav",
+            "audio/flac",
+            "audio/mp4",
+            "audio/ogg",
+            "audio/aac",
+            "video/mp4"
+          ],
+          "help": "WAV, MP3, M4A, MP4, OGG, AAC o FLAC de hasta 150 MB.",
+          "required": true,
+          "type": "file"
+        },
+        "duration_seconds": {
+          "help": "Duración real medida localmente y verificada de nuevo por el servidor.",
+          "internal": true,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "normalize": {
+          "default": true,
+          "help": "Equilibra el nivel del audio para obtener un volumen más uniforme.",
+          "type": "bool"
+        },
+        "remove_noise": {
+          "default": true,
+          "help": "Elimina ruido de fondo y distracciones constantes.",
+          "type": "bool"
+        },
+        "studio_sound": {
+          "default": true,
+          "help": "Aplica el procesamiento de acabado y claridad de estudio.",
+          "type": "bool"
+        }
+      },
+      "section": "other",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Resemble AI"
+    },
+    "remove-background": {
+      "aliases": [
+        "remove bg",
+        "quitar fondo"
+      ],
+      "description": "Elimina el fondo y devuelve una imagen transparente.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits": 2,
+        "kind": "flat_credits",
+        "note": "el coste real se liquida al terminar"
+      },
+      "expensive": false,
+      "id": "remove-background",
+      "label": "Recraft Remove Background",
+      "min_cli_version": "1.0.0",
+      "output": "image",
+      "params": {
+        "image": {
+          "accept": "image",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "other",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Recraft"
+    },
+    "sam-audio": {
+      "aliases": [
+        "sam audio",
+        "separar audio",
+        "separacion de audio",
+        "audio separation"
+      ],
+      "description": "Separa de una mezcla el sonido descrito por texto y devuelve la pista aislada junto al audio restante.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": false,
+        "block_seconds": 30,
+        "credit_usd": 0.005,
+        "kind": "duration_blocks",
+        "margin_multiplier": 1.02,
+        "minimum_credits": 11,
+        "note": "cada bloque iniciado de 30 segundos",
+        "round_up": true,
+        "seconds_param": "duration_seconds",
+        "usd_per_block": 0.05
+      },
+      "expensive": false,
+      "id": "sam-audio",
+      "label": "SAM Audio",
+      "min_cli_version": "2.1.12",
+      "modes": [
+        "text-guided"
+      ],
+      "output": "audio",
+      "params": {
+        "audio_url": {
+          "accept": "audio",
+          "help": "Audio MP3, WAV o FLAC de hasta 50 MB.",
+          "required": true,
+          "type": "file"
+        },
+        "duration_seconds": {
+          "help": "Duracion medida localmente y verificada de nuevo por el servidor.",
+          "internal": true,
+          "max": 3600,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "prompt": {
+          "help": "Describe solo el sonido que quieres aislar, por ejemplo: Isolate the main human speaking voice.",
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "section": "other",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "SAM Audio"
+    },
+    "seed-audio": {
+      "aliases": [
+        "seed audio"
+      ],
+      "description": "Genera voz, musica y efectos en una sola pasada.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits": 100,
+        "kind": "flat_credits",
+        "note": "reserva maxima: la duracion la decide el modelo y no se puede fijar. Se cobra la duracion real a 0,625 cr/s (10 s = 7 cr, 1 min = 38 cr) y nunca mas de 100 cr. estimated_duration_seconds no cambia ni la duracion ni la reserva."
+      },
+      "expensive": true,
+      "id": "seed-audio",
+      "label": "Seed Audio",
+      "min_cli_version": "1.0.0",
+      "output": "audio",
+      "params": {
+        "audio_urls": {
+          "accept": "audio",
+          "max": 3,
+          "type": "file[]"
+        },
+        "estimated_duration_seconds": {
+          "default": 60,
+          "max": 160,
+          "min": 1,
+          "type": "number"
+        },
+        "image_url": {
+          "accept": "image",
+          "type": "file"
+        },
+        "output_format": {
+          "default": "mp3",
+          "type": "enum",
+          "values": [
+            "mp3",
+            "wav",
+            "pcm",
+            "ogg_opus"
+          ]
+        },
+        "pitch": {
+          "default": 0,
+          "max": 24,
+          "min": -24,
+          "type": "int"
+        },
+        "prompt": {
+          "max_len": 2048,
+          "required": true,
+          "type": "string"
+        },
+        "speed": {
+          "default": 1,
+          "max": 2,
+          "min": 0.5,
+          "type": "number"
+        },
+        "volume": {
+          "default": 1,
+          "max": 2,
+          "min": 0.5,
+          "type": "number"
+        }
+      },
+      "section": "music",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ByteDance"
+    },
+    "seedance-1-5-pro": {
+      "aliases": [
+        "seedance 1.5",
+        "seedance 1.5 pro"
+      ],
+      "description": "Video con audio, primer y ultimo frame y lente fija.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "1080p": 16,
+          "480p": 5,
+          "720p": 8
+        },
+        "kind": "per_second_table",
+        "note": "estimacion conservadora con audio",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "seedance-1-5-pro",
+      "label": "Seedance 1.5 Pro",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "1:1",
+            "21:9",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16"
+          ]
+        },
+        "duration": {
+          "default": "4",
+          "type": "enum",
+          "values": [
+            "4",
+            "8",
+            "12"
+          ]
+        },
+        "fixed_lens": {
+          "default": false,
+          "type": "bool"
+        },
+        "generate_audio": {
+          "default": true,
+          "type": "bool"
+        },
+        "input_urls": {
+          "accept": "image",
+          "max": 2,
+          "type": "file[]"
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "resolution": {
+          "default": "480p",
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p",
+            "1080p"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ByteDance"
+    },
+    "seedance-2": {
+      "aliases": [
+        "seedance",
+        "seedance 2.0"
+      ],
+      "description": "Texto, frames o referencias a video con audio opcional, modo Normal o Fast y resolucion de 480p a 4K.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "column_param": "resolution",
+        "credits_matrix": {
+          "fast": {
+            "1080p": 104.04,
+            "480p": 11.93,
+            "4k": 212.16,
+            "720p": 25.3
+          },
+          "normal": {
+            "1080p": 104.04,
+            "480p": 19.38,
+            "4k": 212.16,
+            "720p": 41.82
+          }
+        },
+        "credits_with_video_matrix": {
+          "fast": {
+            "1080p": 63.24,
+            "480p": 11.93,
+            "4k": 212.16,
+            "720p": 25.3
+          },
+          "normal": {
+            "1080p": 63.24,
+            "480p": 11.73,
+            "4k": 212.16,
+            "720p": 25.5
+          }
+        },
+        "kind": "per_second_matrix",
+        "note": "coste real al terminar; el modo Fast (maximo 720p) esta rebajado hasta el 7 de septiembre de 2026 (06:00 UTC)",
+        "promo": {
+          "label": "Modo Fast rebajado hasta el 7 sep 2026",
+          "previous_credits_matrix": {
+            "fast": {
+              "480p": 15.81,
+              "720p": 33.66
+            }
+          },
+          "previous_credits_with_video_matrix": {
+            "fast": {
+              "480p": 11.73,
+              "720p": 25.5
+            }
+          },
+          "until": "2026-09-07T06:00:00Z"
+        },
+        "row_param": "speed",
+        "seconds_param": "duration",
+        "video_param": "reference_video_urls"
+      },
+      "expensive": true,
+      "id": "seedance-2",
+      "label": "Seedance 2.0",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1",
+            "4:3",
+            "3:4"
+          ]
+        },
+        "duration": {
+          "default": 4,
+          "max": 15,
+          "min": 4,
+          "type": "int"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "required_when": {
+            "mode": "i2v"
+          },
+          "type": "file"
+        },
+        "generate_audio": {
+          "default": true,
+          "type": "bool"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "type": "file"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref"
+          ]
+        },
+        "prompt": {
+          "max_len": 20000,
+          "required": true,
+          "type": "string"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "max": 1,
+          "type": "file[]"
+        },
+        "reference_image_urls": {
+          "accept": "image",
+          "max": 9,
+          "type": "file[]"
+        },
+        "reference_video_urls": {
+          "accept": "video",
+          "max": 1,
+          "type": "file[]"
+        },
+        "resolution": {
+          "default": "480p",
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p",
+            "1080p",
+            "4k"
+          ]
+        },
+        "speed": {
+          "default": "normal",
+          "help": "Fast solo admite 480p y 720p",
+          "type": "enum",
+          "values": [
+            "normal",
+            "fast"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "all",
+      "vendor": "ByteDance"
+    },
+    "seedance-2-5": {
+      "aliases": [
+        "seedance 2.5",
+        "seedance2.5"
+      ],
+      "description": "Texto, imagen, referencias o edición de vídeo con audio nativo, hasta 30 segundos y resolución 480p, 720p o 1080p.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "auto_duration_param": "auto_duration",
+        "auto_duration_seconds": 30,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "1080p": 116.28,
+          "480p": 28.56,
+          "720p": 64.26
+        },
+        "credits_with_video": {
+          "1080p": 69.87,
+          "480p": 17.34,
+          "720p": 38.76
+        },
+        "kind": "per_second_table",
+        "note": "1080p promocional hasta el 17 de septiembre de 2026 (06:00 UTC). Tarifas con comision AILAB incluida; el coste real lo confirma KIE al terminar.",
+        "promo": {
+          "label": "1080p con 28% de descuento hasta el 17 sep 2026",
+          "previous_credits_per_second": {
+            "1080p": 161.5
+          },
+          "previous_credits_with_video": {
+            "1080p": 97.04
+          },
+          "until": "2026-09-17T06:00:00Z"
+        },
+        "seconds_param": "duration",
+        "mode_param": "mode",
+        "duration_by_mode": {
+          "edit": 30
+        },
+        "video_param": "reference_video_urls"
+      },
+      "expensive": true,
+      "id": "seedance-2-5",
+      "label": "Seedance 2.5",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref",
+        "edit"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "adaptive",
+          "help": "En modos i2v y edit se fuerza adaptive porque KIE no admite ratios fijos con First Frame y la edición conserva el formato del vídeo original.",
+          "type": "enum",
+          "values": [
+            "adaptive",
+            "16:9",
+            "9:16",
+            "1:1",
+            "4:3",
+            "3:4",
+            "21:9"
+          ]
+        },
+        "auto_duration": {
+          "default": false,
+          "type": "bool"
+        },
+        "duration": {
+          "default": 5,
+          "help": "Entre 4 y 30 segundos; usa --auto_duration true para que el modelo decida. En modo edit la duración es automática y conserva la del vídeo original.",
+          "max": 30,
+          "min": 4,
+          "type": "int"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "required_when": {
+            "mode": "i2v"
+          },
+          "type": "file"
+        },
+        "generate_audio": {
+          "default": true,
+          "type": "bool"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "type": "file"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref",
+            "edit"
+          ]
+        },
+        "prompt": {
+          "help": "Hasta 30.000 caracteres según el contrato actual de KIE.",
+          "max_len": 30000,
+          "required": true,
+          "type": "string"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "max": 1,
+          "type": "file[]"
+        },
+        "reference_image_urls": {
+          "accept": "image",
+          "max": 30,
+          "type": "file[]"
+        },
+        "reference_video_urls": {
+          "accept": "video",
+          "max": 1,
+          "required_when": {
+            "mode": "edit"
+          },
+          "type": "file[]"
+        },
+        "resolution": {
+          "default": "720p",
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p",
+            "1080p"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "all",
+      "vendor": "ByteDance"
+    },
+    "seedance-2-mini": {
+      "aliases": [
+        "seedance mini",
+        "seedance 2 mini"
+      ],
+      "description": "Version economica para texto, imagen o referencias a video.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "480p": 3.88,
+          "720p": 8.36
+        },
+        "credits_with_video": {
+          "480p": 2.45,
+          "720p": 5.1
+        },
+        "kind": "per_second_table",
+        "note": "precio rebajado hasta el 7 de septiembre de 2026 (06:00 UTC); con video de referencia baja a ~2.45 (480p) / ~5.10 (720p) cr/s; coste real al terminar",
+        "promo": {
+          "label": "Rebajado hasta el 7 sep 2026",
+          "previous_credits_per_second": {
+            "480p": 9.69,
+            "720p": 20.91
+          },
+          "previous_credits_with_video": {
+            "480p": 9.69,
+            "720p": 20.91
+          },
+          "until": "2026-09-07T06:00:00Z"
+        },
+        "seconds_param": "duration",
+        "video_param": "reference_video_urls"
+      },
+      "expensive": true,
+      "id": "seedance-2-mini",
+      "label": "Seedance 2.0 Mini",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16",
+            "21:9",
+            "adaptive"
+          ]
+        },
+        "duration": {
+          "default": 5,
+          "max": 15,
+          "min": 4,
+          "type": "int"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "required_when": {
+            "mode": "i2v"
+          },
+          "type": "file"
+        },
+        "generate_audio": {
+          "default": true,
+          "type": "bool"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "type": "file"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref"
+          ]
+        },
+        "prompt": {
+          "max_len": 1536,
+          "required": true,
+          "type": "string"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "max": 1,
+          "type": "file[]"
+        },
+        "reference_image_urls": {
+          "accept": "image",
+          "max": 9,
+          "type": "file[]"
+        },
+        "reference_video_urls": {
+          "accept": "video",
+          "max": 1,
+          "type": "file[]"
+        },
+        "resolution": {
+          "default": "480p",
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ByteDance"
+    },
+    "seedream-v5-pro": {
+      "aliases": [
+        "seedream 5 pro",
+        "seedream v5"
+      ],
+      "description": "Texto a imagen o edicion con calidad Basic 1K y High 2K. Incluye modo Capas: separa una imagen en capas PNG editables (web)",
+      "driver": "hybrid-seedream-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "basic_credit_per_input": 0.51,
+        "basic_credits": 8,
+        "files_param": "image_urls",
+        "high_credits": 27,
+        "kind": "hybrid_seedream",
+        "layers_max_credits": 300,
+        "mode_param": "mode",
+        "note": "Modo Capas (layer decomposition): separa una imagen en capas PNG independientes; se cobra por capa generada incluida la base, ~7,14 cr en 1K/1.5K y ~14,28 cr en 2K",
+        "quality_param": "quality"
+      },
+      "expensive": false,
+      "id": "seedream-v5-pro",
+      "label": "Seedream v5 Pro",
+      "min_cli_version": "2.1.0",
+      "modes": [
+        "t2i",
+        "i2i",
+        "layers"
+      ],
+      "output": "multi-image",
+      "params": {
+        "aspect_ratio": {
+          "default": "1:1",
+          "type": "enum",
+          "values": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "3:2",
+            "2:3",
+            "16:9",
+            "9:16"
+          ]
+        },
+        "image_urls": {
+          "accept": "image",
+          "max": 10,
+          "required_when": {
+            "mode": "i2i"
+          },
+          "type": "file[]"
+        },
+        "layer_image": {
+          "accept": "image",
+          "help": "Una imagen para separar en capas",
+          "required_when": {
+            "mode": "layers"
+          },
+          "type": "file"
+        },
+        "layer_size": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "1K",
+            "1.5K",
+            "2K"
+          ]
+        },
+        "mode": {
+          "default": "t2i",
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i",
+            "layers"
+          ]
+        },
+        "output_format": {
+          "default": "jpg",
+          "type": "enum",
+          "values": [
+            "jpg",
+            "png"
+          ]
+        },
+        "prompt": {
+          "max_len": 10000,
+          "required": true,
+          "type": "string"
+        },
+        "quality": {
+          "default": "basic",
+          "type": "enum",
+          "values": [
+            "basic",
+            "high"
+          ]
+        }
+      },
+      "section": "image",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "ByteDance"
+    },
+    "seedvr-video-upscaler": {
+      "aliases": [
+        "seedvr video"
+      ],
+      "description": "Aumenta la resolucion de un video entre 2x y 4x.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 0.2,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "estimacion por megapixeles procesados",
+        "units_param": "estimated_billable_megapixels"
+      },
+      "expensive": true,
+      "id": "seedvr-video-upscaler",
+      "label": "SeedVR Video Upscaler",
+      "min_cli_version": "1.0.0",
+      "output": "video",
+      "params": {
+        "estimated_billable_megapixels": {
+          "max": 100000,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "upscale_factor": {
+          "default": "2",
+          "type": "enum",
+          "values": [
+            "2",
+            "3",
+            "4"
+          ]
+        },
+        "video_url": {
+          "accept": "video",
+          "required": true,
+          "type": "file"
+        }
+      },
+      "section": "upscale",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "AiLendra Labs"
+    },
+    "seedvr2-image-upscaler": {
+      "aliases": [
+        "seedvr image",
+        "seedvr2"
+      ],
+      "description": "Upscale economico de imagen a 2x, 4x u 8x.",
+      "driver": "labs-queue-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 0.2,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "coste real por megapixeles de salida",
+        "units_param": "output_megapixels"
+      },
+      "expensive": false,
+      "id": "seedvr2-image-upscaler",
+      "label": "SeedVR2 Image Upscaler",
+      "min_cli_version": "1.0.0",
+      "output": "image",
+      "params": {
+        "image_url": {
+          "accept": "image",
+          "required": true,
+          "type": "file"
+        },
+        "output_format": {
+          "default": "jpg",
+          "type": "enum",
+          "values": [
+            "jpg",
+            "png",
+            "webp"
+          ]
+        },
+        "output_megapixels": {
+          "max": 1000,
+          "min": 0.1,
+          "required": true,
+          "type": "number"
+        },
+        "scale_factor": {
+          "default": "2",
+          "type": "enum",
+          "values": [
+            "2",
+            "4",
+            "8"
+          ]
+        }
+      },
+      "section": "upscale",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "AiLendra Labs"
+    },
+    "topaz-bloom-2": {
+      "id": "topaz-bloom-2",
+      "label": "Bloom 2",
+      "description": "Upscale creativo de imagen con detalle generativo, control de identidad, color, grano y prompt opcional.",
+      "section": "upscale",
+      "vendor": "Topaz Labs",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "topaz-v1",
+      "min_cli_version": "2.2.6",
+      "aliases": ["bloom", "bloom 2", "topaz bloom"],
+      "modes": [],
+      "params": {
+        "image_url": { "type": "file", "accept": "image", "required": true, "help": "JPG, PNG o WebP de hasta 30 MB." },
+        "prompt": { "type": "string", "max_len": 2000, "help": "Opcional: describe el detalle y el acabado que quieres reforzar. No cambies la escena." },
+        "upscale_factor": { "type": "enum", "values": ["2", "4", "6"], "default": "2" },
+        "creativity": { "type": "int", "min": 1, "max": 9, "default": 3, "help": "1 conserva más; 9 reinventa más detalle." },
+        "color_preservation": { "type": "bool", "default": true, "help": "Conserva los colores de la imagen original." },
+        "face_enhancement": { "type": "bool", "default": false, "help": "Actívalo solo si necesitas recuperar rostros pequeños o degradados." },
+        "grain": { "type": "bool", "default": false },
+        "grain_model": { "type": "enum", "values": ["silver", "gaussian", "grey"], "default": "silver" },
+        "grain_density": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "grain_size": { "type": "number", "min": 1, "max": 5, "step": 0.5, "default": 1 },
+        "grain_strength": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "seed": { "type": "int", "min": 0, "max": 2147483647, "default": 2 },
+        "output_megapixels": { "type": "number", "required": true, "internal": true }
+      },
+      "estimate": {
+        "kind": "topaz_image",
+        "megapixels_param": "output_megapixels",
+        "ailab_credits_per_provider_credit": 14.28,
+        "provider_credits_by_max_megapixels": { "1": 1, "4": 2, "8": 4, "16": 8, "24": 12, "32": 16, "40": 20, "50": 25, "64": 32, "100": 50 },
+        "approximate": false,
+        "note": "Cálculo exacto por el tramo de megapíxeles de salida; el servidor vuelve a medir la imagen."
+      }
+    },
+    "topaz-wonder-3-5": {
+      "id": "topaz-wonder-3-5",
+      "label": "Wonder 3.5",
+      "description": "Mejora generativa equilibrada para recuperar claridad y textura con tres intensidades de detalle.",
+      "section": "upscale",
+      "vendor": "Topaz Labs",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "topaz-v1",
+      "min_cli_version": "2.2.6",
+      "aliases": ["wonder", "wonder 3.5", "topaz wonder"],
+      "modes": [],
+      "params": {
+        "image_url": { "type": "file", "accept": "image", "required": true, "help": "JPG, PNG o WebP de hasta 30 MB." },
+        "upscale_factor": { "type": "enum", "values": ["2", "4", "6"], "default": "2" },
+        "enhancement_strength": { "type": "enum", "values": ["low", "medium", "high"], "default": "high", "help": "Controla cuánto detalle nuevo recupera el modelo." },
+        "face_enhancement": { "type": "bool", "default": false, "help": "Actívalo solo si necesitas recuperar rostros pequeños o degradados." },
+        "grain": { "type": "bool", "default": false },
+        "grain_model": { "type": "enum", "values": ["silver", "gaussian", "grey"], "default": "silver" },
+        "grain_density": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "grain_size": { "type": "number", "min": 1, "max": 5, "step": 0.5, "default": 1 },
+        "grain_strength": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "output_megapixels": { "type": "number", "required": true, "internal": true }
+      },
+      "estimate": {
+        "kind": "topaz_image",
+        "megapixels_param": "output_megapixels",
+        "ailab_credits_per_provider_credit": 14.28,
+        "provider_credits_by_max_megapixels": { "1": 1, "4": 1, "8": 1, "16": 2, "24": 3, "32": 4, "40": 5, "50": 7, "64": 8, "100": 13 },
+        "approximate": false,
+        "note": "Cálculo exacto por el tramo de megapíxeles de salida; el servidor vuelve a medir la imagen."
+      }
+    },
+    "topaz-astra-precise-2-6": {
+      "id": "topaz-astra-precise-2-6",
+      "label": "Astra Precise 2.6",
+      "description": "Upscale preciso de vídeo para recuperar caras, materiales, texto y detalle con estabilidad temporal.",
+      "section": "upscale",
+      "vendor": "Topaz Labs",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "topaz-v1",
+      "min_cli_version": "2.2.6",
+      "aliases": ["astra precise", "precise 2.6", "starlight precise 2.6"],
+      "modes": [],
+      "params": {
+        "video_url": { "type": "file", "accept": "video", "required": true, "help": "Vídeo MP4 de hasta 200 MB. El servidor mide resolución y fotogramas." },
+        "output_resolution": { "type": "enum", "values": ["1080p", "4K"], "default": "1080p" },
+        "sharpness": { "type": "number", "min": 1, "max": 5, "step": 0.25, "default": 5, "help": "1 aplica menos nitidez · 5 aplica más. Baja el valor para un acabado más suave." },
+        "frame_count": { "type": "int", "required": true, "internal": true }
+      },
+      "estimate": {
+        "kind": "topaz_video",
+        "frames_param": "frame_count",
+        "resolution_param": "output_resolution",
+        "ailab_credits_per_provider_credit": 14.28,
+        "frames_per_provider_credit": { "1080p": 26.0417, "4K": 11.9179 },
+        "approximate": false,
+        "note": "Cálculo exacto por número de fotogramas y resolución de salida."
+      }
+    },
+    "topaz-astra-creative-2": {
+      "id": "topaz-astra-creative-2",
+      "label": "Astra Creative 2",
+      "description": "Upscale creativo de vídeo con detalle generativo, prompt y controles de creatividad, realismo y nitidez.",
+      "section": "upscale",
+      "vendor": "Topaz Labs",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "topaz-v1",
+      "min_cli_version": "2.2.6",
+      "aliases": ["astra creative", "astra 2", "creative 2"],
+      "modes": [],
+      "params": {
+        "video_url": { "type": "file", "accept": "video", "required": true, "help": "Vídeo MP4 de hasta 200 MB. Con prompt admite hasta 450 fotogramas." },
+        "prompt": { "type": "string", "max_len": 2000, "help": "Opcional: describe texturas, detalle y acabado visual. No pidas movimientos nuevos." },
+        "output_resolution": { "type": "enum", "values": ["1080p", "4K"], "default": "1080p" },
+        "creativity": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "help": "Más alto permite reconstruir más detalle." },
+        "realism": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+        "sharp": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "help": "0 suaviza, 0,5 conserva y 1 aumenta la nitidez previa." },
+        "frame_count": { "type": "int", "required": true, "internal": true }
+      },
+      "estimate": {
+        "kind": "topaz_video",
+        "frames_param": "frame_count",
+        "resolution_param": "output_resolution",
+        "ailab_credits_per_provider_credit": 14.28,
+        "frames_per_provider_credit": { "1080p": 10, "4K": 6 },
+        "approximate": false,
+        "note": "Cálculo exacto por número de fotogramas y resolución de salida. Con prompt: máximo 450 fotogramas."
+      }
+    },
+    "soul-2": {
+      "id": "soul-2",
+      "label": "Higgsfield SOUL 2",
+      "description": "Imagen fotorrealista de personas con estilo y semilla controlables. El servidor cotiza antes de generar.",
+      "section": "image",
+      "vendor": "Higgsfield",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "higgsfield-v1",
+      "min_cli_version": "2.3.0",
+      "aliases": [
+        "higgsfield soul 2",
+        "higgsfield soul",
+        "soul 2"
+      ],
+      "modes": [
+        "t2i"
+      ],
+      "params": {
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 5000
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9",
+            "4:3",
+            "3:4",
+            "1:1",
+            "2:3",
+            "3:2"
+          ],
+          "default": "1:1"
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p"
+        },
+        "batch_size": {
+          "type": "enum",
+          "values": [
+            "1",
+            "4"
+          ],
+          "default": "1"
+        },
+        "seed": {
+          "type": "int",
+          "min": 1,
+          "max": 1000000,
+          "help": "Opcional. Dejala vacia para una semilla aleatoria."
+        },
+        "style_id": {
+          "type": "string",
+          "max_len": 120
+        },
+        "enhance_prompt": {
+          "type": "bool",
+          "default": true
+        }
+      },
+      "estimate": {
+        "kind": "higgsfield_quote",
+        "approximate": true,
+        "note": "Higgsfield no publica tarifa fija: el servidor cotiza antes de generar."
+      }
+    },
+    "suno": {
+      "aliases": [
+        "suno v5.5",
+        "suno music"
+      ],
+      "description": "Genera canciones o instrumentales con versiones v4 a v5.5.",
+      "driver": "suno-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "version",
+        "credits_by_value": {
+          "v4": 11,
+          "v4_5": 11,
+          "v4_5plus": 13,
+          "v5": 13,
+          "v5_5": 16
+        },
+        "kind": "param_table"
+      },
+      "expensive": false,
+      "id": "suno",
+      "label": "Suno",
+      "min_cli_version": "1.0.0",
+      "output": "audio",
+      "params": {
+        "custom_mode": {
+          "default": false,
+          "type": "bool"
+        },
+        "instrumental": {
+          "default": false,
+          "type": "bool"
+        },
+        "lyrics": {
+          "max_len": 5000,
+          "type": "string"
+        },
+        "negative_tags": {
+          "max_len": 500,
+          "type": "string"
+        },
+        "prompt": {
+          "max_len": 3000,
+          "required": true,
+          "type": "string"
+        },
+        "style": {
+          "max_len": 1000,
+          "type": "string"
+        },
+        "style_weight": {
+          "default": 0.5,
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "title": {
+          "max_len": 100,
+          "type": "string"
+        },
+        "version": {
+          "default": "v5_5",
+          "type": "enum",
+          "values": [
+            "v5_5",
+            "v5",
+            "v4_5plus",
+            "v4_5",
+            "v4"
+          ]
+        },
+        "vocal_gender": {
+          "type": "enum",
+          "values": [
+            "m",
+            "f"
+          ]
+        }
+      },
+      "section": "music",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Suno"
+    },
+    "veo-3-1": {
+      "aliases": [
+        "veo",
+        "veo 3",
+        "veo 3.1"
+      ],
+      "description": "Video con audio nativo, modo rapido o calidad y referencias visuales.",
+      "driver": "veo-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "by_param": "variant",
+        "credits_by_value": {
+          "fast": 62,
+          "quality": 255
+        },
+        "kind": "param_table",
+        "note": "estimacion de autorizacion; el cobro final usa el coste real informado por el proveedor"
+      },
+      "expensive": true,
+      "id": "veo-3-1",
+      "label": "Veo 3.1",
+      "min_cli_version": "1.0.0",
+      "modes": [
+        "t2v",
+        "frames",
+        "reference"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "Auto"
+          ]
+        },
+        "first_frame": {
+          "accept": "image",
+          "required_when": {
+            "generation_type": "frames"
+          },
+          "type": "file"
+        },
+        "generation_type": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "frames",
+            "reference"
+          ]
+        },
+        "last_frame": {
+          "accept": "image",
+          "type": "file"
+        },
+        "prompt": {
+          "max_len": 5000,
+          "required": true,
+          "type": "string"
+        },
+        "reference_images": {
+          "accept": "image",
+          "max": 3,
+          "required_when": {
+            "generation_type": "reference"
+          },
+          "type": "file[]"
+        },
+        "sound": {
+          "default": true,
+          "type": "bool"
+        },
+        "variant": {
+          "default": "fast",
+          "type": "enum",
+          "values": [
+            "fast",
+            "quality"
+          ]
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Google"
+    },
+    "wan-3-video": {
+      "aliases": [
+        "wan 3",
+        "wan 3.0",
+        "wan 3 video"
+      ],
+      "description": "Vídeo de hasta 30 segundos con audio nativo y referencias de imagen, vídeo, audio, enlaces y documentos. Normal ofrece la calidad de referencia y Prime genera más rápido. Los vídeos de referencia suman su duración al precio.",
+      "driver": "jobs-v1",
+      "enabled": true,
+      "estimate": {
+        "approximate": true,
+        "column_param": "resolution",
+        "credits_matrix": {
+          "normal": {
+            "1080P": 32.64,
+            "480P": 8.16,
+            "720P": 16.32
+          },
+          "prime": {
+            "1080P": 51.408,
+            "480P": 12.444,
+            "720P": 25.704
+          }
+        },
+        "kind": "per_second_matrix",
+        "note": "Tarifa AILAB por segundo sobre los segundos de salida más los de los vídeos de referencia (cada vídeo al segundo superior, medido por el servidor), incluido el 2% de servicio. Sin vídeos de entrada es exacto; con ellos es el máximo reservado y el cargo final es el consumo confirmado.",
+        "row_param": "version",
+        "seconds_param": "duration"
+      },
+      "expensive": true,
+      "id": "wan-3-video",
+      "label": "Wan 3.0 Video",
+      "min_cli_version": "2.3.12",
+      "modes": [
+        "t2v",
+        "i2v",
+        "ref"
+      ],
+      "output": "video",
+      "params": {
+        "aspect_ratio": {
+          "default": "adaptive",
+          "type": "enum",
+          "values": [
+            "adaptive",
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16"
+          ]
+        },
+        "audio": {
+          "default": true,
+          "help": "Genera audio nativo sincronizado.",
+          "type": "bool"
+        },
+        "duration": {
+          "default": 5,
+          "help": "Duración de salida entre 2 y 30 segundos. Si adjuntas vídeo, entrada y salida no pueden superar 30 s en total. La duración inteligente no está disponible.",
+          "max": 30,
+          "min": 2,
+          "type": "int"
+        },
+        "first_frame_url": {
+          "accept": "image",
+          "help": "Primer fotograma. JPG, PNG (sin transparencia) o WebP de hasta 20 MB; cada lado de 240 a 8.000 px.",
+          "required_when": {
+            "mode": "i2v"
+          },
+          "type": "file"
+        },
+        "last_frame_url": {
+          "accept": "image",
+          "help": "Último fotograma opcional. Requiere el primer fotograma.",
+          "type": "file"
+        },
+        "mode": {
+          "default": "t2v",
+          "type": "enum",
+          "values": [
+            "t2v",
+            "i2v",
+            "ref"
+          ]
+        },
+        "prompt": {
+          "help": "Describe sujeto, acción, cámara, escena, iluminación y sonido. En referencias usa @Image1, @Video1 o @Audio1.",
+          "max_len": 20000,
+          "required": true,
+          "type": "string"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "help": "Hasta 5 audios MP3 o WAV de hasta 15 MB; cada uno entre 1 y 15 s y 15 s combinados como máximo. No se cobran.",
+          "max": 5,
+          "type": "file[]"
+        },
+        "reference_file_urls": {
+          "help": "Una URL pública directa a un documento (PDF, Word, Excel, PowerPoint, Keynote, Pages, Numbers, TXT o MD, hasta 50 páginas). No se combina con enlaces ni fotogramas.",
+          "max": 1,
+          "max_len": 2048,
+          "type": "string[]"
+        },
+        "reference_image_urls": {
+          "accept": "image",
+          "help": "Hasta 10 imágenes de referencia. JPG, PNG (sin transparencia) o WebP de hasta 20 MB. No se combinan con los fotogramas.",
+          "max": 10,
+          "type": "file[]"
+        },
+        "reference_link_urls": {
+          "help": "Una página pública sin inicio de sesión. No se combina con documentos ni fotogramas.",
+          "max": 1,
+          "max_len": 2048,
+          "type": "string[]"
+        },
+        "reference_video_urls": {
+          "accept": "video",
+          "help": "Hasta 5 vídeos MP4 o MOV de hasta 100 MB; cada uno entre 1 y 15 s y 15 s combinados como máximo. Su duración se suma a la de salida en el precio.",
+          "max": 5,
+          "type": "file[]"
+        },
+        "resolution": {
+          "default": "720P",
+          "type": "enum",
+          "values": [
+            "480P",
+            "720P",
+            "1080P"
+          ]
+        },
+        "seed": {
+          "type": "int",
+          "min": 0,
+          "max": 2147483647,
+          "help": "Opcional. Sin semilla, Kie elige una aleatoria."
+        },
+        "version": {
+          "default": "normal",
+          "type": "enum",
+          "values": [
+            "normal",
+            "prime"
+          ],
+          "help": "Normal: calidad de referencia. Prime: mismas capacidades con generación más rápida y tarifa por segundo mayor."
+        }
+      },
+      "section": "video",
+      "status": "active",
+      "tier": "hub",
+      "vendor": "Alibaba"
+    },
+    "flux-3": {
+      "id": "flux-3",
+      "label": "Flux 3",
+      "description": "Genera una imagen desde texto o edita con hasta 10 referencias ordenadas, en las resoluciones con tarifa verificada de AILAB.",
+      "section": "image",
+      "vendor": "Black Forest Labs · fal",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "labs-queue-v1",
+      "min_cli_version": "2.3.7",
+      "aliases": [
+        "flux 3",
+        "flux3",
+        "flux 3 edit"
+      ],
+      "modes": [
+        "t2i",
+        "edit"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "edit"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000,
+          "help": "Máximo de 20.000 caracteres por política AILAB; el proveedor no publica un límite."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 10,
+          "required_when": {
+            "mode": "edit"
+          },
+          "help": "Solo en edición: de 1 a 10 referencias ordenadas. Cada imagen necesita al menos 256 px por lado y como máximo 4 megapíxeles."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "768sq",
+            "1k",
+            "2k",
+            "4k"
+          ],
+          "default": "1k",
+          "help": "768 px, 1K, 2K o 4K. Las salidas 4K pueden tardar varios minutos. 512 px no está disponible por rechazo del proveedor."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "21:9",
+            "2:1",
+            "16:9",
+            "3:2",
+            "7:5",
+            "4:3",
+            "5:4",
+            "1:1",
+            "4:5",
+            "3:4",
+            "5:7",
+            "2:3",
+            "9:16",
+            "1:2"
+          ],
+          "default": "1:1",
+          "help": "En edición, auto toma el aspecto de la primera referencia."
+        }
+      },
+      "estimate": {
+        "kind": "param_table",
+        "by_param": "resolution",
+        "credits_by_value": {
+          "768sq": 10,
+          "1k": 10,
+          "2k": 40,
+          "4k": 157
+        },
+        "approximate": false,
+        "promo": {
+          "credits_by_value": {
+            "768sq": 5,
+            "1k": 5,
+            "2k": 20,
+            "4k": 79
+          },
+          "until": "2026-10-08T00:00:00Z",
+          "label": "Flux 3 promocional hasta el 8 de octubre; corte UTC conservador de AILAB."
+        },
+        "note": "Por imagen, igual en texto y edición, sin recargo por referencias. Promoción hasta el 8 de octubre a las 00:00 UTC (corte conservador de AILAB); después, tarifa ordinaria."
+      }
+    },
+    "ideogram-v45": {
+      "id": "ideogram-v45",
+      "label": "Ideogram 4.5",
+      "description": "Genera imágenes desde texto y edita una imagen base con hasta cuatro referencias.",
+      "section": "image",
+      "vendor": "Ideogram · fal",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "labs-queue-v1",
+      "min_cli_version": "2.3.7",
+      "aliases": [
+        "ideogram 4.5",
+        "ideogram v4.5",
+        "ideogram edit"
+      ],
+      "modes": [
+        "t2i",
+        "edit"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "edit"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 10000
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 5,
+          "required_when": {
+            "mode": "edit"
+          },
+          "help": "En edición, el primer archivo es la imagen base; añade después hasta cuatro referencias JPG, PNG o WebP."
+        },
+        "quality": {
+          "type": "enum",
+          "values": [
+            "very_low",
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "medium"
+        },
+        "edit_precision": {
+          "type": "enum",
+          "values": [
+            "regular",
+            "high"
+          ],
+          "default": "regular",
+          "help": "La precisión alta conserva píxeles no editados y requiere tamaño automático."
+        },
+        "image_size": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "square_hd",
+            "square",
+            "portrait_4_3",
+            "landscape_4_3",
+            "portrait_16_9",
+            "landscape_16_9"
+          ],
+          "default": "square_hd"
+        },
+        "num_images": {
+          "type": "int",
+          "min": 1,
+          "max": 8,
+          "default": 1
+        },
+        "enable_prompt_expansion": {
+          "type": "bool",
+          "default": true
+        },
+        "seed": {
+          "type": "int",
+          "min": 0,
+          "max": 2147483647
+        }
+      },
+      "estimate": {
+        "kind": "unit_credits",
+        "units_param": "num_images",
+        "rate_param": "quality",
+        "credits_per_unit": 12,
+        "minimum_credits": 2,
+        "credits_per_unit_by_value": {
+          "very_low": 1.6,
+          "low": 6,
+          "medium": 12,
+          "high": 44
+        },
+        "approximate": false,
+        "note": "Consulta exacta por modo y calidad; el coste se redondea una sola vez sobre el lote."
+      }
+    }
+  },
+  "server_contract_version": "2"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "ailendra-labs",
+  "owner": {
+    "name": "Ailendra Labs",
+    "url": "https://ailendra.com"
+  },
+  "metadata": {
+    "description": "Plugins de Ailendra Labs para Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "ailab",
+      "source": "./plugins/ailab",
+      "description": "Genera imagen, vídeo, voz, audio, música y más con AILAB desde Claude Code o Codex, con tu cuenta y tus créditos. Los modelos, los precios y las mejoras llegan solos desde el servidor.",
+      "category": "creativity",
+      "homepage": "https://ailendra.com/ailab/"
+    }
+  ]
+}
