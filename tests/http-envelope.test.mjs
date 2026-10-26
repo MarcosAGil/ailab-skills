@@ -82,3 +82,12 @@ test('el adapter de Higgsfield cotiza con el sobre doble real', async () => {
     assert.equal(quoted.quote.expires_at, EXPIRES_AT);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test('el motivo de un rechazo del endpoint de la skill (msg) llega al mensaje que ve el usuario', () => {
+  const refused = normalize(402, { ok: false, code: 402, msg: 'La estimacion supera el maximo autorizado.' }, 'application/json');
+  assert.equal(refused.ok, false);
+  assert.equal(refused.kind, 'insufficient_balance');
+  assert.equal(refused.message, 'La estimacion supera el maximo autorizado.');
+  assert.equal(normalize(400, { ok: false, error: 'Parametro no valido.' }, 'application/json').message, 'Parametro no valido.', 'error sigue mandando');
+  assert.equal(normalize(400, { ok: false, code: 400, msg: 'Modelo Higgsfield no habilitado para la skill.' }, 'application/json').message, 'Modelo Higgsfield no habilitado para la skill.');
+});

@@ -41,7 +41,8 @@ export function normalize(httpStatus, body, contentType) {
   if (typeof body.ok === 'boolean') {
     const ok = body.ok && httpStatus < 400;
     const nested = body.data && typeof body.data === 'object' && !Array.isArray(body.data) ? body.data : null;
-    return { ok, kind: ok ? 'ok' : kindFor(httpStatus, null), httpStatus, businessCode: null, message: body.error || body.message || '', data: nested || body, raw: body };
+    // Los endpoints de la skill (api/skill/*.php) devuelven el motivo de un rechazo en `msg`, no en `error`.
+    return { ok, kind: ok ? 'ok' : kindFor(httpStatus, null), httpStatus, businessCode: null, message: body.error || body.message || body.msg || '', data: nested || body, raw: body };
   }
   if (typeof body.code === 'number') {
     const ok = body.code === 200 && httpStatus >= 200 && httpStatus < 400;
