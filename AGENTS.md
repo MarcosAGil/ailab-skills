@@ -37,9 +37,12 @@ release publicada ni el `catalog.json` legacy de AILAB; `stable.json` conserva e
    Comprueba que el modelo acepta un token de dispositivo (`wallet_require_scope('generate')`) y qué interruptor de
    configuración lo abre en producción. Si el servidor no lo admite desde la terminal, no cambies su política desde
    aquí: entrégalo con `enabled: false` y deja la petición al servidor documentada.
-2. ¿Basta el catálogo? Sí, si el modelo usa un driver de `DRIVER_WHITELIST` y un flujo que el runtime ya sabe
-   ejecutar (mismas claves y tipos que ya validan las CLI 2.3.7 a 2.3.12). Entonces solo se edita
-   `catalog/catalog.json`, y AILAB lo publica en `catalog-v2.json` sin release nueva.
+2. ¿Basta el catálogo? Solo para un modelo NUEVO (que no figure en el catálogo de la release firmada vigente) que
+   use un driver de `DRIVER_WHITELIST` y un flujo que los runtimes instalados ya sepan ejecutar (mismas claves y
+   tipos que validan las CLI 2.3.7 a 2.3.12). Entonces se edita `catalog/catalog.json` y AILAB lo publica en
+   `catalog-v2.json` sin release nueva. Cualquier cambio de precio, parámetro o disponibilidad de un modelo que ya
+   está firmado exige una release nueva: `tools/validate-skill-release.mjs` de AILAB exige que cada modelo firmado
+   sea idéntico en `catalog-v2.json`.
 3. Si hace falta código (cuerpo con listas de objetos, precio que depende de archivos medidos, validación propia):
    un módulo en `scripts/lib/<modelo>.mjs` (validación local, estimación, entrada exacta), una rama por `model.id`
    en el adaptador (`adapters/jobs-v1.mjs`) y un enlace en `validateParams` y `estimateCredits` de `lib/catalog.mjs`.

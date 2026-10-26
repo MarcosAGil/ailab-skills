@@ -11,8 +11,9 @@ import { CANONICAL, canRunParity, php } from './helpers/php.mjs';
 
 // SOUL Cinema y Marketing Studio Image (Higgsfield), más los alias de los ids del Playground para SOUL 2 y
 // Genjutsu, que ya estaban en la skill con ids cortos. La skill habla con api/skill/higgsfield.php, que hoy
-// solo admite SOUL 2 y Genjutsu: los otros dos modelos se entregan en el catálogo con `enabled: false` y se
-// activan cambiando el catálogo (sin otra release) cuando el servidor los admita.
+// solo admite SOUL 2 y Genjutsu: los otros dos modelos se entregan en el catálogo con `enabled: false`. Activarlos
+// cambia el contrato de un modelo ya firmado, así que exige una release nueva (tools/validate-skill-release.mjs de
+// AILAB lo impide en catalog-v2.json) además de desplegar el cambio de servidor.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-higgsfield-new-'));
 process.env.AILAB_CONFIG_DIR = path.join(temporary, 'config');
