@@ -75,6 +75,21 @@ release publicada ni el `catalog.json` legacy de AILAB; `stable.json` conserva e
   arranque o el `SKILL.md`: así lo ven los usuarios que ya lo tienen instalado.
 - Un modelo nuevo con `min_cli_version` mayor que el de una CLI instalada se lista como no disponible en ella, no falla.
 
+## Logo y aspecto del plugin
+
+- Recursos de marca en `plugins/ailab/assets/`: `ailab-logo.png` (512x512) y `ailab-composer-icon.png` (256x256),
+  generados desde `app/assets/ailab-logo-bicolor.svg` del repositorio AILAB con
+  `node tools/build-plugin-assets.mjs <ruta/a/ailab-logo-bicolor.svg>` (necesita `rsvg-convert`). No los edites a mano.
+- Codex los muestra: `tools/build-plugin.mjs` escribe en `plugins/ailab/plugin.json` la ruta
+  `extensions` → `com.openai` → `interface` con `displayName`, `logo`, `composerIcon`, `brandColor` (`#16B2FF`),
+  `defaultPrompt` y URLs. Esa anidación es obligatoria: con una clave plana `com.openai.interface` Codex lo ignora
+  todo (lo comprueba `tests/plugin.test.mjs`).
+- Claude Code no muestra logos en `/plugin`: el campo `icon` de `.claude-plugin/plugin.json` solo lo usa el
+  directorio de Anthropic si algún día se envía el plugin. Lo que ve el usuario es `displayName` y `description`.
+- El README del repositorio muestra el logo desde `plugins/ailab/assets/ailab-logo.png`.
+- Tras cambiar el logo o el texto: `node tools/build-plugin.mjs`, comprobaciones de abajo y sube la `version` del
+  plugin solo si cambió algo que deban recibir los usuarios ya instalados.
+
 ## Presupuesto de la guía de la web
 
 AILAB publica `README.md`, el `SKILL.md` de cada skill y sus `guide_references` como `guide-knowledge.json`, con un
