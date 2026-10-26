@@ -10,10 +10,10 @@ import { Media } from './helpers/media.mjs';
 import { CANONICAL, canRunParity, php } from './helpers/php.mjs';
 
 // SOUL Cinema y Marketing Studio Image (Higgsfield), más los alias de los ids del Playground para SOUL 2 y
-// Genjutsu, que ya estaban en la skill con ids cortos. La skill habla con api/skill/higgsfield.php, que hoy
-// solo admite SOUL 2 y Genjutsu: los otros dos modelos se entregan en el catálogo con `enabled: false`. Activarlos
-// cambia el contrato de un modelo ya firmado, así que exige una release nueva (tools/validate-skill-release.mjs de
-// AILAB lo impide en catalog-v2.json) además de desplegar el cambio de servidor.
+// Genjutsu, que ya estaban en la skill con ids cortos. La skill habla con api/skill/higgsfield.php, que admite los
+// cuatro con cotización, envío idempotente y estado. Los dos nuevos van con `enabled: true` y `min_cli_version`
+// 2.3.13; que el servidor los deje pasar lo decide, igual que en la web, HIGGSFIELD_FEATURE_FLAGS (hoy Marketing Studio
+// Image está en false y responde 403 sin cobro).
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-higgsfield-new-'));
 process.env.AILAB_CONFIG_DIR = path.join(temporary, 'config');
@@ -43,19 +43,20 @@ test('SOUL 2 y Genjutsu ya estaban en la skill: los ids del Playground resuelven
   }
 });
 
-test('los dos modelos nuevos se entregan desactivados, con cotización del servidor y sin exponer rutas del proveedor', () => {
+test('los dos modelos nuevos están activos desde la CLI 2.3.13, con cotización del servidor y sin exponer rutas del proveedor', () => {
   for (const model of [cinema, marketing]) {
     assert.equal(model.driver, 'higgsfield-v1');
-    assert.equal(model.enabled, false, 'el servidor de la skill todavía no los admite');
+    assert.equal(model.enabled, true, 'el servidor de la skill ya los admite');
     assert.equal(model.status, 'active');
     assert.equal(model.min_cli_version, '2.3.13');
     assert.equal(model.estimate.kind, 'higgsfield_quote');
     assert.equal(requiresServerQuote(model), true);
-    assert.equal(modelUsable(model).ok, false);
+    assert.equal(modelUsable(model).ok, true);
     assert.equal(estimateCredits(model, {}).server_quote, true, 'sin tarifa local inventada: la cotiza el servidor');
     assert.equal(higgsfield.serverModelId(model), model.id);
     assert.equal(higgsfield.hardCreditCap(model), 1000);
     const text = JSON.stringify(model);
+    assert.equal(/pendiente de activaci/i.test(text), false, 'la descripción ya no habla de una activación pendiente');
     for (const forbidden of ['higgsfield-ai/', 'marketing-studio/image', 'provider_contract', 'api_key', 'HIGGSFIELD']) assert.equal(text.includes(forbidden), false, forbidden);
     assert.equal(text.includes(String.fromCharCode(0x2014)), false);
   }
@@ -67,7 +68,7 @@ test('el catálogo solo activa un modelo Higgsfield cuando el servidor de la ski
   const source = sourceOf('app/api/skill/higgsfield.php');
   const specs = source.slice(source.indexOf('function ailab_skill_higgsfield_spec'), source.indexOf('function ailab_skill_higgsfield_feature_enabled'));
   const supported = [...specs.matchAll(/'(higgsfield-[a-z0-9-]+)' => \[/g)].map((match) => match[1]).sort();
-  assert.deepEqual(supported, ['higgsfield-genjutsu-motion-transfer', 'higgsfield-soul-2'], 'si esto cambia, activa en el catálogo los modelos nuevos');
+  assert.deepEqual(supported, ['higgsfield-genjutsu-motion-transfer', 'higgsfield-marketing-studio-image', 'higgsfield-soul-2', 'higgsfield-soul-cinema'], 'si esto cambia, ajusta el catálogo');
   for (const [id, model] of Object.entries(catalog.models)) {
     if (model.driver !== 'higgsfield-v1') continue;
     const server = higgsfield.serverModelId({ id, ...model });
@@ -75,11 +76,15 @@ test('el catálogo solo activa un modelo Higgsfield cuando el servidor de la ski
   }
 });
 
-test('las CLI anteriores aceptan el catálogo con los dos modelos desactivados y no los ofrecen', { skip: !CANONICAL && 'sin AILAB_CANONICAL_REPO' }, async () => {
+test('las CLI anteriores (2.3.7 a 2.3.12) aceptan el catálogo con los dos modelos activos y no los ofrecen: piden la 2.3.13', { skip: !CANONICAL && 'sin AILAB_CANONICAL_REPO' }, async () => {
   for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12']) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
     const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
-    for (const id of ['higgsfield-soul-cinema', 'higgsfield-marketing-studio-image']) assert.equal(old.modelUsable(parsed.models[id]).ok, false, `${version} ${id}`);
+    for (const id of ['higgsfield-soul-cinema', 'higgsfield-marketing-studio-image']) {
+      const usable = old.modelUsable(parsed.models[id]);
+      assert.equal(usable.ok, false, `${version} ${id}`);
+      assert.match(usable.reason, /necesita CLI 2\.3\.13/, `${version} ${id}: la CLI antigua pide actualizar, no ofrece el modelo`);
+    }
   }
 });
 
@@ -109,6 +114,9 @@ test('el payload de SOUL Cinema y Marketing Studio coincide con el contrato del 
 test('paridad con el PHP real: el validador del gateway Higgsfield acepta lo que construye la CLI y rechaza lo mismo', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
   const validate = (modelId, input) => php(`$spec = higgsfield_model_spec($argv[1]); echo json_encode(['input' => higgsfield_validate_input(json_decode($argv[2], true), $spec)], JSON_UNESCAPED_UNICODE);`,
     [modelId, JSON.stringify(input)], { higgsfield: true });
+  // El validador del endpoint de la skill (api/skill/higgsfield.php): es el que recibe el cuerpo real de la CLI.
+  const validateSkill = (modelId, input) => php(`$spec = ailab_skill_higgsfield_spec($argv[1]); if ($spec === null) { echo json_encode(['msg' => 'sin modelo']); exit; } echo json_encode(['input' => ailab_skill_higgsfield_input(['input' => json_decode($argv[2], true)], $spec)], JSON_UNESCAPED_UNICODE);`,
+    [modelId, JSON.stringify(input)], { skillHiggsfield: true });
   const product = media.image('pp.png', 800, 800);
   const person = media.image('pm.png', 800, 1000);
   const accepted = [
@@ -129,6 +137,10 @@ test('paridad con el PHP real: el validador del gateway Higgsfield acepta lo que
     for (const [key, value] of Object.entries(payload.input)) {
       assert.deepEqual(server.input[key], key === 'batch_size' ? Number(value) : value, `${model.id}.${key}`);
     }
+    // El endpoint de la skill acepta el mismo cuerpo y lo normaliza igual que el gateway web.
+    const skill = validateSkill(model.id, payload.input);
+    assert.ok(skill.input, `${model.id}: el endpoint de la skill debía aceptar ${JSON.stringify(payload.input)} y respondió ${JSON.stringify(skill)}`);
+    assert.deepEqual(skill.input, server.input, `${model.id}: misma normalización que el gateway web`);
   }
   // Lo que la CLI rechaza en local (o que no puede expresarse) y el servidor también rechaza.
   const rejected = [
@@ -149,6 +161,19 @@ test('paridad con el PHP real: el validador del gateway Higgsfield acepta lo que
   for (const [id, input] of rejected) {
     const server = validate(id, input);
     assert.ok(server.msg && !server.input, `${id}: el servidor debía rechazar ${JSON.stringify(input)}`);
+    const skill = validateSkill(id, input);
+    assert.ok(skill.msg && !skill.input, `${id}: el endpoint de la skill debía rechazar ${JSON.stringify(input)}`);
+    assert.equal(skill.msg, server.msg, `${id}: mismo motivo de rechazo`);
+  }
+  // Única diferencia declarada: SOUL Cinema no tiene estilos (la web los deja pasar, la skill no los ofrece).
+  assert.ok(validate(cinema.id, { prompt: 'x', style_id: 'abc' }).input);
+  assert.match(validateSkill(cinema.id, { prompt: 'x', style_id: 'abc' }).msg, /style_id no esta permitido/);
+  // Y el catálogo no ofrece a la CLI nada que el endpoint no pueda validar: cada parámetro del catálogo está permitido.
+  for (const model of [cinema, marketing]) {
+    const allowed = Object.keys(model.params);
+    for (const key of allowed) {
+      assert.ok(!(validateSkill(model.id, { prompt: 'x', [key]: 'x' }).msg || '').includes(`El parametro ${key} no esta permitido`), `${model.id}.${key} esta en el catalogo y el endpoint lo rechaza como desconocido`);
+    }
   }
   assert.equal(validateParams(cinema, { prompt: 'x', batch_size: '2' }).ok, false);
   assert.equal(validateParams(cinema, { prompt: 'x', aspect_ratio: '5:4' }).ok, false);
@@ -158,11 +183,34 @@ test('paridad con el PHP real: el validador del gateway Higgsfield acepta lo que
   assert.equal(validateParams(marketing, { prompt: 'x', image_urls: Array.from({ length: 17 }, (_, i) => media.image(`px${i}.png`, 400, 400)) }).ok, false);
 });
 
+test('paridad con el PHP real: el endpoint de la skill respeta HIGGSFIELD_FEATURE_FLAGS exactamente igual que el gateway web', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
+  const cases = [
+    {}, { 'higgsfield-marketing-studio-image': false }, { 'higgsfield-marketing-studio-image': true },
+    { 'higgsfield-marketing-studio-image': 1 }, { 'higgsfield-marketing-studio-image': 'true' }, { 'higgsfield-soul-cinema': true },
+    { 'higgsfield-soul-cinema': null }, [], 'no es un array',
+  ];
+  const result = php(`
+    $out = [];
+    foreach (json_decode($argv[1], true) as $flags) {
+      $cfg = ['HIGGSFIELD_FEATURE_FLAGS' => $flags];
+      foreach (['higgsfield-soul-2', 'higgsfield-soul-cinema', 'higgsfield-marketing-studio-image', 'higgsfield-genjutsu-motion-transfer'] as $model) {
+        $out[] = [higgsfield_feature_enabled($cfg, $model), ailab_skill_higgsfield_feature_enabled($cfg, $model)];
+      }
+    }
+    echo json_encode($out);`, [JSON.stringify(cases)], { higgsfield: true, skillHiggsfield: true });
+  assert.equal(result.length, cases.length * 4);
+  for (const [web, skill] of result) assert.equal(skill, web);
+  assert.ok(result.some(([web]) => web === true) && result.some(([web]) => web === false));
+  const skillSource = sourceOf('app/api/skill/higgsfield.php');
+  const quote = skillSource.slice(skillSource.indexOf('function ailab_skill_higgsfield_quote'), skillSource.indexOf('function ailab_skill_higgsfield_create'));
+  assert.match(quote, /feature_enabled\(\$cfg, \$model\)[\s\S]*pendiente de activacion[\s\S]*ailab_skill_higgsfield_input/, 'el flag se comprueba antes de validar, estimar o guardar nada');
+});
+
 test('paridad con el PHP real: configuración de acceso de Higgsfield (interruptores y tope) tal como figura en el repositorio', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
   const config = php("$c = wallet_config(); echo json_encode(['flags' => $c['HIGGSFIELD_FEATURE_FLAGS'], 'cap' => $c['HIGGSFIELD_MAX_CREDITS_PER_TASK'], 'genjutsu' => $c['HIGGSFIELD_GENJUTSU_MAX_CREDITS_PER_TASK']]);");
   assert.deepEqual(config.flags, {
     'higgsfield-soul-2': true, 'higgsfield-soul-cinema': true, 'higgsfield-marketing-studio-image': false, 'higgsfield-genjutsu-motion-transfer': true,
-  }, 'Marketing Studio Image sigue desactivado en el gateway: ni la web ni la skill pueden usarlo');
+  }, 'Marketing Studio Image sigue desactivado en el gateway: ni la web ni la skill pueden usarlo hasta que se active en producción');
   assert.equal(config.cap, 1000);
   assert.equal(config.genjutsu, 2100);
   assert.equal(higgsfield.hardCreditCap({ id: 'genjutsu', ...catalog.models.genjutsu }), 2100);
@@ -172,19 +220,21 @@ test('paridad con el PHP real: configuración de acceso de Higgsfield (interrupt
   assert.match(sourceOf('app/api/wallet/higgsfield-gateway.php'), /wallet_require_scope\('generate'\)/);
 });
 
-test('prepare de un modelo desactivado se detiene antes de subir nada y los activos siguen igual', async () => {
+test('models lista los dos modelos como disponibles y validate no gasta; el id del Playground resuelve a la skill', async () => {
   const config = path.join(temporary, 'cli-config');
   const env = { ...process.env, AILAB_SKIP_UPDATE: '1', AILAB_SKIP_NOTICES: '1', AILAB_CATALOG_PATH: catalogPath, AILAB_CONFIG_DIR: config,
     AILAB_CREDENTIALS_DIR: path.join(temporary, 'cli-credentials'), AILAB_BASE_URL: 'http://127.0.0.1:9/' };
   const cli = process.env.AILAB_TEST_RUNTIME || path.join(root, 'skills/ailab/scripts/ailab.mjs');
   const exec = (...args) => execute(process.execPath, [cli, ...args], { env, timeout: 30000 });
-  await assert.rejects(exec('prepare', 'higgsfield-soul-cinema', '--prompt', 'x'), /no esta disponible/);
   const models = await exec('models');
-  assert.match(models.stdout, /higgsfield-soul-cinema · Higgsfield SOUL Cinema \[image\] · CARO · NO DISPONIBLE/);
-  assert.match(models.stdout, /higgsfield-marketing-studio-image · Higgsfield Marketing Studio Image \[image\] · CARO · NO DISPONIBLE/);
-  assert.doesNotMatch(models.stdout, /soul-2 · Higgsfield SOUL 2 \[image\] · CARO · NO DISPONIBLE/);
+  assert.match(models.stdout, /^ {2}higgsfield-soul-cinema · Higgsfield SOUL Cinema \[image\] · CARO$/m);
+  assert.match(models.stdout, /^ {2}higgsfield-marketing-studio-image · Higgsfield Marketing Studio Image \[image\] · CARO$/m);
+  assert.doesNotMatch(models.stdout, /higgsfield-(soul-cinema|marketing-studio-image) .*NO DISPONIBLE/);
   const validated = await exec('validate', 'higgsfield-soul-cinema', '--prompt', 'x', '--batch_size', '4');
   assert.match(validated.stdout, /el coste lo cotiza el servidor/);
-  const info = await exec('info', 'higgsfield-genjutsu-motion-transfer');
-  assert.match(info.stdout, /Higgsfield Genjutsu \(genjutsu\)/);
+  const info = await exec('info', 'higgsfield-marketing-studio-image');
+  assert.match(info.stdout, /Higgsfield Marketing Studio Image/);
+  assert.match(info.stdout, /preset_id/);
+  const infoGenjutsu = await exec('info', 'higgsfield-genjutsu-motion-transfer');
+  assert.match(infoGenjutsu.stdout, /Higgsfield Genjutsu \(genjutsu\)/);
 });

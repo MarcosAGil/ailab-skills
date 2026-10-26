@@ -33,7 +33,7 @@ const json = (res, body, status = 200) => {
 // Higgsfield devuelve el sobre doble del endpoint real: {ok, code, msg, data}.
 const gateway = (res, data, msg = 'Presupuesto calculado.') => json(res, { ok: true, code: 200, msg, data });
 
-async function harness(t, { balance = 1000 } = {}) {
+async function harness(t, { balance = 1000, quoteFailure = null } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-higgsfield-flow-'));
   const credentials = path.join(temp, 'credentials');
   const config = path.join(temp, 'config');
@@ -64,6 +64,7 @@ async function harness(t, { balance = 1000 } = {}) {
       if (url.pathname === '/api/skill/higgsfield.php') {
         const action = new URL(req.url, base).searchParams.get('action');
         if (action === 'quote') {
+          if (quoteFailure) return json(res, { ok: false, code: quoteFailure.status, msg: quoteFailure.msg }, quoteFailure.status);
           return gateway(res, {
             quote_id: QUOTE_ID,
             credits: 50,
@@ -190,4 +191,36 @@ test('SOUL 2: una aprobacion por encima del tope del contrato no llega al provee
   h.writeManifest(manifest.file, { ...frozen, max_credits_authorized: 5000, quote_max_credits: 5000 });
   await assert.rejects(h.run('submit', manifest.id, '--confirmed'), /supera el tope del contrato/);
   assert.equal(h.of('create').length, 0);
+});
+
+test('SOUL Cinema: prepare y submit viajan con el id del servidor, sin estilo y con el maximo aprobado', async (t) => {
+  const h = await harness(t);
+  const prepared = (await h.run('prepare', 'higgsfield-soul-cinema', '--prompt', 'calle mojada', '--resolution', '1080p', '--batch_size', '4')).stdout;
+  const manifest = h.manifestOf(prepared);
+  assert.match(prepared, /Cotizacion del servidor/);
+  const [quote] = h.of('quote');
+  assert.equal(quote.body.model, 'higgsfield-soul-cinema');
+  assert.equal(quote.body.mode, undefined);
+  assert.equal(quote.body.max_credits_authorized, 1000);
+  assert.deepEqual(quote.body.input, { prompt: 'calle mojada', aspect_ratio: '4:3', resolution: '1080p', batch_size: '4', enhance_prompt: true });
+  await assert.rejects(h.run('prepare', 'higgsfield-soul-cinema', '--prompt', 'x', '--style_id', 'abc'), /style_id|Parametro desconocido|no admite/i);
+  const submitted = (await h.run('submit', manifest.id, '--confirmed', '--output', h.output)).stdout;
+  const [create] = h.of('create');
+  assert.equal(create.body.model, 'higgsfield-soul-cinema');
+  assert.equal(create.body.max_credits_authorized, 50);
+  assert.equal(create.body.quote_id, QUOTE_ID);
+  assert.ok(submitted.includes('Tarea encolada: higgsfield:' + TASK_ID), submitted);
+});
+
+test('Marketing Studio Image y SOUL Cinema: un interruptor cerrado en el servidor muestra su motivo y no envia nada', async (t) => {
+  const msg = 'Este modelo Higgsfield esta pendiente de activacion.';
+  for (const [id, args] of [['higgsfield-marketing-studio-image', ['--prompt', 'anuncio']], ['higgsfield-soul-cinema', ['--prompt', 'calle']]]) {
+    const h = await harness(t, { quoteFailure: { status: 403, msg } });
+    await assert.rejects(h.run('prepare', id, ...args), (error) => {
+      assert.match(String(error.stderr || error.stdout || error.message), /pendiente de activacion/);
+      assert.doesNotMatch(String(error.stderr), /Error inesperado del servidor/);
+      return true;
+    });
+    assert.equal(h.of('create').length, 0, id + ': sin cotizacion no hay envio');
+  }
 });

@@ -1,4 +1,4 @@
-// Driver AILAB para Higgsfield (SOUL 2 y Genjutsu). La CLI solo habla con
+// Driver AILAB para Higgsfield (SOUL 2, SOUL Cinema, Marketing Studio Image y Genjutsu). La CLI solo habla con
 // /api/skill/higgsfield.php: la credencial del proveedor, la verificacion del
 // video y de las referencias, la reserva y la liquidacion viven en el servidor.
 // Este modulo NUNCA recibe ni envia la clave del proveedor; si algun dia se

@@ -77,7 +77,7 @@ Para **Flux 3** (`flux-3`), consulta [su contrato](references/flux-3.md): `t2i` 
 
 Para **Nano Banana 2.1** (`nano-banana-2-1`), lee [su contrato](references/nano-banana-21.md): `t2i` genera desde texto y `edit` admite de 1 a 14 referencias ordenadas, hasta 30 MB cada una. El prompt admite hasta 20.000 caracteres y la resolución puede ser 1K, 2K o 4K. No añadas lotes, seed ni controles de razonamiento.
 
-Para **Kling 4.0** (`kling-4-0`), lee [su contrato](references/kling-4-0.md): `--mode ref` (también solo texto) o `keyframe`. Menciona los materiales en el prompt con `@image_1`, `@video_1`, `@first_frame` o el nombre de un sujeto o una voz (`@ana`). Los vídeos de referencia se cobran: suman su duración y `prepare` muestra el máximo reservado. **Seedance 2.5 Lite** (`seedance-2-5-lite`) cubre `t2v`, `i2v` y `ref` y no edita vídeo: para editar usa Seedance 2.5. SOUL Cinema y Marketing Studio Image figuran como no disponibles hasta que el servidor los admita desde la terminal.
+Para **Kling 4.0** (`kling-4-0`), lee [su contrato](references/kling-4-0.md): `--mode ref` (también solo texto) o `keyframe`. Menciona los materiales en el prompt con `@image_1`, `@video_1`, `@first_frame` o el nombre de un sujeto o una voz (`@ana`). Los vídeos de referencia se cobran: suman su duración y `prepare` muestra el máximo reservado. **Seedance 2.5 Lite** (`seedance-2-5-lite`) cubre `t2v`, `i2v` y `ref` y no edita vídeo: para editar usa Seedance 2.5.
 
 Primero consulta el contrato del modelo. Pasa los archivos mediante el nombre exacto
 que muestra `info`; un parámetro `file[]` puede repetirse.
@@ -114,6 +114,14 @@ prompt es opcional, parte de un vídeo propio y de 1 a 8 imágenes, admite 480p 
 720p y el servidor verifica que la duración redondeada no supere 30 segundos, con
 un techo específico de ese modelo de 2100 créditos. Si la cotización caduca,
 vuelve a preparar; ante un envío ambiguo no reintentes automáticamente.
+
+`SOUL Cinema` (`higgsfield-soul-cinema`) genera imagen cinematográfica solo desde texto,
+con los mismos parámetros que SOUL 2 salvo `style_id`. `Marketing Studio Image`
+(`higgsfield-marketing-studio-image`) genera o edita imágenes de campaña: acepta hasta
+16 referencias y, con `--enhance_prompt true`, exige `--preset_id` y una o dos imágenes
+(producto y modelo opcional). Los dos cotizan en el servidor antes de confirmar. Si el
+servidor responde que el modelo está pendiente de activación, no se ha cobrado nada:
+díselo al usuario y no insistas.
 
 Muestra de forma breve modelo, parámetros, archivos, estimación, reserva y saldo.
 El máximo del manifiesto protege esa petición, no impone un presupuesto al flujo.

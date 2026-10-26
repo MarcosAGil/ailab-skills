@@ -37,6 +37,9 @@ release publicada ni el `catalog.json` legacy de AILAB; `stable.json` conserva e
    Comprueba que el modelo acepta un token de dispositivo (`wallet_require_scope('generate')`) y qué interruptor de
    configuración lo abre en producción. Si el servidor no lo admite desde la terminal, no cambies su política desde
    aquí: entrégalo con `enabled: false` y deja la petición al servidor documentada.
+   Los modelos de Higgsfield (SOUL 2, SOUL Cinema, Marketing Studio Image y Genjutsu) los sirve
+   `api/skill/higgsfield.php` con su propia tabla; cada uno respeta `HIGGSFIELD_FEATURE_FLAGS` igual que la web, así
+   que con el interruptor cerrado la skill recibe un 403 claro («pendiente de activación») y nada se cobra.
 2. ¿Basta el catálogo? Solo para un modelo NUEVO (que no figure en el catálogo de la release firmada vigente) que
    use un driver de `DRIVER_WHITELIST` y un flujo que los runtimes instalados ya sepan ejecutar (mismas claves y
    tipos que validan las CLI 2.3.7 a 2.3.12). Entonces se edita `catalog/catalog.json` y AILAB lo publica en
