@@ -57,26 +57,30 @@ export function codexManifest(version) {
     repository: REPOSITORY,
     license: 'MIT',
     keywords: KEYWORDS,
+    // Ruta oficial de Codex: extensions -> "com.openai" -> interface. El esquema portable
+    // pide que `extensions` este indexado por el espacio de nombres en dominio inverso.
     extensions: {
-      'com.openai.interface': {
-        displayName: 'AILAB',
-        shortDescription: 'Imagen, vídeo, voz y audio con IA desde tu cuenta de AILAB',
-        longDescription: DESCRIPTION + ' Antes de gastar créditos te muestra el modelo, los parámetros y el coste, y espera tu confirmación. Si una tarea se interrumpe, la recupera sin volver a cobrar.',
-        developerName: 'Ailendra Labs',
-        category: 'Creativity',
-        capabilities: [],
-        websiteURL: WEBSITE,
-        privacyPolicyURL: WEBSITE + 'legal/2026-09-06.html#privacidad',
-        termsOfServiceURL: WEBSITE + 'legal/2026-09-06.html#condiciones',
-        defaultPrompt: [
-          'Prepara una imagen con AILAB, muéstrame el coste y espera mi confirmación antes de gastar',
-          'Recupera mi última tarea de AILAB sin volver a generarla',
-          'Qué modelos de vídeo hay ahora en AILAB y cuánto cuestan',
-        ],
-        brandColor: '#16B2FF',
-        composerIcon: './assets/ailab-composer-icon.png',
-        logo: './assets/ailab-logo.png',
-        screenshots: [],
+      'com.openai': {
+        interface: {
+          displayName: 'AILAB',
+          shortDescription: 'Imagen, vídeo, voz y audio con IA desde tu cuenta de AILAB',
+          longDescription: DESCRIPTION + ' Antes de gastar créditos te muestra el modelo, los parámetros y el coste, y espera tu confirmación. Si una tarea se interrumpe, la recupera sin volver a cobrar.',
+          developerName: 'Ailendra Labs',
+          category: 'Creativity',
+          capabilities: [],
+          websiteURL: WEBSITE,
+          privacyPolicyURL: WEBSITE + 'legal/2026-09-06.html#privacidad',
+          termsOfServiceURL: WEBSITE + 'legal/2026-09-06.html#condiciones',
+          defaultPrompt: [
+            'Prepara una imagen con AILAB, muéstrame el coste y espera mi confirmación antes de gastar',
+            'Recupera mi última tarea de AILAB sin volver a generarla',
+            'Qué modelos de vídeo hay ahora en AILAB y cuánto cuestan',
+          ],
+          brandColor: '#16B2FF',
+          composerIcon: './assets/ailab-composer-icon.png',
+          logo: './assets/ailab-logo.png',
+          screenshots: [],
+        },
       },
     },
   };

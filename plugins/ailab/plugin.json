@@ -21,25 +21,27 @@
     "musica"
   ],
   "extensions": {
-    "com.openai.interface": {
-      "displayName": "AILAB",
-      "shortDescription": "Imagen, vídeo, voz y audio con IA desde tu cuenta de AILAB",
-      "longDescription": "Genera imagen, vídeo, voz, audio, música y más con AILAB desde Claude Code o Codex, con tu cuenta y tus créditos. Los modelos, los precios y las mejoras llegan solos desde el servidor. Antes de gastar créditos te muestra el modelo, los parámetros y el coste, y espera tu confirmación. Si una tarea se interrumpe, la recupera sin volver a cobrar.",
-      "developerName": "Ailendra Labs",
-      "category": "Creativity",
-      "capabilities": [],
-      "websiteURL": "https://ailendra.com/ailab/",
-      "privacyPolicyURL": "https://ailendra.com/ailab/legal/2026-09-06.html#privacidad",
-      "termsOfServiceURL": "https://ailendra.com/ailab/legal/2026-09-06.html#condiciones",
-      "defaultPrompt": [
-        "Prepara una imagen con AILAB, muéstrame el coste y espera mi confirmación antes de gastar",
-        "Recupera mi última tarea de AILAB sin volver a generarla",
-        "Qué modelos de vídeo hay ahora en AILAB y cuánto cuestan"
-      ],
-      "brandColor": "#16B2FF",
-      "composerIcon": "./assets/ailab-composer-icon.png",
-      "logo": "./assets/ailab-logo.png",
-      "screenshots": []
+    "com.openai": {
+      "interface": {
+        "displayName": "AILAB",
+        "shortDescription": "Imagen, vídeo, voz y audio con IA desde tu cuenta de AILAB",
+        "longDescription": "Genera imagen, vídeo, voz, audio, música y más con AILAB desde Claude Code o Codex, con tu cuenta y tus créditos. Los modelos, los precios y las mejoras llegan solos desde el servidor. Antes de gastar créditos te muestra el modelo, los parámetros y el coste, y espera tu confirmación. Si una tarea se interrumpe, la recupera sin volver a cobrar.",
+        "developerName": "Ailendra Labs",
+        "category": "Creativity",
+        "capabilities": [],
+        "websiteURL": "https://ailendra.com/ailab/",
+        "privacyPolicyURL": "https://ailendra.com/ailab/legal/2026-09-06.html#privacidad",
+        "termsOfServiceURL": "https://ailendra.com/ailab/legal/2026-09-06.html#condiciones",
+        "defaultPrompt": [
+          "Prepara una imagen con AILAB, muéstrame el coste y espera mi confirmación antes de gastar",
+          "Recupera mi última tarea de AILAB sin volver a generarla",
+          "Qué modelos de vídeo hay ahora en AILAB y cuánto cuestan"
+        ],
+        "brandColor": "#16B2FF",
+        "composerIcon": "./assets/ailab-composer-icon.png",
+        "logo": "./assets/ailab-logo.png",
+        "screenshots": []
+      }
     }
   }
 }

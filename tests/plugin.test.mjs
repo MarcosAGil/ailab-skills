@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildPlugin, diffPlugin, expectedFiles, expectedRootFiles } from '../tools/build-plugin.mjs';
 
@@ -70,7 +70,12 @@ test('los manifiestos de Claude Code y Codex describen el mismo plugin, con la v
   assert.equal(claude.license, 'MIT');
   assert.equal(codex.$schema, 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json');
   assert.deepEqual(Object.keys(codex).filter((key) => !['$schema', 'name', 'version', 'description', 'author', 'homepage', 'repository', 'license', 'keywords', 'extensions'].includes(key)), [], 'el esquema portable no admite otros campos');
-  const face = codex.extensions['com.openai.interface'];
+  // Anidacion oficial de Codex: extensions -> "com.openai" -> interface (no la clave plana "com.openai.interface").
+  assert.deepEqual(Object.keys(codex.extensions), ['com.openai'], 'extensions solo lleva el espacio de nombres com.openai');
+  assert.equal('com.openai.interface' in codex.extensions, false, 'no puede existir la clave plana com.openai.interface');
+  assert.deepEqual(Object.keys(codex.extensions['com.openai']), ['interface']);
+  assert.equal(JSON.stringify(codex).includes('"com.openai.interface"'), false);
+  const face = codex.extensions['com.openai'].interface;
   for (const key of ['displayName', 'shortDescription', 'longDescription', 'developerName', 'category', 'capabilities', 'websiteURL', 'privacyPolicyURL', 'termsOfServiceURL', 'defaultPrompt', 'brandColor', 'composerIcon', 'logo', 'screenshots']) assert.ok(key in face, key);
   assert.equal(face.brandColor, '#16B2FF');
   assert.equal(face.displayName, 'AILAB');
@@ -146,4 +151,48 @@ test('el arranque del plugin ejecuta help, guide y doctor sin sesion con HOME y 
   assert.match(doctor.stdout, /no se ha gastado nada/);
   assert.equal(fs.existsSync(path.join(home, 'cred', 'token')), false);
   assert.equal(fs.existsSync(path.join(home, 'cfg', 'runtime', 'current.json')), false, 'AILAB_SKIP_UPDATE no instala runtimes');
+});
+
+// Opt-in (AILAB_TEST_CODEX=1): pregunta a un Codex real, con CODEX_HOME temporal, que ve del plugin.
+// `codex plugin list --json` no expone la interfaz; el app-server (plugin/read) si. Sin la anidacion
+// extensions -> com.openai -> interface, Codex cae al nombre en minusculas y sin color ni logo.
+test('Codex real lee la interfaz del plugin (displayName, color, logo, prompts)', { skip: process.env.AILAB_TEST_CODEX !== '1' }, async (t) => {
+  const codexHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-codex-home-'));
+  t.after(() => fs.rmSync(codexHome, { recursive: true, force: true }));
+  const env = { ...process.env, CODEX_HOME: codexHome };
+  const add = spawnSync('codex', ['plugin', 'marketplace', 'add', ROOT], { env, encoding: 'utf8', timeout: 60000 });
+  assert.equal(add.status, 0, add.stderr + add.stdout);
+  const install = spawnSync('codex', ['plugin', 'add', 'ailab@ailendra-labs'], { env, encoding: 'utf8', timeout: 60000 });
+  assert.equal(install.status, 0, install.stderr + install.stdout);
+  const child = spawn('codex', ['app-server'], { env, stdio: ['pipe', 'pipe', 'ignore'] });
+  t.after(() => child.kill());
+  let buffer = '';
+  const waiting = new Map();
+  child.stdout.on('data', (chunk) => {
+    buffer += chunk;
+    for (let index = buffer.indexOf('\n'); index >= 0; index = buffer.indexOf('\n')) {
+      const line = buffer.slice(0, index);
+      buffer = buffer.slice(index + 1);
+      try { const message = JSON.parse(line); if (message.id !== undefined && waiting.has(message.id)) { waiting.get(message.id)(message); waiting.delete(message.id); } } catch { /* otra notificacion */ }
+    }
+  });
+  let counter = 0;
+  const call = (method, params) => new Promise((resolve, reject) => {
+    const id = ++counter;
+    const timer = setTimeout(() => reject(new Error('timeout en ' + method)), 30000);
+    waiting.set(id, (message) => { clearTimeout(timer); resolve(message); });
+    child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
+  });
+  await call('initialize', { clientInfo: { name: 'ailab-plugin-test', version: '0.0.0' } });
+  child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'initialized' }) + '\n');
+  const read = await call('plugin/read', { marketplacePath: path.join(ROOT, '.agents', 'plugins', 'marketplace.json'), pluginName: 'ailab' });
+  const face = read.result.plugin.summary.interface;
+  assert.equal(face.displayName, 'AILAB');
+  assert.equal(face.brandColor, '#16B2FF');
+  assert.equal(face.developerName, 'Ailendra Labs');
+  assert.equal(face.category, 'Creativity');
+  assert.equal(face.defaultPrompt.length, 3);
+  assert.equal(face.logo, path.join(PLUGIN, 'assets', 'ailab-logo.png'));
+  assert.equal(face.composerIcon, path.join(PLUGIN, 'assets', 'ailab-composer-icon.png'));
+  assert.match(face.privacyPolicyUrl, /^https:\/\//);
 });
