@@ -65,6 +65,19 @@ release publicada ni el `catalog.json` legacy de AILAB; `stable.json` conserva e
    `references/<modelo>.md` si hace falta y en la ayuda de los parámetros del catálogo, y `lib/guide.mjs`.
 7. Regenera el plugin: `node tools/build-plugin.mjs`.
 
+## Precios y auditoría
+
+- El catálogo nunca conserva una promoción caducada: al terminar, la tarifa ordinaria pasa a `credits_per_second`,
+  `credits_matrix`, `credits_by_value`… y se borran `promo` y las notas con su fecha (`tests/pricing-current.test.mjs`).
+  Un cambio de precio de un modelo ya firmado exige release nueva.
+- `tests/pricing-audit.test.mjs` (con `AILAB_CANONICAL_REPO`) lanza la CLI real contra el PHP real de AILAB con los
+  proveedores sin conexión y compara estimación de la CLI, reserva y estimación del servidor y tarifa de la web en más de 600
+  combinaciones. La CLI nunca puede estimar menos que el servidor (daría 402) ni pasarse sin un motivo documentado en la
+  prueba (`OVER_ALLOWED`, `WEB_DIFFERENCES`). Al añadir un modelo, añade sus casos en `tests/helpers/price-cases.mjs`.
+- Los servidores que redondean con decimales (fal, HeyGen) pueden reservar 1 cr más que el producto exacto: esos modelos
+  llevan una tarifa con `+0,0001` y los barridos de duración de `sweepCases` lo comprueban.
+- `info` muestra el precio con `scripts/lib/pricing.mjs`; el agente debe dar al usuario el presupuesto de `prepare`.
+
 ## Versiones
 
 - Versión de la skill: `skills/ailab/package.json`, `registry.json`, `CLI_VERSION` (`scripts/lib/config.mjs`) y

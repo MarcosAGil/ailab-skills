@@ -25,6 +25,14 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const catalogPath = path.join(root, 'skills/ailab/catalog/catalog.json');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
 const model = catalog.models['flux-3'];
+// La promoción terminó el 08/10/2026 y el catálogo publicado ya solo lleva la tarifa ordinaria. El motor de promociones
+// sigue cubierto con el bloque que se publicó entonces.
+const withPromo = structuredClone(model);
+withPromo.estimate.promo = {
+  label: 'Flux 3 promocional hasta el 8 de octubre; corte UTC conservador de AILAB.',
+  until: '2026-10-08T00:00:00Z',
+  credits_by_value: { '768sq': 5, '1k': 5, '2k': 20, '4k': 79 },
+};
 const verifiedCredits = {
   '768sq': { promotional: 5, ordinary: 10 },
   '1k': { promotional: 5, ordinary: 10 },
@@ -91,12 +99,14 @@ test('Flux 3: default de skill, catálogo canónico y adaptador web coinciden', 
   assert.equal(validated.params.aspect_ratio, canonical.params.aspect_ratio.default);
   assert.equal(adapter.normalizeOptions({ mode: 't2i' }).aspectRatio, canonical.params.aspect_ratio.default);
   assert.equal(adapter.normalizeOptions({ mode: 'edit' }).aspectRatio, 'auto');
-  const boundary = Date.parse(model.estimate.promo.until);
+  const boundary = Date.parse(withPromo.estimate.promo.until);
   assert.deepEqual(model.params.resolution.values, canonical.params.resolution.values);
   assert.equal(model.params.resolution.help, canonical.params.resolution.help);
-  assert.equal(model.estimate.note, canonical.estimate.note);
+  assert.equal(model.estimate.promo, undefined, 'el catálogo publicado ya no lleva la promoción terminada');
+  assert.ok(canonical.estimate.note.startsWith(model.estimate.note), 'la nota de la skill es el inicio de la nota de la web, sin la promoción');
   for (const resolution of verifiedResolutions) for (const mode of ['t2i', 'edit']) for (const now of [boundary - 1, boundary, boundary + 1]) {
-    assert.equal(estimateCredits(model, { mode, resolution }, now).credits, adapter.estimateCredits({ mode, resolution }, mode === 'edit' ? 2 : 0, now), mode + ':' + resolution + ':' + now);
+    assert.equal(estimateCredits(withPromo, { mode, resolution }, now).credits, adapter.estimateCredits({ mode, resolution }, mode === 'edit' ? 2 : 0, now), mode + ':' + resolution + ':' + now);
+    if (now >= boundary) assert.equal(estimateCredits(model, { mode, resolution }, now).credits, adapter.estimateCredits({ mode, resolution }, mode === 'edit' ? 2 : 0, now), 'publicado: ' + mode + ':' + resolution + ':' + now);
   }
 });
 
@@ -104,12 +114,14 @@ test('Flux 3 cotiza cada resolución verificada antes y después del corte promo
   const before = Date.parse('2026-10-07T23:59:59.999Z');
   const boundary = Date.parse('2026-10-08T00:00:00Z');
   for (const [resolution, prices] of Object.entries(verifiedCredits)) for (const mode of ['t2i', 'edit']) {
-    assert.equal(estimateCredits(model, { mode, resolution }, before).credits, prices.promotional);
-    assert.equal(estimateCredits(model, { mode, resolution }, boundary).credits, prices.ordinary);
-    assert.equal(estimateCredits(model, { mode, resolution }, boundary + 1).credits, prices.ordinary);
+    assert.equal(estimateCredits(withPromo, { mode, resolution }, before).credits, prices.promotional);
+    assert.equal(estimateCredits(withPromo, { mode, resolution }, boundary).credits, prices.ordinary);
+    assert.equal(estimateCredits(withPromo, { mode, resolution }, boundary + 1).credits, prices.ordinary);
+    // El catálogo publicado cobra la tarifa ordinaria a cualquier fecha.
+    for (const now of [before, boundary, boundary + 1]) assert.equal(estimateCredits(model, { mode, resolution }, now).credits, prices.ordinary);
   }
   assert.deepEqual(Object.keys(model.estimate.credits_by_value).sort(), verifiedResolutions.slice().sort());
-  assert.deepEqual(Object.keys(model.estimate.promo.credits_by_value).sort(), verifiedResolutions.slice().sort());
+  assert.deepEqual(Object.keys(withPromo.estimate.promo.credits_by_value).sort(), verifiedResolutions.slice().sort());
   for (const resolution of [...unavailableResolutions, 'unknown']) assert.equal(estimateCredits(model, { resolution }, before).credits, null);
   assert.equal(model.estimate.approximate, false);
 });

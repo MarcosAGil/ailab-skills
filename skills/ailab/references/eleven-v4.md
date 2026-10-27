@@ -15,10 +15,10 @@ el runtime rechaza su uso explícito y elimina esos valores predeterminados para
 No sustituye la versión ni la voz si el proveedor las rechaza.
 
 El precio se calcula por caracteres de entrada y versión, con redondeo del total y
-mínimo de un crédito de AILAB. La promoción tiene un cierre anticipado de AILAB el
-11 de octubre de 2026, a las 00:00 UTC. Una fecha inválida o una promoción caducada
-utilizan la tarifa ordinaria. Nunca traduzcas `character-cost` a caracteres o USD:
-es consumo de cuota del proveedor, separado del precio de AILAB.
+mínimo de un crédito de AILAB. La promoción de lanzamiento terminó el 11 de octubre de
+2026: rige la tarifa ordinaria (16,32 cr por 1.000 caracteres en v4). Nunca traduzcas
+`character-cost` a caracteres o USD: es consumo de cuota del proveedor, separado del
+precio de AILAB.
 
 `prepare` obtiene una cotización del servidor ligada a la cuenta, voz, texto y
 ajustes, válida durante diez minutos. No genera audio ni reserva dinero. El

@@ -1,0 +1,223 @@
+{
+  "_": "Contratos de estos modelos tal como los publicó la línea base 1.18.0 (catálogo 2.3.5) y 2.3.13 antes de la auditoría de precios. Solo se conservan los bloques que la auditoría cambia a propósito: `estimate` y, en minimax-h3, el máximo de dos parámetros de referencia.",
+  "models": {
+    "avatar-photo-video": {
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 11,
+        "kind": "unit_credits",
+        "minimum_credits": 31,
+        "note": "el coste real usa la duracion final",
+        "units_param": "estimated_duration_seconds"
+      }
+    },
+    "crystal-upscaler": {
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 3.2,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "coste real por megapixeles de salida",
+        "units_param": "output_megapixels"
+      }
+    },
+    "eleven-sound-fx": {
+      "estimate": {
+        "approximate": false,
+        "credits": 26,
+        "kind": "flat_credits"
+      }
+    },
+    "kling-v3": {
+      "estimate": {
+        "approximate": true,
+        "by_param": "variant",
+        "credits_per_second": {
+          "pro-i2v": 34,
+          "pro-t2v": 34,
+          "turbo-i2v": 23,
+          "turbo-t2v": 23
+        },
+        "kind": "per_second_table",
+        "note": "estimacion conservadora; Pro presupone audio",
+        "seconds_param": "duration"
+      }
+    },
+    "lipsync-heygen-precision": {
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 20,
+        "kind": "unit_credits",
+        "minimum_credits": 20,
+        "units_param": "duration_sec"
+      }
+    },
+    "lipsync-heygen-speed": {
+      "estimate": {
+        "approximate": false,
+        "credits_per_unit": 10,
+        "kind": "unit_credits",
+        "minimum_credits": 10,
+        "units_param": "duration_sec"
+      }
+    },
+    "minimax-h3": {
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "2K": 26.52,
+          "768P": 16.32
+        },
+        "kind": "per_second_table",
+        "note": "el video de referencia suma su duracion al cobro a la misma tarifa; a partir de la sexta imagen de entrada, 8.16 cr por imagen extra; el audio de entrada es gratis. Coste real al terminar",
+        "seconds_param": "duration"
+      },
+      "params": {
+        "reference_video_urls": {
+          "accept": "video",
+          "help": "Solo ref; su duracion se suma al cobro a la tarifa de la resolucion",
+          "max": 3,
+          "type": "file[]"
+        },
+        "reference_audio_urls": {
+          "accept": "audio",
+          "help": "Solo ref; gratis",
+          "max": 3,
+          "type": "file[]"
+        }
+      }
+    },
+    "seedance-2": {
+      "estimate": {
+        "approximate": true,
+        "column_param": "resolution",
+        "credits_matrix": {
+          "fast": {
+            "1080p": 104.04,
+            "480p": 11.93,
+            "4k": 212.16,
+            "720p": 25.3
+          },
+          "normal": {
+            "1080p": 104.04,
+            "480p": 19.38,
+            "4k": 212.16,
+            "720p": 41.82
+          }
+        },
+        "credits_with_video_matrix": {
+          "fast": {
+            "1080p": 63.24,
+            "480p": 11.93,
+            "4k": 212.16,
+            "720p": 25.3
+          },
+          "normal": {
+            "1080p": 63.24,
+            "480p": 11.73,
+            "4k": 212.16,
+            "720p": 25.5
+          }
+        },
+        "kind": "per_second_matrix",
+        "note": "coste real al terminar; el modo Fast (maximo 720p) esta rebajado hasta el 7 de septiembre de 2026 (06:00 UTC)",
+        "promo": {
+          "label": "Modo Fast rebajado hasta el 7 sep 2026",
+          "previous_credits_matrix": {
+            "fast": {
+              "480p": 15.81,
+              "720p": 33.66
+            }
+          },
+          "previous_credits_with_video_matrix": {
+            "fast": {
+              "480p": 11.73,
+              "720p": 25.5
+            }
+          },
+          "until": "2026-09-07T06:00:00Z"
+        },
+        "row_param": "speed",
+        "seconds_param": "duration",
+        "video_param": "reference_video_urls"
+      }
+    },
+    "seedance-2-5": {
+      "estimate": {
+        "approximate": true,
+        "auto_duration_param": "auto_duration",
+        "auto_duration_seconds": 30,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "1080p": 116.28,
+          "480p": 28.56,
+          "720p": 64.26
+        },
+        "credits_with_video": {
+          "1080p": 69.87,
+          "480p": 17.34,
+          "720p": 38.76
+        },
+        "kind": "per_second_table",
+        "note": "1080p promocional hasta el 17 de septiembre de 2026 (06:00 UTC). Tarifas con comision AILAB incluida; el coste real lo confirma KIE al terminar.",
+        "promo": {
+          "label": "1080p con 28% de descuento hasta el 17 sep 2026",
+          "previous_credits_per_second": {
+            "1080p": 161.5
+          },
+          "previous_credits_with_video": {
+            "1080p": 97.04
+          },
+          "until": "2026-09-17T06:00:00Z"
+        },
+        "seconds_param": "duration",
+        "mode_param": "mode",
+        "duration_by_mode": {
+          "edit": 30
+        },
+        "video_param": "reference_video_urls"
+      }
+    },
+    "seedance-2-mini": {
+      "estimate": {
+        "approximate": true,
+        "by_param": "resolution",
+        "credits_per_second": {
+          "480p": 3.88,
+          "720p": 8.36
+        },
+        "credits_with_video": {
+          "480p": 2.45,
+          "720p": 5.1
+        },
+        "kind": "per_second_table",
+        "note": "precio rebajado hasta el 7 de septiembre de 2026 (06:00 UTC); con video de referencia baja a ~2.45 (480p) / ~5.10 (720p) cr/s; coste real al terminar",
+        "promo": {
+          "label": "Rebajado hasta el 7 sep 2026",
+          "previous_credits_per_second": {
+            "480p": 9.69,
+            "720p": 20.91
+          },
+          "previous_credits_with_video": {
+            "480p": 9.69,
+            "720p": 20.91
+          },
+          "until": "2026-09-07T06:00:00Z"
+        },
+        "seconds_param": "duration",
+        "video_param": "reference_video_urls"
+      }
+    },
+    "seedvr2-image-upscaler": {
+      "estimate": {
+        "approximate": true,
+        "credits_per_unit": 0.2,
+        "kind": "unit_credits",
+        "minimum_credits": 1,
+        "note": "coste real por megapixeles de salida",
+        "units_param": "output_megapixels"
+      }
+    }
+  }
+}

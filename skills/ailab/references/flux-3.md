@@ -15,18 +15,18 @@ El límite de 20.000 caracteres del prompt es una política de AILAB. La documen
 
 Las tarifas de [texto](https://fal.ai/models/blackforestlabs/flux-3/text-to-image) y [edición](https://fal.ai/models/blackforestlabs/flux-3/edit-image) se aplican por una salida. AILAB añade su margen estándar del 2%, convierte a $0.005 USD por crédito y redondea al crédito superior:
 
-| Resolución | USD promoción | USD ordinario | Créditos promoción | Créditos ordinarios |
-|---|---:|---:|---:|---:|
-| `768sq` | 0.024 | 0.048 | 5 | 10 |
-| `1k` | 0.024 | 0.048 | 5 | 10 |
-| `2k` | 0.096 | 0.192 | 20 | 40 |
-| `4k` | 0.384 | 0.768 | 79 | 157 |
+| Resolución | USD | Créditos |
+|---|---:|---:|
+| `768sq` | 0.048 | 10 |
+| `1k` | 0.048 | 10 |
+| `2k` | 0.192 | 40 |
+| `4k` | 0.768 | 157 |
 
-La tarifa ordinaria es el doble de la promocional, conforme al descuento oficial del 50%. No deduzcas precios de otras resoluciones a partir de megapíxeles ni de `X-Fal-Billable-Units`. No se publica una tarifa AILAB para `512sq` en esta release.
+Es la tarifa ordinaria, la única vigente: la promoción de lanzamiento terminó el 8 de octubre de 2026 y el catálogo ya no la lleva. No deduzcas precios de otras resoluciones a partir de megapíxeles ni de `X-Fal-Billable-Units`. No se publica una tarifa AILAB para `512sq` en esta release.
 
 El coste es igual en texto y edición, sin recargo por referencias. Una salida 4K puede tardar varios minutos: conserva el ID y consulta `status`, sin reenviar la generación.
 
-La promoción se corta de forma conservadora en AILAB el `2026-10-08T00:00:00Z`, porque fal publica una fecha sin hora exacta. La skill calcula la tarifa según ese instante; un manifiesto preparado con la promoción no puede enviarse con la tarifa ordinaria sin volver a preparar. El servidor congela la tarifa al crear la tarea y liquida únicamente un resultado válido. El catálogo servido sigue siendo la autoridad. Preparar la fuente local no publica una release ni acredita por sí solo una verificación de producción.
+El servidor congela la tarifa al crear la tarea y liquida únicamente un resultado válido. El catálogo servido sigue siendo la autoridad. Preparar la fuente local no publica una release ni acredita por sí solo una verificación de producción.
 
 ## Autorización y recuperación
 

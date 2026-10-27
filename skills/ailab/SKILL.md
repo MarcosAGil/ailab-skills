@@ -42,6 +42,9 @@ proyecto del usuario. Los resultados se guardan por defecto en
    `~/.config/ailab/`. No borres una operación ambigua para ocultarla.
 8. No llames directamente a proveedores ni inventes endpoints o parámetros. Usa la
    CLI y el catálogo validado.
+9. Para dar un precio al usuario usa el presupuesto de la CLI (`prepare`, o la
+   estimación que `info <modelo>` ya calcula para hoy). Nunca leas ni cites tablas de
+   tarifas a mano: cambian y las promociones caducan.
 
 ## Guía actualizada
 

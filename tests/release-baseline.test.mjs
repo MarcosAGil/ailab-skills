@@ -14,8 +14,11 @@ const { estimateCredits, stableStringify, validateParams } = await import('../sk
 const { BUNDLED_RUNTIME_VERSION, checkAndMaybeUpdate } = await import('../skills/ailab/scripts/lib/updater.mjs');
 const catalog = JSON.parse(fs.readFileSync(new URL('../skills/ailab/catalog/catalog.json', import.meta.url), 'utf8'));
 const baseline = JSON.parse(fs.readFileSync(new URL('./fixtures/catalog-1.18.0-2.3.5.model-hashes.json', import.meta.url), 'utf8'));
+// Auditoría de precios (27/10/2026): contratos que cambian a propósito solo en `estimate` (y, en H3, el máximo de dos parámetros
+// de referencia). El fixture guarda lo que valían antes; restaurarlo reproduce el hash de la línea base.
+const beforePriceAudit = JSON.parse(fs.readFileSync(new URL('./fixtures/estimates-before-price-audit.json', import.meta.url), 'utf8')).models;
 
-test('la release conserva los contratos anteriores excepto las ampliaciones versionadas de Eleven, Wan 3.0 y Seed Audio', () => {
+test('la release conserva los contratos anteriores excepto las ampliaciones versionadas de Eleven, Wan 3.0 y Seed Audio y la auditoría de precios', () => {
   assert.equal(Object.keys(baseline.model_sha256).length, 61);
   for (const [id, expected] of Object.entries(baseline.model_sha256)) {
     assert.ok(catalog.models[id], 'No puede desaparecer ' + id);
@@ -44,6 +47,19 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
       assert.equal(restored, expected, 'Seed Audio solo puede cambiar su estimate');
       continue;
     }
+    if (beforePriceAudit[id]) {
+      // Por qué cambia cada uno (todos contra el servidor real, ver tests/pricing-audit.test.mjs):
+      //  - seedance-2, seedance-2-5, seedance-2-mini: promociones caducadas fuera; Fast se reserva como Normal desde la terminal.
+      //  - kling-v3: tarifa por audio y margen decimal; lipsync-heygen-*: margen decimal; avatar-photo-video: tarifa por resolución.
+      //  - crystal-upscaler y seedvr2-image-upscaler: reserva mínima del servidor; eleven-sound-fx: 25 cr, no 26.
+      //  - minimax-h3: el servidor admite un solo vídeo y un solo audio de referencia.
+      const restored = structuredClone(catalog.models[id]);
+      restored.estimate = beforePriceAudit[id].estimate;
+      if (beforePriceAudit[id].params) Object.assign(restored.params, beforePriceAudit[id].params);
+      assert.equal(crypto.createHash('sha256').update(stableStringify(restored)).digest('hex'), expected, id + ' solo puede cambiar lo que documenta la auditoría de precios');
+      assert.notDeepEqual(catalog.models[id], restored, id + ' sí cambia respecto a la línea base');
+      continue;
+    }
     const actual = crypto.createHash('sha256').update(stableStringify(catalog.models[id])).digest('hex');
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
@@ -52,11 +68,12 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
   assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
-test('Eleven mantiene su promoción publicada y Nano su contrato vigente', () => {
+test('Eleven ya no lleva promoción (terminó el 11/10/2026) y Nano mantiene su contrato vigente', () => {
   const eleven = catalog.models['eleven-tts'];
   const params = { version: 'v4', text: 'x'.repeat(1000) };
   const boundary = Date.parse('2026-10-11T00:00:00Z');
-  assert.equal(estimateCredits(eleven, params, boundary - 1).credits, 5);
+  assert.equal(eleven.estimate.promo, undefined);
+  assert.equal(estimateCredits(eleven, params, boundary - 1).credits, 17, 'la tarifa ordinaria rige a cualquier fecha');
   assert.equal(estimateCredits(eleven, params, boundary).credits, 17);
   const nano = catalog.models['nano-banana-pro'];
   assert.equal(nano.params.prompt.max_len, 20000);

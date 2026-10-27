@@ -327,8 +327,14 @@
         "credits_per_unit": 11,
         "kind": "unit_credits",
         "minimum_credits": 31,
-        "note": "el coste real usa la duracion final",
-        "units_param": "estimated_duration_seconds"
+        "note": "La duración del guion se estima a 14 caracteres por segundo. El cobro real usa la duración final. 4k cuesta más por segundo.",
+        "units_param": "estimated_duration_seconds",
+        "rate_param": "resolution",
+        "credits_per_unit_by_value": {
+          "720p": 10.2001,
+          "1080p": 10.2001,
+          "4k": 13.6069
+        }
       },
       "expensive": true,
       "id": "avatar-photo-video",
@@ -419,8 +425,8 @@
         "approximate": true,
         "credits_per_unit": 3.2,
         "kind": "unit_credits",
-        "minimum_credits": 1,
-        "note": "coste real por megapixeles de salida",
+        "minimum_credits": 61,
+        "note": "coste real por megapixeles de salida; el servidor reserva al menos 61 cr",
         "units_param": "output_megapixels"
       },
       "expensive": false,
@@ -771,7 +777,7 @@
       "enabled": true,
       "estimate": {
         "approximate": false,
-        "credits": 26,
+        "credits": 25,
         "kind": "flat_credits"
       },
       "expensive": false,
@@ -875,14 +881,7 @@
         "minimum_credits": 1,
         "round_up": true,
         "approximate": false,
-        "promo": {
-          "label": "Cierre anticipado de AILAB",
-          "until": "2026-10-11T00:00:00Z",
-          "credits_per_1000_by_value": {
-            "v4": 4.488
-          }
-        },
-        "note": "Precio por caracteres de entrada, mínimo 1 cr y total redondeado al crédito superior. V4 requiere cotización del servidor por voz. La promoción termina el 11 de octubre de 2026, a las 00:00 UTC; después 16,32 cr por 1.000 caracteres."
+        "note": "Precio por caracteres de entrada, mínimo 1 cr y total redondeado al crédito superior. V4: 16,32 cr por 1.000 caracteres, y requiere cotización del servidor por voz."
       },
       "expensive": false,
       "id": "eleven-tts",
@@ -2478,14 +2477,21 @@
         "approximate": true,
         "by_param": "variant",
         "credits_per_second": {
-          "pro-i2v": 34,
-          "pro-t2v": 34,
-          "turbo-i2v": 23,
-          "turbo-t2v": 23
+          "pro-i2v": 22.4001,
+          "pro-t2v": 22.4001,
+          "turbo-i2v": 22.4001,
+          "turbo-t2v": 22.4001
         },
         "kind": "per_second_table",
-        "note": "estimacion conservadora; Pro presupone audio",
-        "seconds_param": "duration"
+        "note": "Tarifa por segundo de Kling v3. Pro con audio activado cuesta más; Turbo no cambia. El servidor redondea con decimales y la reserva puede quedar 1 cr por debajo de esta estimación.",
+        "seconds_param": "duration",
+        "audio_param": "generate_audio",
+        "credits_with_audio": {
+          "pro-i2v": 33.6001,
+          "pro-t2v": 33.6001,
+          "turbo-i2v": 22.4001,
+          "turbo-t2v": 22.4001
+        }
       },
       "expensive": true,
       "id": "kling-v3",
@@ -2653,10 +2659,11 @@
       "enabled": true,
       "estimate": {
         "approximate": false,
-        "credits_per_unit": 20,
+        "credits_per_unit": 20.0001,
         "kind": "unit_credits",
         "minimum_credits": 20,
-        "units_param": "duration_sec"
+        "units_param": "duration_sec",
+        "note": "El servidor redondea con decimales y la reserva puede quedar 1 cr por debajo de esta estimación."
       },
       "expensive": true,
       "id": "lipsync-heygen-precision",
@@ -2711,10 +2718,11 @@
       "enabled": true,
       "estimate": {
         "approximate": false,
-        "credits_per_unit": 10,
+        "credits_per_unit": 10.0001,
         "kind": "unit_credits",
         "minimum_credits": 10,
-        "units_param": "duration_sec"
+        "units_param": "duration_sec",
+        "note": "El servidor redondea con decimales y la reserva puede quedar 1 cr por debajo de esta estimación."
       },
       "expensive": true,
       "id": "lipsync-heygen-speed",
@@ -3209,7 +3217,7 @@
         "reference_audio_urls": {
           "accept": "audio",
           "help": "Solo ref; gratis",
-          "max": 3,
+          "max": 1,
           "type": "file[]"
         },
         "reference_image_urls": {
@@ -3221,7 +3229,7 @@
         "reference_video_urls": {
           "accept": "video",
           "help": "Solo ref; su duracion se suma al cobro a la tarifa de la resolucion",
-          "max": 3,
+          "max": 1,
           "type": "file[]"
         },
         "resolution": {
@@ -3924,9 +3932,9 @@
         "credits_matrix": {
           "fast": {
             "1080p": 104.04,
-            "480p": 11.93,
+            "480p": 19.38,
             "4k": 212.16,
-            "720p": 25.3
+            "720p": 41.82
           },
           "normal": {
             "1080p": 104.04,
@@ -3938,9 +3946,9 @@
         "credits_with_video_matrix": {
           "fast": {
             "1080p": 63.24,
-            "480p": 11.93,
+            "480p": 11.73,
             "4k": 212.16,
-            "720p": 25.3
+            "720p": 25.5
           },
           "normal": {
             "1080p": 63.24,
@@ -3950,23 +3958,7 @@
           }
         },
         "kind": "per_second_matrix",
-        "note": "coste real al terminar; el modo Fast (maximo 720p) esta rebajado hasta el 7 de septiembre de 2026 (06:00 UTC)",
-        "promo": {
-          "label": "Modo Fast rebajado hasta el 7 sep 2026",
-          "previous_credits_matrix": {
-            "fast": {
-              "480p": 15.81,
-              "720p": 33.66
-            }
-          },
-          "previous_credits_with_video_matrix": {
-            "fast": {
-              "480p": 11.73,
-              "720p": 25.5
-            }
-          },
-          "until": "2026-09-07T06:00:00Z"
-        },
+        "note": "coste real al terminar. Desde la terminal el modo Fast se reserva y se factura con la tarifa de Normal",
         "row_param": "speed",
         "seconds_param": "duration",
         "video_param": "reference_video_urls"
@@ -4082,27 +4074,17 @@
         "auto_duration_seconds": 30,
         "by_param": "resolution",
         "credits_per_second": {
-          "1080p": 116.28,
+          "1080p": 161.5,
           "480p": 28.56,
           "720p": 64.26
         },
         "credits_with_video": {
-          "1080p": 69.87,
+          "1080p": 97.04,
           "480p": 17.34,
           "720p": 38.76
         },
         "kind": "per_second_table",
-        "note": "1080p promocional hasta el 17 de septiembre de 2026 (06:00 UTC). Tarifas con comision AILAB incluida; el coste real lo confirma KIE al terminar.",
-        "promo": {
-          "label": "1080p con 28% de descuento hasta el 17 sep 2026",
-          "previous_credits_per_second": {
-            "1080p": 161.5
-          },
-          "previous_credits_with_video": {
-            "1080p": 97.04
-          },
-          "until": "2026-09-17T06:00:00Z"
-        },
+        "note": "Tarifas con comision AILAB incluida; el coste real lo confirma KIE al terminar.",
         "seconds_param": "duration",
         "mode_param": "mode",
         "duration_by_mode": {
@@ -4223,27 +4205,15 @@
         "approximate": true,
         "by_param": "resolution",
         "credits_per_second": {
-          "480p": 3.88,
-          "720p": 8.36
+          "480p": 9.69,
+          "720p": 20.91
         },
         "credits_with_video": {
-          "480p": 2.45,
-          "720p": 5.1
+          "480p": 9.69,
+          "720p": 20.91
         },
         "kind": "per_second_table",
-        "note": "precio rebajado hasta el 7 de septiembre de 2026 (06:00 UTC); con video de referencia baja a ~2.45 (480p) / ~5.10 (720p) cr/s; coste real al terminar",
-        "promo": {
-          "label": "Rebajado hasta el 7 sep 2026",
-          "previous_credits_per_second": {
-            "480p": 9.69,
-            "720p": 20.91
-          },
-          "previous_credits_with_video": {
-            "480p": 9.69,
-            "720p": 20.91
-          },
-          "until": "2026-09-07T06:00:00Z"
-        },
+        "note": "coste real al terminar; la referencia en video no cambia la tarifa",
         "seconds_param": "duration",
         "video_param": "reference_video_urls"
       },
@@ -4500,8 +4470,8 @@
         "approximate": true,
         "credits_per_unit": 0.2,
         "kind": "unit_credits",
-        "minimum_credits": 1,
-        "note": "coste real por megapixeles de salida",
+        "minimum_credits": 6,
+        "note": "coste real por megapixeles de salida; el servidor reserva al menos 6 cr",
         "units_param": "output_megapixels"
       },
       "expensive": false,
@@ -5179,17 +5149,7 @@
           "4k": 157
         },
         "approximate": false,
-        "promo": {
-          "credits_by_value": {
-            "768sq": 5,
-            "1k": 5,
-            "2k": 20,
-            "4k": 79
-          },
-          "until": "2026-10-08T00:00:00Z",
-          "label": "Flux 3 promocional hasta el 8 de octubre; corte UTC conservador de AILAB."
-        },
-        "note": "Por imagen, igual en texto y edición, sin recargo por referencias. Promoción hasta el 8 de octubre a las 00:00 UTC (corte conservador de AILAB); después, tarifa ordinaria."
+        "note": "Por imagen, igual en texto y edición, sin recargo por referencias."
       }
     },
     "ideogram-v45": {

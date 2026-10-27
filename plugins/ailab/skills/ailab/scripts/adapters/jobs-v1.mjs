@@ -16,8 +16,23 @@ export function buildPayload(model, params, uploadedByParam) {
     const spec = (model.params || {})[k] || {};
     input[k] = spec.type === 'file' ? urls[0] : urls;
   }
-  return { model: model.id, input };
+  const payload = { model: model.id, input };
+  // Seedance 2.5: la duración automática se pide con duration -1 (como la web). El servidor reserva 30 s en ese caso, que es
+  // lo que presupuesta la CLI; con `auto_duration` suelto reservaba la duración numérica y generaba otra cosa.
+  if (model.id === 'seedance-2-5' && input.auto_duration === true) {
+    input.duration = -1;
+    delete input.auto_duration;
+  }
+  // Kling O3 Transformación: la duración la marca el vídeo de origen y la web no envía `duration`. Sin ella el servidor
+  // reserva el máximo de 16 s, igual que la estimación de la CLI.
+  if (model.id === 'kling-o3' && input.mode === 'transform') delete input.duration;
+  // Motion Control: la duración no viaja al proveedor pero fija el precio. El servidor la lee de `billing_duration`
+  // (igual que la web); sin él reservaba 5 s y rechazaba con 402 las duraciones menores.
+  if (MOTION_CONTROL.has(model.id) && Number.isFinite(Number(params.duration))) payload.billing_duration = Number(params.duration);
+  return payload;
 }
+
+const MOTION_CONTROL = new Set(['kling-2-6-motion-control', 'kling-3-0-motion-control']);
 
 export async function submit(model, payload, intent = {}) {
   const body = {

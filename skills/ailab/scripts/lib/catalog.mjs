@@ -553,6 +553,16 @@ export function estimateCredits(model, params, now = Date.now()) {
       note: seconds + ' s · ' + resolution + ' · ' + Math.round(tokens).toLocaleString('es-ES') + ' tokens de referencia'
     };
   }
+  // H3 (Kie): el servidor reserva la tarifa por segundo sobre la salida más 15 s por cada vídeo de referencia (su duración no se
+  // conoce antes de enviar) y 8,16 cr por cada imagen de referencia a partir de la sexta. El cargo final es el consumo real.
+  if (model.id === 'minimax-h3' && e.kind === 'per_second_table') {
+    const rate = Number((e.credits_per_second || {})[params[e.by_param]]);
+    const seconds = Math.max(4, Math.min(15, Math.trunc(Number(params[e.seconds_param] ?? 6))));
+    const videos = Array.isArray(params.reference_video_urls) ? params.reference_video_urls.length : 0;
+    const images = Array.isArray(params.reference_image_urls) ? params.reference_image_urls.length : 0;
+    if (!Number.isFinite(rate) || rate <= 0 || !Number.isFinite(seconds)) return { credits: null, approximate: true, note: 'estimacion no disponible' };
+    return { credits: Math.ceil(rate * (seconds + 15 * videos) + 8.16 * Math.max(0, images - 5)), approximate: !!e.approximate, note: e.note || '' };
+  }
   if (e.kind === 'flat_credits') return { credits: Math.ceil(e.credits), approximate: !!e.approximate, note: e.note || '' };
   if (e.kind === 'duration_blocks') {
     const seconds = Number(params[e.seconds_param] || 0);
@@ -657,7 +667,10 @@ export function estimateCredits(model, params, now = Date.now()) {
   }
   if (e.kind === 'unit_credits') {
     const units = Number(params[e.units_param] || 0);
-    const credits = Math.max(Number(e.minimum_credits || 0), units * Number(e.credits_per_unit || 0));
+    // Tarifa por valor de un parámetro (p. ej. la resolución del avatar); `credits_per_unit` es la tarifa de las CLI que no la leen.
+    const keyed = e.rate_param && e.credits_per_unit_by_value ? Number(e.credits_per_unit_by_value[params[e.rate_param]]) : NaN;
+    const perUnit = Number.isFinite(keyed) && keyed > 0 ? keyed : Number(e.credits_per_unit || 0);
+    const credits = Math.max(Number(e.minimum_credits || 0), units * perUnit);
     const rounded = Number.isFinite(credits) ? Number(credits.toFixed(4)) : credits;
     return { credits: Number.isFinite(rounded) && rounded > 0 ? Math.ceil(rounded) : null, approximate: !!e.approximate, note: e.note || '' };
   }

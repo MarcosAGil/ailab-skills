@@ -21,6 +21,7 @@ import * as hybridGrokV1 from './adapters/hybrid-grok-v1.mjs';
 import * as veoV1 from './adapters/veo-v1.mjs';
 import * as elevenV1 from './adapters/eleven-v1.mjs';
 import { runVoiceCommand, listElevenVoices } from './lib/voice-commands.mjs';
+import { pricingLines } from './lib/pricing.mjs';
 import * as sunoV1 from './adapters/suno-v1.mjs';
 import * as heygenV1 from './adapters/heygen-v1.mjs';
 import * as jobsTextV1 from './adapters/jobs-text-v1.mjs';
@@ -397,6 +398,7 @@ function cmdModels(cat) {
     const usable = modelUsable(m);
     out('  ' + id + ' · ' + m.label + ' [' + m.section + ']' + (m.expensive ? ' · CARO' : '') + (usable.ok ? '' : ' · NO DISPONIBLE: ' + usable.reason));
   }
+  out('Precios: `info <modelo>` muestra la tarifa vigente de hoy. Para dar un precio al usuario usa el presupuesto de `prepare`; no leas tablas a mano.');
 }
 
 function cmdInfo(cat, name) {
@@ -415,7 +417,7 @@ function cmdInfo(cat, name) {
     if (s.default !== undefined) bits.push('def ' + s.default);
     out('  --' + k + ' (' + bits.join(', ') + (s.required ? ', OBLIGATORIO' : '') + ')' + (s.help ? ' · ' + s.help : ''));
   }
-  out('Estimacion: ' + JSON.stringify(m.estimate));
+  for (const line of pricingLines(m)) out(line);
 }
 
 function deriveInternalParams(model, given) {
