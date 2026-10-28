@@ -55,6 +55,7 @@ migración desde la skill manual) está en [`docs/instalacion-plugin.md`](docs/i
 | `estilo-ugc` | Estable | Auditor de realismo para prompts de vídeo UGC grabados con móvil. |
 | `refinar-prompt` | Estable | Auditoría crítica de prompts de Seedance 2.5 y sus referencias. |
 | `personaje-consistente` | Beta | Personaje de IA consistente: ficha, hojas de referencia y voz con AILAB. |
+| `vervideo` | Beta | Análisis completo o editorial de vídeos locales y URLs públicas, con tu clave de OpenRouter. |
 
 Las cinco skills de la comunidad son autocontenidas y sirven con cualquier plataforma que use
 Seedance 2.5; con AILAB rinden mejor. Solo `personaje-consistente` genera (con tus créditos y tu
@@ -83,6 +84,8 @@ acredita por sí sola disponibilidad en producción.
 
 - Node.js 18.17 o posterior.
 - Para `ailab`: una cuenta de AILAB habilitada y créditos para las operaciones de pago.
+- Para `vervideo`: Python 3.9 o posterior, FFmpeg, FFprobe y yt-dlp, y una API key propia de OpenRouter
+  en `~/.config/openrouter/.env` (permisos `600`; nunca dentro de la skill ni en el chat).
 - Para instalar las skills de la comunidad desde el repositorio: Git. `estilo-ugc` usa Python 3 para
   sus scripts de comprobación (opcional); `personaje-consistente`, FFmpeg y FFprobe (opcional).
 

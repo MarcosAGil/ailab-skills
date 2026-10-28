@@ -13,10 +13,37 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 test('el registro público y todas las skills son válidos', () => {
   const result = validateRepository();
   assert.equal(result.registry.schema_version, 1);
-  assert.deepEqual(result.registry.skills.map((skill) => skill.id), ['ailab', 'estilo-espontaneo-viral', 'estilo-amateur-ccd', 'estilo-ugc', 'refinar-prompt', 'personaje-consistente']);
+  assert.deepEqual(result.registry.skills.map((skill) => skill.id), ['ailab', 'estilo-espontaneo-viral', 'estilo-amateur-ccd', 'estilo-ugc', 'refinar-prompt', 'personaje-consistente', 'vervideo']);
   assert.ok(result.results[0].files > 10);
-  // Solo el plugin de AILAB y las skills oficiales de la comunidad: la guía de la web publica solo su SKILL.md.
-  for (const skill of result.registry.skills.slice(1)) assert.deepEqual(skill.guide_references, [], skill.id);
+  // Las skills oficiales de la comunidad publican en la guía de la web solo su SKILL.md.
+  for (const skill of result.registry.skills.slice(1, 6)) assert.deepEqual(skill.guide_references, [], skill.id);
+  assert.equal(result.results.find((skill) => skill.id === 'vervideo').files, 8);
+});
+
+test('el instalador copia y verifica vervideo sin red ni API key', (t) => {
+  const destination = fs.mkdtempSync(path.join(os.tmpdir(), 'vervideo-skill-test-'));
+  t.after(() => fs.rmSync(destination, { recursive: true, force: true }));
+  const installed = spawnSync(process.execPath, ['tools/install.mjs', 'vervideo', '--dir', destination], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: { PATH: process.env.PATH },
+    timeout: 30000,
+  });
+  assert.equal(installed.status, 0, installed.stderr || installed.stdout);
+  assert.match(installed.stdout, /Instalada vervideo 2\.0\.0/);
+  assert.ok(fs.existsSync(path.join(destination, 'vervideo', 'SKILL.md')));
+  for (const script of ['common.py', 'completo.py', 'frames.py', 'mini.py', 'report.py', 'transcribe.py']) {
+    assert.ok(fs.existsSync(path.join(destination, 'vervideo', 'scripts', script)), script);
+  }
+  assert.equal(fs.existsSync(path.join(destination, 'vervideo', 'scripts', 'vervideo.py')), false);
+
+  const miniHelp = spawnSync('python3', [path.join(destination, 'vervideo', 'scripts', 'mini.py'), '--help'], {
+    encoding: 'utf8',
+    env: { PATH: process.env.PATH },
+    timeout: 30000,
+  });
+  assert.equal(miniHelp.status, 0, miniHelp.stderr || miniHelp.stdout);
+  assert.match(miniHelp.stdout, /Modo mini de \/vervideo/);
 });
 
 test('el instalador copia y verifica AILAB de forma aislada', (t) => {
@@ -99,4 +126,42 @@ test('el paquete es reproducible y contiene una única carpeta raíz', (t) => {
   assert.ok(entries.length > 10);
   assert.ok(entries.every((entry) => entry.startsWith('ailab/')));
   assert.ok(entries.includes('ailab/SKILL.md'));
+});
+
+test('el paquete de vervideo es reproducible, autocontenido y no contiene secretos', (t) => {
+  const destination = fs.mkdtempSync(path.join(os.tmpdir(), 'vervideo-package-test-'));
+  t.after(() => fs.rmSync(destination, { recursive: true, force: true }));
+  const build = () => spawnSync(process.execPath, ['tools/package.mjs', 'vervideo'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: { ...process.env, AILAB_DIST_DIR: destination },
+    timeout: 30000,
+  });
+  const first = build();
+  assert.equal(first.status, 0, first.stderr || first.stdout);
+  const archive = path.join(destination, 'vervideo-skill-v2.0.0-beta.zip');
+  const firstBytes = fs.readFileSync(archive);
+  const second = build();
+  assert.equal(second.status, 0, second.stderr || second.stdout);
+  assert.deepEqual(fs.readFileSync(archive), firstBytes);
+
+  const listing = spawnSync('unzip', ['-Z1', archive], { encoding: 'utf8' });
+  assert.equal(listing.status, 0, listing.stderr);
+  const entries = listing.stdout.trim().split('\n');
+  assert.deepEqual(entries, [
+    'vervideo/SKILL.md',
+    'vervideo/package.json',
+    'vervideo/scripts/common.py',
+    'vervideo/scripts/completo.py',
+    'vervideo/scripts/frames.py',
+    'vervideo/scripts/mini.py',
+    'vervideo/scripts/report.py',
+    'vervideo/scripts/transcribe.py',
+  ]);
+
+  const strings = spawnSync('unzip', ['-p', archive], { encoding: 'utf8' });
+  assert.equal(strings.status, 0, strings.stderr);
+  assert.doesNotMatch(strings.stdout, /OPENROUTER_API_KEY=(?:sk-or-v1-|sk-)[A-Za-z0-9_-]{20,}/);
+  assert.doesNotMatch(strings.stdout, /\/Users\/marcosa\.martinez/);
+  assert.doesNotMatch(strings.stdout, /\.config\/openrouter\/\.env\n[^\n]*sk-/);
 });

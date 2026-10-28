@@ -53,6 +53,11 @@ Instala estas skills oficiales de la comunidad de Ailendra Labs en este agente: 
 | `refinar-prompt` | Auditoría crítica de un prompt de Seedance 2.5 con sus referencias. |
 | `personaje-consistente` | Personaje de IA consistente entre vídeos: ficha, hojas de referencia y voz. |
 
+¿Quieres también **Ver vídeo** (`vervideo`), que analiza un vídeo existente: estética, guion, planos,
+sonido y montaje? Añade `vervideo` a la lista del prompt. Necesita Python 3.9, FFmpeg, FFprobe y
+yt-dlp, y tu propia clave de OpenRouter, que configuras tú en `~/.config/openrouter/.env` (nunca en el
+chat). Se cobra en tu cuenta de OpenRouter, no en los créditos de AILAB.
+
 Las skills de prompting no consumen créditos de AILAB. `personaje-consistente` usa tus créditos
 solo cuando generas hojas o voces con AILAB y pide tu aprobación antes de cada fase.
 

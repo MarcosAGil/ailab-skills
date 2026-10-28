@@ -96,6 +96,27 @@
         "claude-code",
         "codex"
       ]
+    },
+    {
+      "id": "vervideo",
+      "name": "Ver vídeo",
+      "version": "2.0.0",
+      "channel": "beta",
+      "path": "skills/vervideo",
+      "description": "Análisis de vídeos locales o públicos en modos completo y mini mediante OpenRouter.",
+      "minimum_python": "3.9",
+      "clients": [
+        "claude-code",
+        "codex"
+      ],
+      "self_test": {
+        "command": "python3",
+        "args": [
+          "scripts/completo.py",
+          "--help"
+        ],
+        "expect": "Analiza un video completo"
+      }
     }
   ]
 }

@@ -6,7 +6,7 @@
     "installation": "AILAB se instala como plugin oficial en Claude Code o Codex con dos comandos (o pegando el prompt de instalación en tu agente). Necesitas Node.js 18.17 o posterior. Las skills de prompting y creación se instalan desde el repositorio oficial con Git y el instalador, o extrayendo su ZIP en la carpeta skills de tu agente. No se deben sobrescribir modificaciones locales sin revisarlas.",
     "activation": "Tras instalar, abre una conversación nueva en Claude Code o Codex e invoca la skill por su nombre. Si has descargado un ZIP, extráelo y coloca la carpeta de la skill, con SKILL.md directamente dentro, en la carpeta skills de tu cliente.",
     "updates": "El plugin de AILAB recibe solo el catálogo de modelos, los precios y su runtime firmado; el propio plugin se actualiza cuando tú lo decides con los comandos de su ficha. Las skills de prompting y creación se actualizan con git pull --ff-only y el instalador. El instalador conserva las credenciales guardadas fuera de las skills.",
-    "security": "Las descargas son públicas y no contienen claves. Descargar no concede acceso ni créditos. Nunca pegues contraseñas ni tokens en el chat. AILAB se conecta a tu cuenta mediante un token personal y revocable que introduces tú en tu terminal. El asistente de esta página orienta: no instala, no accede a tus archivos y no ejecuta generaciones."
+    "security": "Las descargas son públicas y no contienen claves. Descargar no concede acceso ni créditos. Nunca pegues contraseñas ni tokens en el chat. AILAB se conecta a tu cuenta mediante un token personal y revocable que introduces tú en tu terminal. Ver vídeo utiliza tu propia cuenta de OpenRouter. El asistente de esta página orienta: no instala, no accede a tus archivos y no ejecuta generaciones."
   },
   "skills": [
     {
@@ -149,6 +149,29 @@
         "personaje-consistente"
       ],
       "workflow": "Redacta la ficha, genera las hojas de referencia y la voz con AILAB y te las devuelve listas para usar en una escena. Para tras cada fase y espera tu aprobación. No genera vídeo ni guion y no publica."
+    },
+    {
+      "id": "vervideo",
+      "category": "Análisis",
+      "icon": "scan",
+      "summary": "Analiza un vídeo que ya existe: entiende su estética, el guion, los planos, el sonido y el ritmo de montaje.",
+      "features": [
+        "Modo completo: análisis del vídeo entero",
+        "Modo mini: escenas, hook y transcripción",
+        "Informe en Markdown con referencias temporales"
+      ],
+      "requirements": [
+        "Python 3.9 o posterior",
+        "FFmpeg, FFprobe y yt-dlp",
+        "API key propia de OpenRouter con saldo"
+      ],
+      "billing": "Se cobra en tu propia cuenta de OpenRouter, no en los créditos de AILAB.",
+      "setup": "Configura personalmente OPENROUTER_API_KEY fuera de la skill, en ~/.config/openrouter/.env, con permisos restringidos. No introduzcas la clave en este chat. Para el instalador del repositorio también necesitas Node.js 18.17 o posterior. En Windows debes tener python3 disponible en el terminal.",
+      "example": "Usa $vervideo en modo completo para analizar la cámara, la luz y el sonido de este vídeo. Guarda el informe junto al archivo.",
+      "install_ids": [
+        "vervideo"
+      ],
+      "workflow": "Completo comprime si hace falta y envía el vídeo a OpenRouter para analizarlo. Mini extrae escenas y el hook localmente, transcribe el audio mediante OpenRouter y el agente compone un informe editorial. Solo descarga URLs públicas; no elude accesos privados. No genera vídeos. Los modelos y requisitos vigentes están en el SKILL.md de la versión instalada."
     }
   ]
 }
