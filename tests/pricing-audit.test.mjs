@@ -39,6 +39,7 @@ const SERVER_QUOTED = {
   genjutsu: 'Higgsfield cotiza en el servidor (/estimate del proveedor).',
   'higgsfield-soul-cinema': 'Higgsfield cotiza en el servidor (/estimate del proveedor).',
   'higgsfield-marketing-studio-image': 'Higgsfield cotiza en el servidor (/estimate del proveedor).',
+  'higgsfield-genjutsu-light': 'Higgsfield cotiza en el servidor; la CLI calcula la misma cifra y se compara en su propia prueba (Genjutsu Light).',
 };
 // Sobrecostes de la CLI sobre la reserva del servidor que tienen un motivo documentado (más allá del redondeo de 1 cr).
 const OVER_ALLOWED = [
@@ -154,7 +155,7 @@ test('la tarifa de la web coincide con la de la CLI salvo las diferencias docume
 
 test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un motivo documentado', { skip }, () => {
   const ids = Object.keys(catalog.models);
-  assert.equal(ids.length, 69);
+  assert.equal(ids.length, 70);
   const compared = new Set(results.filter((r) => reference(r) !== null && r.cli !== null).map((r) => r.id));
   const withoutFfmpeg = withFfmpeg ? [] : ['topaz-astra-precise-2-6', 'topaz-astra-creative-2', 'seedvr-video-upscaler'];
   const missing = ids.filter((id) => !compared.has(id) && !NO_SERVER_ESTIMATE[id] && !SERVER_QUOTED[id] && id !== 'krea-3' && !withoutFfmpeg.includes(id));
@@ -166,7 +167,7 @@ test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un mo
   for (const id of ['remove-background', 'eleven-speech-to-text', 'suno']) for (const r of results.filter((x) => x.id === id)) assert.equal(r.web.credits, r.cli, describe(r));
 });
 
-test('la skill lista los 69 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
+test('la skill lista los 70 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
   for (const [id, model] of Object.entries(catalog.models)) {
     assert.equal(model.enabled, true, id);
     assert.equal(model.status, 'active', id);
@@ -177,6 +178,7 @@ test('la skill lista los 69 modelos activos: solo un interruptor de servidor doc
     RESEMBLE_ENABLED: ['resemble-audio-enhancement'],
     SEEDANCE_25_PROVIDER: ['seedance-2-5-lite'],
     HIGGSFIELD_FEATURE_FLAGS: ['higgsfield-marketing-studio-image'],
+    GENJUTSU_LIGHT_ENABLED: ['higgsfield-genjutsu-light'],
   };
   const config = JSON.parse(execFileSync('php', ['-r', `$c=include ${JSON.stringify(path.join(CANONICAL, 'app/api/wallet/config.php'))}; echo json_encode(array_intersect_key($c, array_flip(${JSON.stringify(Object.keys(GATES))})));`], { encoding: 'utf8' }));
   for (const [flag, models] of Object.entries(GATES)) {
@@ -187,6 +189,23 @@ test('la skill lista los 69 modelos activos: solo un interruptor de servidor doc
   assert.equal(config.RESEMBLE_ENABLED, false);
   assert.equal(config.SEEDANCE_25_PROVIDER, 'kie');
   assert.equal(config.HIGGSFIELD_FEATURE_FLAGS['higgsfield-marketing-studio-image'], false);
+  assert.equal(config.GENJUTSU_LIGHT_ENABLED, true, 'Genjutsu Light abierto a todos (28/10/2026) con su propio interruptor');
+  assert.equal(config.HIGGSFIELD_FEATURE_FLAGS['higgsfield-genjutsu-light'], undefined, 'Light no va en HIGGSFIELD_FEATURE_FLAGS');
+});
+
+test('Genjutsu Light: la estimación local, la cotización del servidor y la reserva coinciden en cada combinación', { skip }, () => {
+  const rows = results.filter((r) => r.id === 'higgsfield-genjutsu-light');
+  assert.ok(rows.length >= 14, 'hay casos de las tres calidades, los dos modos y fracciones de segundo');
+  for (const r of rows) {
+    assert.equal(r.outcome, 'reserva', describe(r));
+    assert.ok(r.quote > 0, 'cotización del servidor: ' + describe(r));
+    assert.equal(r.cli, r.quote, 'la estimación local es la cotización del servidor: ' + describe(r));
+    assert.equal(r.hold, r.quote, 'el servidor reserva lo cotizado: ' + describe(r));
+    assert.equal(r.web.credits, r.quote, 'la web muestra la misma cifra: ' + describe(r));
+  }
+  // 10 s de vídeo = 20 s facturables: 102 / 204 / 408 cr.
+  const ten = rows.filter((r) => r.args.video_url && r.args.video_url.seconds === 10 && r.args.mode === 'character_swap');
+  assert.deepEqual(Object.fromEntries(ten.map((r) => [r.args.resolution, r.quote])), { '480p': 102, '720p': 204, '1080p': 408 });
 });
 
 test('informe: tabla de la auditoría', { skip }, () => {

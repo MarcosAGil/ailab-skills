@@ -82,6 +82,8 @@ Para **Nano Banana 2.1** (`nano-banana-2-1`), lee [su contrato](references/nano-
 
 Para **Kling 4.0** (`kling-4-0`), lee [su contrato](references/kling-4-0.md): `--mode ref` (también solo texto) o `keyframe`. Menciona los materiales en el prompt con `@image_1`, `@video_1`, `@first_frame` o el nombre de un sujeto o una voz (`@ana`). Los vídeos de referencia se cobran: suman su duración y `prepare` muestra el máximo reservado. **Seedance 2.5 Lite** (`seedance-2-5-lite`) cubre `t2v`, `i2v` y `ref` y no edita vídeo: para editar usa Seedance 2.5.
 
+Para **Genjutsu Light** (`higgsfield-genjutsu-light`), lee [su contrato](references/genjutsu.md): hasta 15 s de vídeo y 1080p. `prepare` muestra la cotización del servidor; «pendiente de activación» no cobra y no se reintenta.
+
 Primero consulta el contrato del modelo. Pasa los archivos mediante el nombre exacto
 que muestra `info`; un parámetro `file[]` puede repetirse.
 

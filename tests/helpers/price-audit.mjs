@@ -32,7 +32,7 @@ export async function auditCase(bank, testCase, fixtures) {
   const record = { id, label, args: fixtures.describe(args), cli: null, outcome: null, hold: null, serverEstimate: null, gate: null, note: '' };
 
   const normal = await attempt(bank.cli, id, argv);
-  record.cli = money(normal.prepared.stdout, /Estimacion: ~?([0-9.,]+) cr/);
+  record.cli = money(normal.prepared.stdout, /Estimacion(?: local de la skill)?: ~?([0-9.,]+) cr/);
   record.quote = money(normal.prepared.stdout, /coste cotizado ([0-9.,]+) cr/);
   if (!normal.manifest) {
     record.outcome = 'cli-rechaza';

@@ -8,6 +8,7 @@ import { inspectPricingMetadata } from './files.mjs';
 import { WAN3_ID, wan3Estimate, wan3Problems } from './wan3.mjs';
 import { KLING4_ID, kling4Estimate, kling4Problems } from './kling4.mjs';
 import { LITE_ID, liteEstimate, liteProblems } from './seedance-lite.mjs';
+import { LIGHT_ID, lightEstimate, lightProblems } from './genjutsu-light.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1', 'higgsfield-v1'];
 
@@ -422,6 +423,10 @@ export function validateParams(model, given) {
     // Seedance 2.5 Lite: modalidades excluyentes y vídeo de referencia medido en local.
     errors.push(...liteProblems(params, fileParams));
   }
+  if (model.id === LIGHT_ID) {
+    // Genjutsu Light: el vídeo se mide en local y no puede pasar de 15 s (el servidor repite la medición).
+    errors.push(...lightProblems(params, fileParams));
+  }
   if (model.driver === 'topaz-v1') {
     const frames = Number(params.frame_count);
     const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : '';
@@ -476,6 +481,9 @@ export function estimateCredits(model, params, now = Date.now()) {
     }
     return { credits: Math.ceil(Number((unitCredits * count).toFixed(8))), approximate: false, note: count + ' imagen(es) · precio exacto del lote' };
   }
+  // Genjutsu Light tiene tarifa por segundo de video medido: la CLI calcula la misma cifra que el servidor,
+  // que sigue cotizando en `prepare` y manda.
+  if (model.id === LIGHT_ID) return lightEstimate(model, params);
   // Higgsfield no tiene tarifa local: el servidor cotiza midiendo el video y
   // las referencias. Devolver un precio inventado aqui autorizaria de menos.
   if (model.id === 'krea-3' || e.kind === 'higgsfield_quote') {

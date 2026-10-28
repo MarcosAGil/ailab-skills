@@ -96,6 +96,16 @@ export function priceCases(F) {
   grid('gemini-omni-video', P, { resolution: ['720p', '1080p', '4k'], duration: ['4', '10'] });
   grid('gemini-omni-video', { ...P, video_url: video(8) }, { resolution: ['720p', '4k'] });
 
+  // --- Higgsfield: Genjutsu Light. Cotiza el servidor midiendo el vídeo; la CLI calcula la misma cifra (2 x ceil(duración)
+  // segundos facturables) y el servidor reserva exactamente lo cotizado ---
+  for (const seconds of [1, 10, 15]) {
+    for (const resolution of ['480p', '720p', '1080p']) add('higgsfield-genjutsu-light', { mode: 'character_swap', video_url: video(seconds), image_urls: [image()], resolution }, seconds + ' s');
+  }
+  add('higgsfield-genjutsu-light', { mode: 'object_swap', video_url: video(10), image_urls: [image(), image(800, 600)], resolution: '720p', prompt: 'cambia la taza por una botella' }, 'object_swap');
+  add('higgsfield-genjutsu-light', { mode: 'object_swap', video_url: video(5), image_urls: [image()], resolution: '1080p' }, 'object_swap');
+  // Fracciones: 0,5 s factura 1 s de vídeo, 8,2 s factura 9 s y 14,999 s factura 15 s (siempre al segundo superior).
+  for (const seconds of [0.5, 8.2, 14.999]) add('higgsfield-genjutsu-light', { video_url: video(seconds), image_urls: [image()], resolution: '720p' }, seconds + ' s');
+
   // --- Imagen y vídeo por fal (labs-queue) ---
   grid('qwen-image-3', P, { mode: ['t2i'], resolution: ['1K', '2K'] });
   add('qwen-image-3', { ...P, mode: 'i2i', image_urls: [image()], resolution: '2K' });

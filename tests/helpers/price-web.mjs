@@ -30,6 +30,8 @@ export function webValues(skillModel, described) {
   values.audio_count = files.audio.length;
   values.file_count = values['__' + (skillModel.estimate.files_param || '')] || 0;
   values.reference_video_durations = files.video.map((file) => file.seconds);
+  // Genjutsu Light: la web toma la duración del vídeo subido (parámetro `duration`) y cobra salida más vídeo.
+  if (skillModel.id === 'higgsfield-genjutsu-light' && files.video.length === 1) values.duration = files.video[0].seconds;
   values.reference_image_pixels = files.image.map((file) => file.width * file.height);
   return values;
 }

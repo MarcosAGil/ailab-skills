@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.25.0",
+  "catalog_version": "1.26.0",
   "min_cli_version": "2.3.7",
   "models": {
     "krea-3": {
@@ -1553,6 +1553,81 @@
         "kind": "higgsfield_quote",
         "approximate": true,
         "note": "Higgsfield no publica tarifa fija: el servidor cotiza midiendo el video y las referencias antes de generar."
+      }
+    },
+    "higgsfield-genjutsu-light": {
+      "id": "higgsfield-genjutsu-light",
+      "label": "Higgsfield Genjutsu Light",
+      "description": "Versión ligera de Genjutsu: transfiere el movimiento de un vídeo de hasta 15 s a tus imágenes o cambia un objeto por otro, en 480p, 720p o 1080p, y conserva el audio del vídeo. Cuesta menos que Genjutsu Normal. El servidor mide el vídeo y cotiza antes de generar.",
+      "section": "video",
+      "vendor": "Higgsfield",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "higgsfield-v1",
+      "min_cli_version": "2.3.14",
+      "aliases": [
+        "genjutsu light",
+        "genjutsu-light",
+        "genjutsu lite",
+        "higgsfield genjutsu light"
+      ],
+      "modes": [
+        "character_swap",
+        "object_swap"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "character_swap",
+            "object_swap"
+          ],
+          "default": "character_swap",
+          "help": "character_swap transfiere el movimiento (Motion Transfer); object_swap cambia un objeto (Cambio de objeto)."
+        },
+        "prompt": {
+          "type": "string",
+          "max_len": 5000,
+          "help": "Opcional. Si lo dejas vacío, el modelo usa solo el vídeo y las imágenes."
+        },
+        "video_url": {
+          "type": "file",
+          "accept": "video",
+          "required": true,
+          "help": "Vídeo del movimiento, de 1 a 15 s. Se usan los primeros 15 s y se conserva su audio. Si dura más, recórtalo o usa Genjutsu Normal."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "required": true,
+          "min": 1,
+          "max": 8,
+          "help": "De 1 a 8 imágenes de referencia."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "480p",
+            "720p",
+            "1080p"
+          ],
+          "default": "720p"
+        }
+      },
+      "estimate": {
+        "kind": "higgsfield_quote",
+        "by_param": "resolution",
+        "credits_per_second": {
+          "480p": 10.2,
+          "720p": 20.4,
+          "1080p": 40.8
+        },
+        "max_credits": 612,
+        "approximate": false,
+        "note": "Tarifa por segundo de vídeo: se factura la salida (dura lo mismo que el vídeo) más el vídeo de entrada, es decir, 2 x ceil(duración medida). 10 s a 720p son 204 cr. El servidor mide el vídeo y cotiza la misma cifra; es el importe que se aprueba y el máximo posible es 612 cr (15 s a 1080p)."
       }
     },
     "gpt-image-2": {

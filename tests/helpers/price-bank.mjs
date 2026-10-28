@@ -50,8 +50,16 @@ export async function startPriceBank({ canonical, skillRoot, workers = 4, balanc
     HIGGSFIELD_API_KEY: 'fake-id:fake-secret', HIGGSFIELD_BASE: dead,
   };
   const config = path.join(wallet, 'config.php');
+  // Interruptores de Higgsfield: Genjutsu Light está abierto en el repositorio (GENJUTSU_LIGHT_ENABLED) y aquí se fija
+  // también en el array para poder probar 'admin' y false. Se leen de un archivo en cada petición, así que `setHiggsfieldFlags` los cambia
+  // en caliente (true, 'admin' o false) sin reiniciar el servidor.
+  const flagsFile = path.join(temp, 'higgsfield-flags.json');
+  fs.writeFileSync(flagsFile, JSON.stringify({ 'higgsfield-genjutsu-light': true }));
   fs.writeFileSync(config, fs.readFileSync(config, 'utf8').replace('return $config;',
-    `$config=array_replace($config,json_decode(${JSON.stringify(JSON.stringify(settings))},true));return $config;`));
+    `$config=array_replace($config,json_decode(${JSON.stringify(JSON.stringify(settings))},true));`
+    + `$flags=json_decode((string)@file_get_contents(${JSON.stringify(flagsFile)}),true);`
+    + `if(is_array($flags)){$config['HIGGSFIELD_FEATURE_FLAGS']=array_replace(is_array($config['HIGGSFIELD_FEATURE_FLAGS']??null)?$config['HIGGSFIELD_FEATURE_FLAGS']:[],$flags);}`
+    + 'return $config;'));
   const env = { ...process.env, AILAB_TESTING: '1', AILAB_TEST_DB_PATH: settings.DB_PATH };
   const php = (code) => execFileSync('php', ['-r', 'require ' + JSON.stringify(path.join(wallet, 'lib.php')) + ';' + code], { env, encoding: 'utf8' }).trim();
   php(`$db=wallet_db();
@@ -140,5 +148,6 @@ export async function startPriceBank({ canonical, skillRoot, workers = 4, balanc
     fs.rmSync(temp, { recursive: true, force: true });
   };
   process.once('exit', stop);
-  return { base, cli: cliWith({}), cliForced: cliWith({ AILAB_BASE_URL: forcedBase }), reservationFor, php, stop };
+  const setHiggsfieldFlags = (flags) => fs.writeFileSync(flagsFile, JSON.stringify(flags));
+  return { base, cli: cliWith({}), cliForced: cliWith({ AILAB_BASE_URL: forcedBase }), reservationFor, php, stop, setHiggsfieldFlags };
 }

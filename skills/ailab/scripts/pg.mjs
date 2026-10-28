@@ -10,6 +10,7 @@ import { refreshAssistantsCatalog, resolveAssistant, resolveAssistantModel, assi
 import { assistantLimits, validateAssistantBatch, LEGACY_ASSISTANT_LIMITS } from './lib/assistant-limits.mjs';
 import { createAssistantRequest, loadAssistantRequest, updateAssistantRequest, loadSession, createSession, saveSession, assistantRequestIntact } from './lib/assistant-requests.mjs';
 import { inspectFile, inspectPricingMetadata, inspectVideoMetadata, rehashMatches } from './lib/files.mjs';
+import { LIGHT_ID } from './lib/genjutsu-light.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './lib/manifest.mjs';
 import { resolveOutputDir, downloadTo, saveTextTo } from './lib/output.mjs';
 import { uploadPath } from './lib/http.mjs';
@@ -49,7 +50,11 @@ const ADAPTERS = {
   'topaz-v1': topazV1,
   'higgsfield-v1': higgsfieldV1,
 };
-const POLL_MS = 5000;
+// AILAB_POLL_MS solo existe para las pruebas (acelera la espera); en uso real manda el valor por defecto.
+const POLL_MS = Number(process.env.AILAB_POLL_MS) > 0 ? Number(process.env.AILAB_POLL_MS) : 5000;
+// Espera máxima entre consultas tras un 429 o un fallo transitorio, y fallos seguidos que se toleran antes de dejar la tarea recuperable.
+const TRANSIENT_MAX_WAIT_MS = 2 * 60 * 1000;
+const TRANSIENT_MAX_STREAK = 8;
 const TIMEOUT_MS = { image: 10 * 60 * 1000, video: 45 * 60 * 1000, audio: 15 * 60 * 1000, text: 15 * 60 * 1000 };
 const UPLOAD_EXT = {
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
@@ -498,7 +503,9 @@ function cmdValidate(cat, name, opts) {
   }
   const est = estimateCredits(hit.model, { ...v.params, ...v.fileParams });
   out('OK ' + hit.model.label + ': parametros validos · '
-    + (est.server_quote ? 'el coste lo cotiza el servidor en prepare' : 'estimacion ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr'))
+    + (est.server_quote
+      ? (Number.isFinite(est.credits) ? 'estimacion local ~' + est.credits + ' cr (el servidor la cotiza en prepare)' : 'el coste lo cotiza el servidor en prepare')
+      : 'estimacion ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr'))
     + ' · sin gasto.');
 }
 
@@ -620,6 +627,10 @@ async function cmdPrepare(cat, name, opts) {
     if (!Number.isFinite(est.credits) || est.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Actualiza AILAB o consulta el catálogo; no se ha enviado nada.');
     if (ceiling !== null && est.credits > ceiling) fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
   }
+  if (m.id === LIGHT_ID && Number.isFinite(est.credits) && est.credits > 0 && ceiling !== null && est.credits > ceiling) {
+    // Genjutsu Light: el vídeo ya está medido en local; se avisa antes de subir nada. El servidor repite la cuenta.
+    fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+  }
   const me = await requireSession();
 
   // Higgsfield: los archivos suben ANTES de cotizar porque el servidor mide el
@@ -686,6 +697,8 @@ async function cmdPrepare(cat, name, opts) {
     });
   }
 
+  // Genjutsu Light: la cifra local es la misma que cotiza el servidor. Si difieren, manda el servidor y se avisa.
+  const localLight = m.id === LIGHT_ID && serverQuote && Number.isFinite(est.credits) && est.credits > 0 ? est.credits : null;
   out('── PLAN DE GENERACION (sin gasto todavia) ──');
   out('Modelo: ' + m.label + ' (' + hit.id + ')' + (m.expensive ? ' · MODELO CARO' : ''));
   for (const [k, val] of Object.entries(v.params)) out('  ' + k + ': ' + JSON.stringify(val));
@@ -695,6 +708,12 @@ async function cmdPrepare(cat, name, opts) {
     out('Cotizacion del servidor: ' + quote.quote_id + ' · coste cotizado '
       + (quote.estimated_credits === null ? 'pendiente' : quote.estimated_credits + ' cr')
       + ' (importe que se aprueba) · techo de seguridad del servidor ' + quote.max_credits_authorized + ' cr');
+    if (localLight !== null) {
+      out('Estimacion local de la skill: ~' + localLight + ' cr (' + est.note + ')');
+      if (localLight !== Number(quote.estimated_credits)) {
+        out('AVISO: la estimacion local (' + localLight + ' cr) no coincide con la cotizacion del servidor (' + quote.estimated_credits + ' cr). Manda el servidor; actualiza la skill con `update --confirmed` por si cambio la tarifa.');
+      }
+    }
     out('La cotizacion caduca: ' + quote.expires_at + '. Pasada esa hora hay que volver a preparar.');
   } else {
     out('Estimacion: ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr') + (est.note ? ' (' + est.note + ')' : ''));
@@ -857,6 +876,7 @@ async function pollAndDownload(model, taskRef, outputOverride, initialResult = n
   const t0 = Date.now();
   const limit = TIMEOUT_MS[model.output] || TIMEOUT_MS.image;
   const adapter = ADAPTERS[model.driver];
+  let transientStreak = 0;
   for (;;) {
     if (Date.now() - t0 > limit) {
       out('Sigue en curso tras el tiempo maximo de espera. Reanuda con: ' + cliCommand('status ' + taskRef.serverTaskId) + ' · o mira el Historial de la web.');
@@ -864,6 +884,29 @@ async function pollAndDownload(model, taskRef, outputOverride, initialResult = n
     }
     let st = initialResult || await adapter.check(model, taskRef);
     initialResult = null;
+    if (st.transient) {
+      // Límite de peticiones o fallo del servidor al consultar: la tarea sigue en marcha. Se espera con retroceso
+      // (respetando Retry-After) y no se lanza nada nuevo. Si no hay forma, queda recuperable con `status`.
+      transientStreak++;
+      const failure = st.transient;
+      if (transientStreak >= TRANSIENT_MAX_STREAK) {
+        const stored = storedResult(await taskLookup(taskRef.serverTaskId));
+        if (!stored) {
+          out('No se pudo consultar el estado tras ' + transientStreak + ' intentos seguidos (' + explain(failure) + '). La tarea sigue en marcha y no se ha vuelto a enviar nada.');
+          recoverHint(taskRef.serverTaskId);
+          return false;
+        }
+        st = stored;
+      } else {
+        const asked = failure.kind === 'rate_limited' && Number.isFinite(failure.retryAfterSeconds) ? Math.max(1, Math.ceil(failure.retryAfterSeconds)) * 1000 : 0;
+        const wait = Math.min(TRANSIENT_MAX_WAIT_MS, Math.max(asked, POLL_MS * 2 ** transientStreak));
+        out('El servidor no ha podido dar el estado ahora (' + (failure.kind === 'rate_limited' ? 'límite de peticiones' : failure.httpStatus ? 'HTTP ' + failure.httpStatus : 'sin conexión') + '). La tarea sigue en marcha: vuelvo a consultar en ' + Math.ceil(wait / 1000) + ' s.');
+        await sleep(wait);
+        continue;
+      }
+    } else {
+      transientStreak = 0;
+    }
     if (st.recoveryRequired || st.status === 'fail' || (st.status === 'error' && st.normalized?.kind !== 'rate_limited')) {
       // Una unica lectura de la wallet puede recuperar lo que ya ve la web.
       // Nunca crea otra tarea ni interpreta un fallo de transporte como fallo final.
@@ -899,7 +942,13 @@ async function pollAndDownload(model, taskRef, outputOverride, initialResult = n
       recoverHint(taskRef.serverTaskId);
       return false;
     }
-    if (st.status === 'fail') { out('La generacion fallo: ' + st.error); recoverHint(taskRef.serverTaskId); return false; }
+    if (st.status === 'fail') {
+      out('La generacion fallo: ' + st.error);
+      // Fallo definitivo y liquidado sin cargo (moderación, rechazo…): no hay nada que recuperar.
+      if (st.free) out('No hay nada que recuperar. Si quieres reintentarlo, cambia el material o el prompt y vuelve a ejecutar prepare.');
+      else recoverHint(taskRef.serverTaskId);
+      return false;
+    }
     if (st.status === 'error') { out('No se pudo confirmar el estado: ' + explain(st.normalized)); recoverHint(taskRef.serverTaskId); return false; }
     await sleep(POLL_MS);
   }

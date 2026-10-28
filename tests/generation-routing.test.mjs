@@ -92,9 +92,11 @@ async function exercise(model, overrides = {}, uploads = {}) {
   const payload = adapter.buildPayload(model, { ...params, ...overrides }, uploads);
   const intent = { client_request_id: crypto.randomUUID(), max_credits_authorized: 1000 };
   if (model.driver === 'higgsfield-v1') {
-    // Higgsfield exige una cotizacion verificada antes de crear la tarea.
+    // Higgsfield exige una cotizacion verificada antes de crear la tarea, y nunca por encima del tope del contrato
+    // del modelo (Genjutsu Light: 612 cr).
+    intent.max_credits_authorized = Math.min(1000, adapter.hardCreditCap(model));
     intent.quote_id = 'quote-mock';
-    intent.quote_max_credits = 1000;
+    intent.quote_max_credits = intent.max_credits_authorized;
     intent.quote_expires_at = new Date(Date.now() + 600000).toISOString();
   }
   const submitted = await adapter.submit(model, payload, intent);

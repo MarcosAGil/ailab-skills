@@ -2,6 +2,7 @@
 // se resuelve a la fecha de hoy y solo queda visible mientras esté activa, con su fecha de fin. El importe que se da
 // al usuario sale siempre de la estimación de la CLI (`prepare` o la que calcula `info`), nunca de leer tablas a mano.
 import { estimateCredits, requiresServerQuote } from './catalog.mjs';
+import { LIGHT_ID, lightCredits } from './genjutsu-light.mjs';
 
 const PRICE_PARAMS = ['by_param', 'row_param', 'column_param', 'rate_param', 'mode_param', 'quality_param', 'audio_param'];
 
@@ -127,6 +128,16 @@ export function priceExamples(model, now = Date.now()) {
 // Texto de precio de `info`. Nunca imprime la tabla caducada de una promoción terminada.
 export function pricingLines(model, now = Date.now()) {
   const lines = [];
+  if (model.id === LIGHT_ID) {
+    // Light: el servidor cotiza, y la tarifa por segundo de vídeo (salida + vídeo de entrada) es la misma en local.
+    const rates = (model.estimate && model.estimate.credits_per_second) || {};
+    lines.push('Precio: lo cotiza el servidor al ejecutar `prepare`; da al usuario esa cotización.');
+    lines.push('  Referencia por segundo de vídeo (salida + vídeo de entrada, 2 x ceil(duración), máximo 15 s): '
+      + Object.entries(rates).map(([resolution, credits]) => resolution + ' ' + String(credits).replace('.', ',') + ' cr').join(' · '));
+    const examples = Object.keys(rates).map((resolution) => [resolution, lightCredits(model.estimate, resolution, 10)]).filter(([, credits]) => credits !== null);
+    if (examples.length) lines.push('  Ejemplo con 10 s de vídeo: ' + examples.map(([resolution, credits]) => resolution + ' ' + credits + ' cr').join(' · '));
+    return lines;
+  }
   if (requiresServerQuote(model, {}) || model.estimate?.kind === 'higgsfield_quote') {
     lines.push('Precio: lo cotiza el servidor al ejecutar `prepare` (no hay tarifa local). Da al usuario esa cotización.');
     return lines;

@@ -77,7 +77,7 @@ test('el contrato publicado exige la skill 2.3.13, no expone proveedor y las CLI
   for (const forbidden of ['kling-4.0/', 'provider_contract', 'callBackUrl', 'KIE', 'api.kie']) assert.equal(text.includes(forbidden), false, forbidden);
   assert.equal(text.includes(String.fromCharCode(0x2014)), false);
   assert.equal(modelUsable(model).ok, true);
-  assert.equal(modelUsable({ ...model, min_cli_version: '2.3.14' }).ok, false);
+  assert.equal(modelUsable({ ...model, min_cli_version: '2.3.15' }).ok, false);
   if (!CANONICAL) return;
   for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12']) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);

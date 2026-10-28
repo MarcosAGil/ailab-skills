@@ -68,7 +68,7 @@ test('el catálogo solo activa un modelo Higgsfield cuando el servidor de la ski
   const source = sourceOf('app/api/skill/higgsfield.php');
   const specs = source.slice(source.indexOf('function ailab_skill_higgsfield_spec'), source.indexOf('function ailab_skill_higgsfield_feature_enabled'));
   const supported = [...specs.matchAll(/'(higgsfield-[a-z0-9-]+)' => \[/g)].map((match) => match[1]).sort();
-  assert.deepEqual(supported, ['higgsfield-genjutsu-motion-transfer', 'higgsfield-marketing-studio-image', 'higgsfield-soul-2', 'higgsfield-soul-cinema'], 'si esto cambia, ajusta el catálogo');
+  assert.deepEqual(supported, ['higgsfield-genjutsu-light', 'higgsfield-genjutsu-motion-transfer', 'higgsfield-marketing-studio-image', 'higgsfield-soul-2', 'higgsfield-soul-cinema'], 'si esto cambia, ajusta el catálogo');
   for (const [id, model] of Object.entries(catalog.models)) {
     if (model.driver !== 'higgsfield-v1') continue;
     const server = higgsfield.serverModelId({ id, ...model });
@@ -207,10 +207,13 @@ test('paridad con el PHP real: el endpoint de la skill respeta HIGGSFIELD_FEATUR
 });
 
 test('paridad con el PHP real: configuración de acceso de Higgsfield (interruptores y tope) tal como figura en el repositorio', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
-  const config = php("$c = wallet_config(); echo json_encode(['flags' => $c['HIGGSFIELD_FEATURE_FLAGS'], 'cap' => $c['HIGGSFIELD_MAX_CREDITS_PER_TASK'], 'genjutsu' => $c['HIGGSFIELD_GENJUTSU_MAX_CREDITS_PER_TASK']]);");
+  const config = php("$c = wallet_config(); echo json_encode(['flags' => $c['HIGGSFIELD_FEATURE_FLAGS'], 'light' => $c['GENJUTSU_LIGHT_ENABLED'] ?? null, 'lightState' => wallet_higgsfield_flag_state($c, 'higgsfield-genjutsu-light'), 'cap' => $c['HIGGSFIELD_MAX_CREDITS_PER_TASK'], 'genjutsu' => $c['HIGGSFIELD_GENJUTSU_MAX_CREDITS_PER_TASK']]);");
   assert.deepEqual(config.flags, {
     'higgsfield-soul-2': true, 'higgsfield-soul-cinema': true, 'higgsfield-marketing-studio-image': false, 'higgsfield-genjutsu-motion-transfer': true,
-  }, 'Marketing Studio Image sigue desactivado en el gateway: ni la web ni la skill pueden usarlo hasta que se active en producción');
+  }, 'Marketing Studio Image sigue desactivado: ni la web de miembros ni la skill pueden usarlo hasta que se active en producción');
+  // Genjutsu Light tiene su propio interruptor (GENJUTSU_LIGHT_ENABLED), abierto a todos desde el 28/10/2026.
+  assert.equal(config.light, true);
+  assert.equal(config.lightState, 'open');
   assert.equal(config.cap, 1000);
   assert.equal(config.genjutsu, 2100);
   assert.equal(higgsfield.hardCreditCap({ id: 'genjutsu', ...catalog.models.genjutsu }), 2100);

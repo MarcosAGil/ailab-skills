@@ -64,6 +64,7 @@ la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza
 
 ## Cambios relevantes
 
+- 2.3.14: Genjutsu Light (`higgsfield-genjutsu-light`); Higgsfield termina las tareas `nsfw` y `rejected` con su motivo, y un 429 o 5xx al consultar espera con retroceso.
 - 2.3.13: `guide` devuelve la guía de uso vigente; Seed Audio reserva 100 cr y cobra la duración
   real (0,625 cr/s, nunca más de 100 cr); el arranque avisa de plugin antiguo, doble instalación y
   sandbox de Codex; nuevos Kling 4.0 (referencias, sujetos, voces y fotogramas clave) y Seedance 2.5 Lite; `info` muestra la tarifa vigente de hoy (una promoción solo mientras esté activa, con su fecha de fin) y los precios se auditan contra el servidor. Las versiones anteriores están en el historial de Git.

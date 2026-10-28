@@ -1,4 +1,4 @@
-// Driver AILAB para Higgsfield (SOUL 2, SOUL Cinema, Marketing Studio Image y Genjutsu). La CLI solo habla con
+// Driver AILAB para Higgsfield (SOUL 2, SOUL Cinema, Marketing Studio Image, Genjutsu y Genjutsu Light). La CLI solo habla con
 // /api/skill/higgsfield.php: la credencial del proveedor, la verificacion del
 // video y de las referencias, la reserva y la liquidacion viven en el servidor.
 // Este modulo NUNCA recibe ni envia la clave del proveedor; si algun dia se
@@ -39,6 +39,8 @@ const HARD_CREDIT_CAPS = {
   'higgsfield-soul-cinema': 1000,
   'higgsfield-marketing-studio-image': 1000,
   'higgsfield-genjutsu-motion-transfer': 2100,
+  // Light: 15 s de video a 1080p son 30 s facturables (2 x ceil(duracion)) = 612 cr, el mayor importe posible.
+  'higgsfield-genjutsu-light': 612,
 };
 
 // Campos que jamas deben viajar desde la CLI: la credencial es del servidor.
@@ -360,6 +362,40 @@ function resultUrls(data) {
   return [...new Set(list)].filter(url => typeof url === 'string' && /^https?:\/\//i.test(url));
 }
 
+// Estados finales sin resultado. Higgsfield documenta failed, nsfw (bloqueo por moderación) y canceled; el servidor
+// de AILAB trata además rejected, error y cancelled como finales (`wallet_settle_higgsfield_record`) y no cobra
+// ninguno. Un estado que no sea final ni de éxito sigue en cola: sin esta lista, nsfw y rejected se consultaban sin fin.
+const REVIEW = 'Revisa el vídeo, las imágenes de referencia y el prompt. No se ha cobrado nada.';
+const COULD_NOT = 'Higgsfield no ha podido completar la generación. Inténtalo de nuevo más tarde. No se ha cobrado nada.';
+const FREE_FAILURE_MESSAGES = {
+  NSFW: 'Higgsfield ha bloqueado la generación por su filtro de contenido. ' + REVIEW,
+  REJECTED: 'Higgsfield ha rechazado la generación. ' + REVIEW,
+  CANCELLED: 'La generación se ha cancelado en Higgsfield. No se ha cobrado nada.',
+  CANCELED: 'La generación se ha cancelado en Higgsfield. No se ha cobrado nada.',
+  FAILED: COULD_NOT,
+  ERROR: COULD_NOT,
+};
+// FAIL y EXPIRED no son estados que Higgsfield publique ni que el servidor liquide sin cargo: terminan la espera, pero sin afirmar nada del cobro.
+const FINAL_STATES = new Set([...Object.keys(FREE_FAILURE_MESSAGES), 'FAIL', 'EXPIRED']);
+
+// Motivo que manda el servidor en `ailab_error`, acotado y sin caracteres de control.
+function serverReason(data) {
+  const raw = data && data.ailab_error;
+  if (typeof raw !== 'string') return null;
+  const clean = raw.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 400);
+  return clean || null;
+}
+
+// Errores de la consulta que no dicen nada del estado de la tarea: límite de peticiones, fallo del servidor o del
+// proveedor, corte de red. La generación sigue en marcha y se consulta de nuevo con espera creciente.
+function transientFailure(response) {
+  const status = Number(response && response.httpStatus) || 0;
+  const business = Number(response && response.businessCode) || 0;
+  const kind = response && response.kind;
+  return kind === 'rate_limited' || kind === 'network' || kind === 'timeout' || kind === 'server_error'
+    || (kind === 'invalid_response' && status >= 500) || status >= 500 || business >= 500;
+}
+
 // action=status va por GET con el id de la tarea en la query (?taskId=).
 export async function check(model, taskRef) {
   const taskId = taskRef && (taskRef.providerRequestId || taskRef.taskId);
@@ -368,6 +404,8 @@ export async function check(model, taskRef) {
   }
   const response = await serviceGet(ENDPOINT, { action: 'status', taskId });
   if (!response.ok) {
+    // 429 y 5xx no son un estado: el poll espera con retroceso en vez de abandonar o insistir.
+    if (transientFailure(response)) return { status: 'pending', transient: response };
     return { status: 'error', normalized: response };
   }
   const data = response.data || {};
@@ -376,8 +414,17 @@ export async function check(model, taskRef) {
     const urls = resultUrls(data);
     return urls.length ? { status: 'success', urls } : { status: 'pending', recoveryRequired: true };
   }
-  if (['FAILED', 'FAIL', 'CANCELLED', 'CANCELED', 'ERROR', 'EXPIRED'].includes(status)) {
-    return { status: 'fail', error: 'El procesamiento no pudo completarse.' };
+  if (FINAL_STATES.has(status)) {
+    const free = Object.hasOwn(FREE_FAILURE_MESSAGES, status);
+    const reason = serverReason(data);
+    // El texto del servidor manda; si no aclara el cobro, se añade: estos finales se liquidan siempre sin cargo.
+    const withCharge = reason && free && !/cobrad|cargo/i.test(reason) ? reason + (/[.!?]$/.test(reason) ? '' : '.') + ' No se ha cobrado nada.' : reason;
+    return {
+      status: 'fail',
+      error: withCharge || (free ? FREE_FAILURE_MESSAGES[status] : 'El procesamiento no pudo completarse.'),
+      // Fallo confirmado por el proveedor y liquidado sin cargo: no hay nada que recuperar.
+      ...(free ? { free: true } : {}),
+    };
   }
   return { status: 'pending' };
 }

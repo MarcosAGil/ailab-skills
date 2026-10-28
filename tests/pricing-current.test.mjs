@@ -110,9 +110,9 @@ test('el catálogo publicado no conserva promociones ni textos con fechas de pro
   assert.equal(estimateCredits(catalog.models['seedance-2-mini'], { resolution: '720p', duration: 5 }, TODAY).credits, 105);
 });
 
-test('`info` de los 69 modelos no falla, no enseña tablas caducadas y repite la regla de precio', () => {
+test('`info` de los 70 modelos no falla, no enseña tablas caducadas y repite la regla de precio', () => {
   const ids = Object.keys(catalog.models);
-  assert.equal(ids.length, 69);
+  assert.equal(ids.length, 70);
   for (const id of ids) {
     const model = { id, ...catalog.models[id] };
     const text = pricingLines(model, TODAY).join('\n');
@@ -144,7 +144,7 @@ test('la CLI real: `info` de un catálogo con la estructura antigua muestra 161,
   assert.match(info, /Precio vigente a \d{4}-\d{2}-\d{2} \(UTC\)/);
   assert.match(info, /usa el presupuesto de la CLI/);
   const models = run(['models'], { AILAB_CATALOG_PATH: path.join(SKILL, 'catalog/catalog.json') });
-  assert.equal(models.split('\n').filter((line) => /^ {2}[a-z0-9-]+ · /.test(line)).length, 69);
+  assert.equal(models.split('\n').filter((line) => /^ {2}[a-z0-9-]+ · /.test(line)).length, 70);
   assert.doesNotMatch(models, /NO DISPONIBLE/, 'ningún modelo está desactivado en el catálogo de la skill');
   assert.match(models, /Precios: `info <modelo>`.*presupuesto de `prepare`/);
 });
