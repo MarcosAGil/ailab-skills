@@ -20,86 +20,40 @@
       ]
     },
     {
-      "id": "vervideo",
-      "name": "Ver vídeo",
-      "version": "2.0.0",
-      "channel": "beta",
-      "path": "skills/vervideo",
-      "description": "Análisis de vídeos locales o públicos en modos completo y mini mediante OpenRouter.",
-      "minimum_python": "3.9",
-      "clients": [
-        "claude-code",
-        "codex"
-      ],
-      "self_test": {
-        "command": "python3",
-        "args": [
-          "scripts/completo.py",
-          "--help"
-        ],
-        "expect": "Analiza un video completo"
-      }
-    },
-    {
-      "id": "refinar-prompt",
-      "name": "Refinar prompt",
+      "id": "estilo-espontaneo-viral",
+      "name": "Estilo espontáneo-viral",
       "version": "1.0.0",
-      "channel": "beta",
-      "path": "skills/refinar-prompt",
-      "description": "Audita prompts de vídeo y precisa actuación, cámara, enfoque y sincronía.",
+      "channel": "stable",
+      "path": "skills/estilo-espontaneo-viral",
+      "description": "Prompts de Seedance 2.5 con estética espontánea grabada a mano.",
       "kind": "instructions",
-      "guide_references": [
-        "references/guia-marketplace.md"
-      ],
+      "guide_references": [],
       "clients": [
         "claude-code",
         "codex"
       ]
     },
     {
-      "id": "ugc-bajo-coste-ailab",
-      "name": "UGC Bajo Coste AILAB",
-      "version": "1.1.0",
-      "channel": "beta",
-      "path": "skills/ugc-bajo-coste-ailab",
-      "description": "Vídeo UGC con Gemini Omni y pistas separadas de ambiente y voz mediante AILAB.",
-      "minimum_node": "18.17.0",
-      "clients": [
-        "claude-code",
-        "codex"
-      ],
-      "self_test": {
-        "command": "node",
-        "args": [
-          "scripts/extract-audio.mjs",
-          "--help"
-        ],
-        "expect": "Extrae audio original para UGC AILAB"
-      }
-    },
-    {
-      "id": "refinar-actuacion-camara",
-      "name": "Refinar actuación y cámara",
-      "version": "1.0.1",
-      "channel": "beta",
-      "path": "skills/refinar-actuacion-camara",
-      "description": "Skill de AiLendra Labs para precisar actuación, cámara y enfoque. Comparte un prompt de vídeo ya escrito y sus referencias; audita, pregunta y refina sin cambiar tu estética.",
+      "id": "estilo-amateur-ccd",
+      "name": "Estilo amateur CCD",
+      "version": "1.0.0",
+      "channel": "stable",
+      "path": "skills/estilo-amateur-ccd",
+      "description": "Prompts de Seedance 2.5 con estética de cámara compacta CCD de los 2000.",
       "kind": "instructions",
-      "guide_references": [
-        "references/guia-marketplace.md"
-      ],
+      "guide_references": [],
       "clients": [
         "claude-code",
         "codex"
       ]
     },
     {
-      "id": "refinar-prompt-ugc",
-      "name": "Refinar prompt UGC",
+      "id": "estilo-ugc",
+      "name": "Estilo UGC",
       "version": "1.0.0",
-      "channel": "beta",
-      "path": "skills/refinar-prompt-ugc",
-      "description": "La más reciente y completa para realismo UGC: cámara de móvil, actuación, luz y sonido coherentes.",
+      "channel": "stable",
+      "path": "skills/estilo-ugc",
+      "description": "Auditor de realismo para prompts de vídeo UGC grabados con móvil.",
       "minimum_python": "3.9",
       "self_test": {
         "command": "python3",
@@ -109,37 +63,39 @@
         ],
         "expect": "--duration"
       },
-      "guide_references": [
-        "references/guia-marketplace.md"
-      ],
+      "guide_references": [],
       "clients": [
         "claude-code",
         "codex"
       ]
     },
     {
-      "id": "ugcia-ultrarrealista-aill",
-      "name": "UGC ultrarrealista AILAB",
-      "version": "1.1.2",
-      "channel": "beta",
-      "path": "skills/ugcia-ultrarrealista-aill",
-      "description": "Workflow UGC por fases con imágenes de personaje, audio primero y vídeo Seedance.",
-      "minimum_python": "3.9",
-      "minimum_node": "18.17.0",
+      "id": "refinar-prompt",
+      "name": "Refinar prompt",
+      "version": "1.0.0",
+      "channel": "stable",
+      "path": "skills/refinar-prompt",
+      "description": "Auditoría crítica de prompts estructurados de Seedance 2.5 y sus referencias.",
+      "kind": "instructions",
+      "guide_references": [],
       "clients": [
         "claude-code",
         "codex"
-      ],
-      "guide_references": [
-        "references/guia-marketplace.md"
-      ],
-      "self_test": {
-        "command": "bash",
-        "args": [
-          "scripts/autotest.sh"
-        ],
-        "expect": "0 fallos"
-      }
+      ]
+    },
+    {
+      "id": "personaje-consistente",
+      "name": "Personaje consistente",
+      "version": "0.1.0",
+      "channel": "beta",
+      "path": "skills/personaje-consistente",
+      "description": "Personaje de IA consistente entre vídeos, con ficha, referencias y voz.",
+      "kind": "instructions",
+      "guide_references": [],
+      "clients": [
+        "claude-code",
+        "codex"
+      ]
     }
   ]
 }

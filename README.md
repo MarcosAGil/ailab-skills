@@ -4,7 +4,8 @@
 
 # AILAB Skills
 
-Repositorio público oficial de las skills de AILAB para Claude Code y Codex.
+Repositorio público oficial de AILAB para Claude Code y Codex: el plugin de AILAB y las skills de
+prompting y creación de la comunidad de Ailendra Labs.
 
 > **Beta técnica:** disponible para cuentas de AILAB que tengan habilitado el
 > acceso beta. Catálogo, asistentes y actualizaciones se sirven desde AILAB y el
@@ -14,7 +15,13 @@ Las skills son clientes públicos. Descargar este repositorio no concede acceso 
 AILAB, créditos ni credenciales de proveedores. Cada miembro utiliza su propia
 cuenta y un token de dispositivo personal y revocable creado desde AILAB.
 
-## Plugin de AILAB (recomendado)
+## Instálalo con tu agente (lo más fácil)
+
+Copia el prompt de [`docs/instalar-con-tu-agente.md`](docs/instalar-con-tu-agente.md), pégalo en una
+conversación nueva de Claude Code o Codex y sigue sus pasos. Hay uno para el plugin de AILAB y otro
+para las skills de la comunidad.
+
+## Plugin de AILAB
 
 El plugin `ailab` instala la skill `ailab` en Claude Code y en Codex sin copiar carpetas a
 mano. Modelos, precios y mejoras llegan solos desde AILAB; el plugin solo cambia cuando tú lo
@@ -26,8 +33,6 @@ Claude Code:
 claude plugin marketplace add MarcosAGil/ailab-skills
 claude plugin install ailab@ailendra-labs
 ```
-
-(En Claude Code 2.1.275 o posterior también sirve `/plugin install ailab --marketplace MarcosAGil/ailab-skills`.)
 
 Codex:
 
@@ -42,16 +47,18 @@ migración desde la skill manual) está en [`docs/instalacion-plugin.md`](docs/i
 
 ## Skills disponibles
 
-
 | Skill | Estado | Descripción |
 |---|---|---|
-| `ailab` | Beta | Playground, modelos generativos y asistentes de AILAB. |
-| `vervideo` | Beta | Análisis completo o editorial de vídeos locales y URLs públicas. |
-| `refinar-prompt` | Beta | Auditoría y refinado de prompts de vídeo. Solo instrucciones, sin generaciones ni claves. |
-| `refinar-actuacion-camara` | Beta | Método personal portable de Marcos, sin imponer estética. |
-| `refinar-prompt-ugc` | Beta | Realismo UGC, once formatos, medición de audio y lint local. |
-| `ugc-bajo-coste-ailab` | Beta | Guion y referencias → Gemini Omni → ambiente SAM y voz ElevenLabs, con pistas separadas. Requiere `ailab`. |
-| `ugcia-ultrarrealista-aill` | Beta | Workflow por fases con imágenes, Seed Audio y Seedance 2.5. Requiere `refinar-prompt-ugc`; `ailab` para automatizar. |
+| `ailab` | Beta (plugin) | Playground, modelos generativos y asistentes de AILAB. |
+| `estilo-espontaneo-viral` | Estable | Prompts de Seedance 2.5 con estética espontánea grabada a mano. |
+| `estilo-amateur-ccd` | Estable | Prompts de Seedance 2.5 con estética de compacta CCD de los 2000. |
+| `estilo-ugc` | Estable | Auditor de realismo para prompts de vídeo UGC grabados con móvil. |
+| `refinar-prompt` | Estable | Auditoría crítica de prompts de Seedance 2.5 y sus referencias. |
+| `personaje-consistente` | Beta | Personaje de IA consistente: ficha, hojas de referencia y voz con AILAB. |
+
+Las cinco skills de la comunidad son autocontenidas y sirven con cualquier plataforma que use
+Seedance 2.5; con AILAB rinden mejor. Solo `personaje-consistente` genera (con tus créditos y tu
+aprobación en cada fase).
 
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
 es independiente y vive dentro de `skills/<id>/`.
@@ -75,65 +82,35 @@ acredita por sí sola disponibilidad en producción.
 ## Requisitos
 
 - Node.js 18.17 o posterior.
-- Para `ugcia-ultrarrealista-aill`: Bash, Python 3.9+, FFmpeg y FFprobe; en Windows, WSL o Git Bash. Su autotest no llama a proveedores ni consume créditos.
 - Para `ailab`: una cuenta de AILAB habilitada y créditos para las operaciones de pago.
-- Para `vervideo`: Python 3.9 o posterior, una API key propia de OpenRouter y
-  `ffmpeg`, `ffprobe` y `yt-dlp` para procesar vídeo, audio y URLs públicas.
-- Para `ugc-bajo-coste-ailab`: la skill `ailab` instalada y configurada (runtime 2.2.4 o posterior), además de `ffmpeg`
-  y `ffprobe`. Utiliza la cuenta y créditos de AILAB, sin claves adicionales.
+- Para instalar las skills de la comunidad desde el repositorio: Git. `estilo-ugc` usa Python 3 para
+  sus scripts de comprobación (opcional); `personaje-consistente`, FFmpeg y FFprobe (opcional).
 
-## Instalación manual (alternativa al plugin)
+## Instalación manual de las skills
 
-Para el resto de skills, o si prefieres no usar el plugin, clona o descarga este repositorio y ejecuta
-los comandos desde su raíz:
+Clona este repositorio y ejecuta el instalador desde su raíz:
 
 ```bash
 git clone https://github.com/MarcosAGil/ailab-skills.git
 cd ailab-skills
-node tools/install.mjs ailab --target claude     # ~/.claude/skills/ailab
-node tools/install.mjs ailab --target codex      # ~/.codex/skills/ailab
-node tools/install.mjs --all --target claude     # todas las skills
-node tools/install.mjs vervideo --target claude  # solo el analizador de vídeo
+node tools/install.mjs estilo-ugc refinar-prompt --target claude   # ~/.claude/skills/
+node tools/install.mjs --all --target codex                         # todas, en ~/.codex/skills/
 ```
 
-No instales `ailab` por las dos vías a la vez. Si ya la tienes como skill manual, retírala con
-`node tools/migrate-to-plugin.mjs` (simulación) y `--apply` (la mueve a una copia de seguridad).
+También puedes extraer el ZIP de cada skill (página Skills de AILAB) en la carpeta `skills` de tu
+agente, con `SKILL.md` directamente dentro. No instales `ailab` por las dos vías a la vez: si ya la
+tienes como skill manual, retírala con `node tools/migrate-to-plugin.mjs` (simulación) y `--apply`.
 
 El instalador valida el registro, rechaza enlaces simbólicos y realiza una copia atómica. Ejecuta el
 autodiagnóstico de las skills ejecutables; en las de solo instrucciones valida archivos y referencias
 sin ejecutar comandos de la skill.
 
-- `refinar-prompt` (Codex o Claude Code): invoca `$refinar-prompt` con un prompt ya escrito y sus
-  referencias. No requiere AILAB ni consume sus créditos.
-- `ugc-bajo-coste-ailab` junto a su dependencia: `node tools/install.mjs ailab ugc-bajo-coste-ailab
-  --target codex`. Invoca `$ugc-bajo-coste-ailab` con guion, formato, referencias visuales y dirección.
-  Prepara un plan único (Video Prompter, Gemini Omni Flash 1.1, SAM Audio, Voice Isolator y Voice
-  Changer) y entrega el vídeo original, ambiente y voz separados, sin montaje ni upscale. Cristina es
-  la voz predeterminada, resuelta desde el catálogo. Su autodiagnóstico comprueba el helper, no la
-  disponibilidad de la cuenta, los proveedores ni los binarios de vídeo.
-
 ## Primer uso
 
-El agente puede descubrir la skill automáticamente. También puedes invocarla como
-`$ailab`. La primera vez, ejecuta personalmente en tu terminal:
-
-```bash
-node ~/.claude/skills/ailab/scripts/ailab.mjs login
-node ~/.claude/skills/ailab/scripts/ailab.mjs doctor
-```
-
-En Codex, sustituye `~/.claude/skills/` por `~/.codex/skills/`.
-
-Nunca pegues el token en un chat. El comando `login` lo solicita de forma oculta y
-lo guarda fuera del repositorio con permisos restringidos.
-
-Para `vervideo`, configura personalmente `OPENROUTER_API_KEY` en
-`~/.config/openrouter/.env` con permisos `600`. La clave no se guarda dentro de
-la skill ni se incluye en sus paquetes.
-
-`vervideo` ofrece dos modos: `completo` envía el vídeo entero a Gemini para un
-análisis narrativo exhaustivo; `mini` extrae escenas, examina el hook y genera
-un informe editorial con transcripción y métricas de montaje.
+Invoca la skill por su nombre (`$ailab`, `$estilo-ugc`…) o deja que el agente la descubra. Para
+AILAB, la primera vez ejecuta personalmente en tu terminal `login` y `doctor` (el agente te da el
+comando con la ruta exacta del plugin). Nunca pegues el token en un chat: `login` lo pide de forma
+oculta y lo guarda fuera del repositorio con permisos restringidos.
 
 ## Actualizaciones
 
@@ -147,8 +124,8 @@ en Codex, `codex plugin marketplace upgrade ailendra-labs`) o volver a ejecutar 
 la skill manual. La sesión y la configuración personal viven fuera de la carpeta de la skill y se
 conservan. La guía de uso vigente, siempre al día, la devuelve `guide`.
 
-Una nueva skill sí se publica como una carpeta adicional y una entrada nueva en
-`registry.json`.
+Las skills de la comunidad se actualizan con `git pull --ff-only` y el instalador. Una skill nueva se
+publica como una carpeta adicional y una entrada nueva en `registry.json` y `marketplace.json`.
 
 ## Seguridad
 

@@ -1,0 +1,6 @@
+{
+  "name": "estilo-ugc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Auditor de realismo para prompts de vídeo UGC grabados con móvil."
+}

@@ -1,0 +1,302 @@
+{
+  "file": "ailab-seed-audio.mp3",
+  "duration": 17.064,
+  "voice_start": 0.453,
+  "voice_end": 17.064,
+  "tail_silence": 0.0,
+  "silences": [
+    {
+      "start": 0.0,
+      "end": 0.453,
+      "dur": 0.453
+    },
+    {
+      "start": 3.501,
+      "end": 3.877,
+      "dur": 0.376
+    },
+    {
+      "start": 5.743,
+      "end": 6.342,
+      "dur": 0.599
+    },
+    {
+      "start": 7.978,
+      "end": 8.508,
+      "dur": 0.53
+    },
+    {
+      "start": 11.703,
+      "end": 12.291,
+      "dur": 0.588
+    },
+    {
+      "start": 14.206,
+      "end": 14.667,
+      "dur": 0.461
+    },
+    {
+      "start": 15.236,
+      "end": 15.971,
+      "dur": 0.734
+    }
+  ],
+  "words": [
+    {
+      "w": "Siete",
+      "start": 0.453,
+      "end": 0.7
+    },
+    {
+      "w": "de",
+      "start": 0.7,
+      "end": 0.84
+    },
+    {
+      "w": "cada",
+      "start": 0.84,
+      "end": 0.98
+    },
+    {
+      "w": "diez",
+      "start": 0.98,
+      "end": 1.18
+    },
+    {
+      "w": "personas",
+      "start": 1.18,
+      "end": 1.6
+    },
+    {
+      "w": "que",
+      "start": 1.6,
+      "end": 1.78
+    },
+    {
+      "w": "quieren",
+      "start": 1.78,
+      "end": 1.98
+    },
+    {
+      "w": "crear",
+      "start": 1.98,
+      "end": 2.2
+    },
+    {
+      "w": "contenido",
+      "start": 2.2,
+      "end": 2.56
+    },
+    {
+      "w": "profesional",
+      "start": 2.56,
+      "end": 3.02
+    },
+    {
+      "w": "con",
+      "start": 3.02,
+      "end": 3.3
+    },
+    {
+      "w": "IA",
+      "start": 3.3,
+      "end": 3.46
+    },
+    {
+      "w": "no",
+      "start": 3.46,
+      "end": 3.98
+    },
+    {
+      "w": "saben",
+      "start": 3.98,
+      "end": 4.22
+    },
+    {
+      "w": "qué",
+      "start": 4.22,
+      "end": 4.46
+    },
+    {
+      "w": "herramienta",
+      "start": 4.46,
+      "end": 4.9
+    },
+    {
+      "w": "usar",
+      "start": 4.9,
+      "end": 5.08
+    },
+    {
+      "w": "en",
+      "start": 5.08,
+      "end": 5.26
+    },
+    {
+      "w": "cada",
+      "start": 5.26,
+      "end": 5.42
+    },
+    {
+      "w": "paso.",
+      "start": 5.42,
+      "end": 5.74
+    },
+    {
+      "w": "No",
+      "start": 6.2,
+      "end": 6.42
+    },
+    {
+      "w": "les",
+      "start": 6.42,
+      "end": 6.54
+    },
+    {
+      "w": "faltan",
+      "start": 6.54,
+      "end": 6.84
+    },
+    {
+      "w": "herramientas,",
+      "start": 6.84,
+      "end": 7.44
+    },
+    {
+      "w": "les",
+      "start": 7.56,
+      "end": 7.66
+    },
+    {
+      "w": "sobran.",
+      "start": 7.66,
+      "end": 8.04
+    },
+    {
+      "w": "Prueban",
+      "start": 8.44,
+      "end": 8.74
+    },
+    {
+      "w": "una,",
+      "start": 8.74,
+      "end": 8.94
+    },
+    {
+      "w": "luego",
+      "start": 9.18,
+      "end": 9.34
+    },
+    {
+      "w": "otra",
+      "start": 9.34,
+      "end": 9.7
+    },
+    {
+      "w": "y",
+      "start": 9.7,
+      "end": 9.94
+    },
+    {
+      "w": "cuando",
+      "start": 9.94,
+      "end": 10.1
+    },
+    {
+      "w": "una",
+      "start": 10.1,
+      "end": 10.26
+    },
+    {
+      "w": "funciona",
+      "start": 10.26,
+      "end": 10.62
+    },
+    {
+      "w": "ya",
+      "start": 10.62,
+      "end": 10.96
+    },
+    {
+      "w": "ha",
+      "start": 10.96,
+      "end": 11.02
+    },
+    {
+      "w": "salido",
+      "start": 11.02,
+      "end": 11.22
+    },
+    {
+      "w": "otro",
+      "start": 11.22,
+      "end": 11.38
+    },
+    {
+      "w": "modelo.",
+      "start": 11.38,
+      "end": 11.68
+    },
+    {
+      "w": "Si",
+      "start": 12.18,
+      "end": 12.38
+    },
+    {
+      "w": "quieres",
+      "start": 12.38,
+      "end": 12.54
+    },
+    {
+      "w": "aprender",
+      "start": 12.54,
+      "end": 12.84
+    },
+    {
+      "w": "con",
+      "start": 12.84,
+      "end": 13.06
+    },
+    {
+      "w": "criterio,",
+      "start": 13.06,
+      "end": 13.58
+    },
+    {
+      "w": "sin",
+      "start": 13.72,
+      "end": 13.88
+    },
+    {
+      "w": "hype,",
+      "start": 13.88,
+      "end": 14.2
+    },
+    {
+      "w": "sin",
+      "start": 14.66,
+      "end": 14.8
+    },
+    {
+      "w": "memes,",
+      "start": 14.8,
+      "end": 15.06
+    },
+    {
+      "w": "solo",
+      "start": 15.84,
+      "end": 16.12
+    },
+    {
+      "w": "para",
+      "start": 16.12,
+      "end": 16.32
+    },
+    {
+      "w": "profesionales.",
+      "start": 16.32,
+      "end": 17.04
+    }
+  ],
+  "note": "Tiempos de palabra aproximados; manda el texto literal del usuario. Silencios: ruido < -35 dB durante 0.25 s."
+}

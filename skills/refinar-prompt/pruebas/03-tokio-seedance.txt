@@ -1,0 +1,24 @@
+Referencias: @Image1 = hoja de personaje de la chica. @Image2 = calle de Tokio de noche.
+
+[Generation Goal]
+Create a 5-second cinematic scene in one continuous take. A young woman walks down a neon-lit Tokyo street at night, stops, looks at the camera, smiles, takes out her phone and takes a selfie.
+
+[Characters]
+The woman corresponds to @Image1. Use her face, hair and outfit.
+
+[Scene]
+A narrow Tokyo street at night references @Image2, with neon signs, wet asphalt and pedestrians.
+
+[Visual Style]
+Realistic cinematic look, strong film grain, perfectly clean and sharp image.
+
+[Camera]
+The camera follows her from behind in a cinematic and dynamic way.
+
+[Stage 1 | 0.00-5.00s]
+Initial state: the woman walks away from the camera.
+Primary event: She stops, looks at the camera and smiles, then takes out her phone and takes a selfie. Meanwhile the camera does a slow zoom in and a 360-degree orbit around her.
+End state: she holds the phone up for the selfie.
+
+[Maintain Consistency]
+Keep her identity. No subtitles.

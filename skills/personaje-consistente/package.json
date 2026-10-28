@@ -1,0 +1,6 @@
+{
+  "name": "personaje-consistente",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personaje de IA consistente entre vídeos, con ficha, referencias y voz."
+}

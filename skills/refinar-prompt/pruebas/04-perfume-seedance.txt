@@ -1,0 +1,24 @@
+Referencias: @Image1 = frasco de perfume. @Image2 = pedestal de mármol.
+
+[Generation Goal]
+Create a 15-second product shot of a perfume bottle rotating on a pedestal.
+
+[Props]
+The perfume bottle corresponds to @Image1. Exactly one.
+
+[Scene]
+A white marble pedestal on a dark studio background, soft key light from the left.
+
+[Visual Style]
+Clean, premium commercial look.
+
+[Camera]
+Locked-off tripod camera, medium shot, the bottle centered.
+
+[Stage 1 | 0.00-15.00s]
+Initial state: the bottle stands on the pedestal, label facing the camera.
+Primary event: The bottle rotates slowly on the pedestal.
+End state: the bottle keeps rotating.
+
+[Maintain Consistency]
+Exactly one bottle. No text other than the label. No music. No subtitles.

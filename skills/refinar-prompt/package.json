@@ -2,5 +2,5 @@
   "name": "refinar-prompt",
   "version": "1.0.0",
   "private": true,
-  "description": "Auditoría y refinado de prompts de vídeo mediante instrucciones."
+  "description": "Auditoría crítica de prompts estructurados de Seedance 2.5 y sus referencias."
 }

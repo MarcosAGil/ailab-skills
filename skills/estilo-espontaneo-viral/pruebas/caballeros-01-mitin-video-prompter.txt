@@ -1,0 +1,26 @@
+Photorealistic live-action comedy: a Templar knight gives a campaign rally speech in a packed indoor pavilion. One continuous locked-off take filmed from the audience seats, no cuts, no transitions, no zoom, no pan, no dolly.
+
+[Reference Mapping]
+@Image1 defines the venue and the exact camera composition: camera position and height, the wide view from behind the dark foreground audience heads, the white stage, the red podium with its two gooseneck microphones and the text ADELANTE VOTA, the crowd on both sides and in the stands, the red flags, the truss, the spotlights, the haze and the backlit lighting. Keep this composition and light for the full video. The podium text stays exactly as in @Image1; add no other text, logos or banners. The podium is empty in @Image1, but in the video the knight is already standing behind it from the first frame.
+Knight corresponds to @Image2. Use only the dirty cream tunic with the red cross, chainmail collar and sleeves, black leather gloves, leather belt with sheathed sword, brown boots, weathered cream cloak and the closed steel great helm with eye slits and breathing holes. All four views in @Image2 show the same single knight; exactly one knight in the video. Do not use the grey studio background or the panel layout. Ignore the blurred face area in the views without helmet: the helmet stays closed and on his head for the entire video, his face and mouth are never visible, and the eye slits remain dark.
+
+[Camera]
+Locked-off from the @Image1 position, framing identical to @Image1, with the knight centered behind the podium. The podium hides his body below the waist. All movement happens inside the frame. Exception, Stage 3 only: from the instant his fist rises, the operator reacts to the roar with a small handheld vibration (two or three quick small jolts, then a fine tremor), the framing stays on the podium and the knight, no zoom, no reframing.
+
+[Stage 1 | 0.00-2.00s]
+Initial: the knight stands upright behind the podium facing the audience, helmet tilted slightly toward the microphones, left gloved hand resting on the podium edge, right arm relaxed at his side. The crowd listens with a low murmur and the red flags are held low.
+Primary event: he starts speaking into the microphones with a steady, measured oratorical rhythm. His right gloved hand makes small single-hand gestures (open palm, a short chopping beat) on the phrase accents. His voice is unintelligible: muffled by the helmet and swallowed by the pavilion PA echo, only the rhythm and tone of a speaker are audible. <A muffled male voice booms through the PA with long hall reverb; only cadence and pitch are audible, no distinguishable words> <Soft chainmail jingle as the right arm moves>
+End: his rhythm is established and the crowd stays attentive.
+
+[Stage 2 | 2.00-4.00s]
+Continue from Stage 1: same position behind the podium, same helmet, camera still locked off.
+Primary event: his intensity rises step by step. The voice gets louder and faster, he leans his torso forward over the podium with the left hand gripping its edge, and the right-hand gestures grow wider and sharper, sweeping at shoulder height while the helmet turns slowly from the left side of the hall to the right. The cloak swings with a slight lag after each sweep. The crowd begins to stir: flags start to sway, scattered claps and murmurs build. Still no intelligible words. <The same muffled voice grows louder and faster, the PA speakers slightly strained, echo trailing behind each phrase> <Cloak fabric swishing after each arm sweep>
+End: he straightens up, draws a breath, and the hall goes almost silent for an instant.
+
+[Stage 3 | 4.00-6.00s]
+Initial: he stands tall behind the podium, the left hand still on the podium edge, the right arm lowered.
+Primary event: his right gloved hand snaps upward into a raised fist above his head. At that instant he shouts one short, clear line and the whole audience erupts: front-row people and flag wavers react first, the rest follow half a beat later, with clapping, cheering, whistling and the red flags waving hard. The camera vibration starts as the fist peaks. Dialogue language: Spanish (Spain). The knight shouts in a loud, hoarse adult male voice from Spain, with slight helmet resonance and PA reverb, clear and fully intelligible: {¡Cruzadas para todos!} <Thunderous applause, whistles and cheers swell across the pavilion as flags snap through the air> <Chainmail rattling as the fist rises>
+End: fist held high, helmet facing the crowd, the audience on its feet or clapping overhead, flags waving, the podium still reading ADELANTE VOTA.
+
+[Maintain Consistency]
+@Image1 is the sole authority for venue, camera position, composition, podium text and lighting. @Image2 is the sole authority for the knight's costume and helmet. One knight only, nobody else on the stage. The sword stays sheathed on the belt. The helmet never opens or comes off. Keep the same crowd layout, light and haze throughout. Audio: one reverberant indoor pavilion mix with crowd murmur and PA hum, crescendo into applause. The knight is the only speaker. No music, no subtitles, no narrator, no other dialogue.

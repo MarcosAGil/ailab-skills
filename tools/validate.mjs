@@ -44,10 +44,12 @@ function walk(directory, base = directory) {
   return files;
 }
 
+// Una skill de instrucciones no ejecuta nada: Markdown, package.json, imágenes (logo) y ejemplos de texto o JSON.
+const INSTRUCTION_DATA = /\.(?:md|png|jpe?g|webp|txt|json)$/i;
 export function validateInstructionFiles(root) {
   const files = walk(root);
-  if (files.some(file => file.relative !== 'package.json' && !file.relative.endsWith('.md'))) {
-    fail('Una skill de instrucciones solo admite Markdown y package.json.');
+  if (files.some(file => file.relative !== 'package.json' && !INSTRUCTION_DATA.test(file.relative))) {
+    fail('Una skill de instrucciones solo admite Markdown, package.json, imágenes y ejemplos de texto o JSON.');
   }
   for (const file of files.filter(file => file.relative.endsWith('.md'))) {
     const text = fs.readFileSync(file.absolute, 'utf8');
@@ -84,7 +86,8 @@ function validateSkill(skill) {
     validateInstructionFiles(root);
   }
   if (skill.guide_references !== undefined) {
-    if (!Array.isArray(skill.guide_references) || !skill.guide_references.length
+    // Una lista vacía publica en la guía de la web solo SKILL.md (las referencias largas quedan en la skill instalada).
+    if (!Array.isArray(skill.guide_references)
       || new Set(skill.guide_references).size !== skill.guide_references.length
       || skill.guide_references.some(p => typeof p !== 'string' || !/^references\/[a-z0-9-]+\.md$/.test(p) || !fs.existsSync(path.join(root, p)))) {
       fail(`Referencias de guía inválidas: ${skill.id}.`);

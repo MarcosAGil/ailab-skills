@@ -1,5 +1,8 @@
 # Instalar el plugin de AILAB en Claude Code y Codex
 
+> **Lo más fácil:** copia el prompt de [instalar-con-tu-agente.md](instalar-con-tu-agente.md), pégalo en tu
+> agente y deja que lo instale por ti. Esta guía explica cada paso a mano.
+
 El plugin `ailab` (marketplace `ailendra-labs`) contiene únicamente la skill `ailab`. Es la misma
 skill que se instalaba con `tools/install.mjs`, pero Claude Code y Codex la instalan, la guardan en su
 caché y la actualizan con sus propios comandos.
