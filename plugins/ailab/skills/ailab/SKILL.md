@@ -84,6 +84,8 @@ Para **Kling 4.0** (`kling-4-0`), lee [su contrato](references/kling-4-0.md): `-
 
 Para **Genjutsu Light** (`higgsfield-genjutsu-light`), lee [su contrato](references/genjutsu.md): hasta 15 s de vídeo y 1080p. `prepare` muestra la cotización del servidor; «pendiente de activación» no cobra y no se reintenta.
 
+Para un **draft de Seedance 2.5**, lee [su flujo](references/seedance-draft.md): `--draft true` en `seedance-2-5` o `seedance-2-5-lite` (480p, mismo precio), `drafts` lista los de la cuenta y `seedance-2-5-draft-1080p --draft_task_id <id>` lo genera a 1080p al precio que fija el servidor. La palabra es draft.
+
 Primero consulta el contrato del modelo. Pasa los archivos mediante el nombre exacto
 que muestra `info`; un parámetro `file[]` puede repetirse.
 
@@ -247,7 +249,7 @@ estar bloqueadas: la CLI explica el ajuste exacto; no guardes el token en el pro
 ## Comandos
 
 `login` · `logout` · `doctor` · `balance` · `models` · `info` · `validate` · `prepare` ·
-`submit` · `status` · `assistants` · `assistant-prepare` · `assistant-submit` ·
+`submit` · `status` · `drafts` · `assistants` · `assistant-prepare` · `assistant-submit` ·
 `assistant-status` · `voices` · `voice-*` · `update-check` · `update` · `rollback` ·
 `guide`. La sintaxis completa de cada uno la devuelve `guide`.
 

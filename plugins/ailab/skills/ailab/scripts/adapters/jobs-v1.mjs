@@ -1,10 +1,11 @@
 // Driver jobs-v1: modelos Kie por el camino /jobs/createTask + /jobs/recordInfo
 // del gateway del wallet. Construye el payload de forma DECLARATIVA desde el
 // catalogo (params validados + fixed) y extrae el resultado del record.
-import { gatewayPost, gatewayGet, apiPost } from '../lib/http.mjs';
+import { gatewayPost, gatewayGet, apiPost, servicePost } from '../lib/http.mjs';
 import { KLING4_ID, kling4Input } from '../lib/kling4.mjs';
 import { LITE_ID, liteInput } from '../lib/seedance-lite.mjs';
 import { MOTION_CONTROL_IDS } from '../lib/motion-control.mjs';
+import { DRAFTS_ENDPOINT, MAX_DRAFT_PAGES, draftNotFound, draftQuote, draftsRequest } from '../lib/seedance-draft.mjs';
 
 export function buildPayload(model, params, uploadedByParam) {
   // Kling 4.0 y Seedance 2.5 Lite: el servidor normaliza una forma exacta (sujetos y voces en listas de
@@ -30,6 +31,22 @@ export function buildPayload(model, params, uploadedByParam) {
   // Motion Control: la duración no viaja al proveedor y tampoco fija el precio: el servidor mide el vídeo, igual que la CLI.
   if (MOTION_CONTROL_IDS.includes(model.id)) delete input.duration;
   return payload;
+}
+
+// Paso a 1080p de un draft: la cotización es el `credits` que el servidor da para ese draft en el listado. No hay endpoint de
+// cotización: la puerta del gateway solo admite model, input, client_request_id y max_credits_authorized.
+export async function quote(model, payload) {
+  let cursor = null;
+  for (let page = 0; page < MAX_DRAFT_PAGES; page++) {
+    const n = await servicePost(DRAFTS_ENDPOINT, draftsRequest(cursor));
+    if (!n.ok) return { ok: false, normalized: n };
+    const drafts = Array.isArray(n.data?.drafts) ? n.data.drafts : [];
+    const found = drafts.find((draft) => draft.task_id === payload.input.draft_task_id);
+    if (found) return draftQuote(found);
+    if (!n.data?.has_more || !n.data?.next_cursor) break;
+    cursor = n.data.next_cursor;
+  }
+  return draftNotFound();
 }
 
 export async function submit(model, payload, intent = {}) {

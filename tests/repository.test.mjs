@@ -55,7 +55,7 @@ test('el instalador copia y verifica AILAB de forma aislada', (t) => {
     timeout: 30000,
   });
   assert.equal(installed.status, 0, installed.stderr || installed.stdout);
-  assert.match(installed.stdout, /Instalada ailab 2\.3\.15/);
+  assert.match(installed.stdout, /Instalada ailab 2\.3\.16/);
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'SKILL.md')));
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'scripts', 'ailab.mjs')));
 });
@@ -72,12 +72,12 @@ test('la skill empaquetada supera su autodiagnóstico sin red de actualización'
     timeout: 30000,
   });
   assert.equal(checked.status, 0, checked.stderr || checked.stdout);
-  assert.match(checked.stdout, /SELF_TEST_OK 2\.3\.15 · 70 modelos/);
+  assert.match(checked.stdout, /SELF_TEST_OK 2\.3\.16 · 71 modelos/);
 });
 
 test('Seedance conserva 20.000 caracteres en 2.0 y admite 30.000 en 2.5', () => {
   const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills', 'ailab', 'catalog', 'catalog.json'), 'utf8'));
-  assert.equal(catalog.catalog_version, '1.27.0');
+  assert.equal(catalog.catalog_version, '1.28.0');
   assert.equal(catalog.models['seedance-2'].params.prompt.max_len, 20000);
   assert.equal(catalog.models['seedance-2-5'].params.prompt.max_len, 30000);
   assert.match(catalog.models['seedance-2-5'].params.aspect_ratio.help, /adaptive/i);
@@ -115,7 +115,7 @@ test('el paquete es reproducible y contiene una única carpeta raíz', (t) => {
   });
   const first = build();
   assert.equal(first.status, 0, first.stderr || first.stdout);
-  const archive = path.join(destination, 'ailab-skill-v2.3.15-beta.zip');
+  const archive = path.join(destination, 'ailab-skill-v2.3.16-beta.zip');
   const firstBytes = fs.readFileSync(archive);
   const second = build();
   assert.equal(second.status, 0, second.stderr || second.stdout);

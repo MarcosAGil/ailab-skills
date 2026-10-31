@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.27.0",
+  "catalog_version": "1.28.0",
   "min_cli_version": "2.3.7",
   "models": {
     "krea-3": {
@@ -4194,6 +4194,10 @@
           "default": false,
           "type": "bool"
         },
+        "draft": {
+          "help": "Con true genera un draft: solo 480p (sin --resolution se usa 480p) y duración fija de 4 a 30 s. Sin edición ni duración automática. Cuesta lo mismo que 480p y después se puede generar a 1080p con seedance-2-5-draft-1080p.",
+          "type": "bool"
+        },
         "duration": {
           "default": 5,
           "help": "Entre 4 y 30 segundos; usa --auto_duration true para que el modelo decida. En modo edit la duración es automática y conserva la del vídeo original.",
@@ -5707,7 +5711,7 @@
       "enabled": true,
       "expensive": true,
       "driver": "jobs-v1",
-      "min_cli_version": "2.3.15",
+      "min_cli_version": "2.3.16",
       "aliases": [
         "seedance 2.5 lite",
         "seedance2.5lite",
@@ -5757,6 +5761,10 @@
             "1080p"
           ],
           "default": "720p"
+        },
+        "draft": {
+          "type": "bool",
+          "help": "Con true genera un draft: solo 480p (sin --resolution se usa 480p) y duración fija de 4 a 30 s. No hay edición. Cuesta lo mismo que 480p y después se puede generar a 1080p con seedance-2-5-draft-1080p."
         },
         "duration": {
           "type": "int",
@@ -5820,6 +5828,37 @@
         "note": "Tarifa de Sume con el servicio de AILAB. Sin vídeo de referencia es exacto. Con vídeo se reserva, a la tarifa con vídeo, el mayor de (salida + entrada) y ceil(salida x 5 / 3); la entrada es la suma de los vídeos, cada uno medido y al segundo superior. Se cobra el coste real del proveedor, nunca más."
       },
       "id": "seedance-2-5-lite"
+    },
+    "seedance-2-5-draft-1080p": {
+      "id": "seedance-2-5-draft-1080p",
+      "label": "Seedance 2.5 draft a 1080p",
+      "description": "Genera a 1080p un draft de Seedance 2.5 o Lite de tu cuenta. El comando drafts lista los drafts con su coste y su fecha límite.",
+      "section": "video",
+      "vendor": "ByteDance",
+      "tier": "all",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.16",
+      "aliases": [
+        "seedance 2.5 draft 1080p"
+      ],
+      "params": {
+        "draft_task_id": {
+          "type": "string",
+          "required": true,
+          "max_len": 255,
+          "help": "task_id del draft, tal como lo muestra el comando drafts."
+        }
+      },
+      "estimate": {
+        "kind": "flat_credits",
+        "credits": 6687,
+        "approximate": true,
+        "note": "Máximo posible. El precio real lo fija el servidor para cada draft: drafts lo muestra y prepare autoriza esa cifra exacta."
+      }
     },
     "higgsfield-soul-cinema": {
       "label": "Higgsfield SOUL Cinema",

@@ -11,7 +11,7 @@ import { CONFIG_DIR, RELEASE_MANIFEST_URL, SKILL_ROOT, UPDATE_CHANNEL, ensureCon
 // 1.1.0: acepta varias claves publicas de confianza (rotacion futura), anuncia su
 // version al runtime y no se rompe cuando la carpeta de estado no es escribible.
 export const BOOTSTRAP_VERSION = '1.1.0';
-export const BUNDLED_RUNTIME_VERSION = '2.3.15';
+export const BUNDLED_RUNTIME_VERSION = '2.3.16';
 export const UPDATE_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAVjnUJTcIxxRRvRTo83RpaCI7eaPwTg5KIz65p49UZs0=
 -----END PUBLIC KEY-----`;

@@ -41,8 +41,8 @@ function plan(given) {
   return { ok: true, v, estimate, payload, meta };
 }
 
-test('el contrato publicado exige la skill 2.3.15, es Lite sin edición y las CLI anteriores lo ignoran', async () => {
-  assert.equal(model.min_cli_version, '2.3.15');
+test('el contrato publicado exige la skill 2.3.16, es Lite sin edición y las CLI anteriores lo ignoran', async () => {
+  assert.equal(model.min_cli_version, '2.3.16');
   assert.equal(model.enabled, true);
   assert.deepEqual(model.modes, ['t2v', 'i2v', 'ref'], 'Lite no edita vídeo');
   assert.deepEqual(model.params.mode.values, ['t2v', 'i2v', 'ref']);
@@ -61,7 +61,7 @@ test('el contrato publicado exige la skill 2.3.15, es Lite sin edición y las CL
   assert.equal(text.includes(String.fromCharCode(0x2014)), false);
   assert.equal(modelUsable(model).ok, true);
   if (!CANONICAL) return;
-  for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14']) {
+  for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14', '2.3.15']) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
     const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
     assert.equal(old.modelUsable(parsed.models['seedance-2-5-lite']).ok, false, 'la CLI ' + version + ' no debe ofrecer Lite');

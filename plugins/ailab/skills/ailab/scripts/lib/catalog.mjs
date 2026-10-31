@@ -11,6 +11,7 @@ import { LITE_ID, liteEstimate, liteProblems } from './seedance-lite.mjs';
 import { LIGHT_ID, lightEstimate, lightProblems } from './genjutsu-light.mjs';
 import { SEEDANCE_IDS, seedanceEstimate, seedanceProblems } from './seedance.mjs';
 import { MOTION_CONTROL_IDS, motionEstimate } from './motion-control.mjs';
+import { DRAFT_MODEL_IDS, DRAFT_UPGRADE_ID, draftProblems } from './seedance-draft.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1', 'higgsfield-v1'];
 
@@ -235,6 +236,7 @@ export function resolveModel(cat, nameOrAlias) {
 export function requiresServerQuote(model, params = {}) {
   return !!(model && ((model.id === 'eleven-tts' && params.version === 'v4')
     || model.id === 'krea-3'
+    || model.id === DRAFT_UPGRADE_ID
     || (model.estimate && model.estimate.kind === 'higgsfield_quote')));
 }
 
@@ -421,6 +423,17 @@ export function validateParams(model, given) {
     errors.push(...kling4Problems(params, fileParams, given));
     if (params.mode === 'keyframe') { delete params.aspect_ratio; delete params.keep_original_sound; }
   }
+  if (DRAFT_MODEL_IDS.includes(model.id)) {
+    // Modo draft: `--draft false` equivale a no pedirlo, porque el servidor solo admite `draft: true`. Sin --resolution, 480p.
+    if (params.draft === true) {
+      if (given.resolution === undefined || given.resolution === '') params.resolution = '480p';
+      errors.push(...draftProblems(params));
+    } else delete params.draft;
+  }
+  if (model.id === DRAFT_UPGRADE_ID && params.draft_task_id !== undefined) {
+    params.draft_task_id = params.draft_task_id.trim();
+    if (!params.draft_task_id) errors.push('--draft_task_id no puede estar vacío.');
+  }
   if (model.id === LITE_ID) {
     // Seedance 2.5 Lite: modalidades excluyentes y vídeo de referencia medido en local.
     errors.push(...liteProblems(params, fileParams));
@@ -509,8 +522,9 @@ export function estimateCredits(model, params, now = Date.now()) {
   // que sigue cotizando en `prepare` y manda.
   if (model.id === LIGHT_ID) return lightEstimate(model, params);
   // Higgsfield no tiene tarifa local: el servidor cotiza midiendo el video y
-  // las referencias. Devolver un precio inventado aqui autorizaria de menos.
-  if (model.id === 'krea-3' || e.kind === 'higgsfield_quote') {
+  // las referencias. Devolver un precio inventado aqui autorizaria de menos. El paso a 1080p de un draft tampoco: el precio
+  // sale de la fila del servidor (`credits` del listado), y `estimate.credits` del catalogo es solo la cota para los parsers.
+  if (model.id === 'krea-3' || model.id === DRAFT_UPGRADE_ID || e.kind === 'higgsfield_quote') {
     return {
       credits: null,
       approximate: true,

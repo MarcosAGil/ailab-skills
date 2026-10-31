@@ -76,8 +76,8 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
     const actual = crypto.createHash('sha256').update(stableStringify(catalog.models[id])).digest('hex');
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
-  assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'higgsfield-genjutsu-light', 'higgsfield-marketing-studio-image', 'higgsfield-soul-cinema', 'ideogram-v45', 'kling-4-0', 'krea-3', 'nano-banana-2-1', 'seedance-2-5-lite']);
-  assert.equal(catalog.catalog_version, '1.27.0');
+  assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'higgsfield-genjutsu-light', 'higgsfield-marketing-studio-image', 'higgsfield-soul-cinema', 'ideogram-v45', 'kling-4-0', 'krea-3', 'nano-banana-2-1', 'seedance-2-5-draft-1080p', 'seedance-2-5-lite']);
+  assert.equal(catalog.catalog_version, '1.28.0');
   assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
@@ -113,8 +113,8 @@ test('los nuevos contratos públicos no contienen costes o endpoints privados', 
   }
 });
 
-test('una instalación 2.3.15 no retrocede al runtime estable anterior', async () => {
-  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.15');
+test('una instalación 2.3.16 no retrocede al runtime estable anterior', async () => {
+  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.16');
   let installations = 0;
   const checked = await checkAndMaybeUpdate({
     force: true,
@@ -122,7 +122,7 @@ test('una instalación 2.3.15 no retrocede al runtime estable anterior', async (
     releaseInstaller: async () => { installations++; throw new Error('No debe instalar una versión anterior'); },
   });
   assert.equal(checked.ok, true);
-  assert.equal(checked.current, '2.3.15');
+  assert.equal(checked.current, '2.3.16');
   assert.equal(checked.update, null);
   assert.equal(installations, 0);
 });

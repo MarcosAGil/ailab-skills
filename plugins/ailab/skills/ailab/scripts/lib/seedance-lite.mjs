@@ -109,6 +109,7 @@ export function liteInput(params, uploaded = {}) {
     aspect_ratio: mode === 'i2v' ? 'adaptive' : String(params.aspect_ratio ?? 'adaptive'),
     generate_audio: params.generate_audio !== false,
   };
+  if (params.draft === true) input.draft = true;
   if (mode === 'i2v') {
     const first = items(uploaded.first_frame_url);
     const last = items(uploaded.last_frame_url);

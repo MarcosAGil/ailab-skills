@@ -10,7 +10,7 @@ import test from 'node:test';
 import { Media } from './helpers/media.mjs';
 import { CANONICAL, canRunParity, php } from './helpers/php.mjs';
 
-// Precios y límites de Seedance en la release 2.3.15. Contrato: docs/operations/seedance-25-draft-precios-2026-10-31.md
+// Precios y límites de Seedance desde la release 2.3.15 (el modo draft de 2.3.16 tiene tests/seedance-draft.test.mjs). Contrato: docs/operations/seedance-25-draft-precios-2026-10-31.md
 // en AILAB. Regla de oro: `estimate.credits` nunca es menor que la reserva del servidor. Con AILAB_CANONICAL_REPO las
 // comparaciones usan el PHP real con metadatos simulados: sin red ni gasto.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -79,8 +79,8 @@ const metaFor = (cases) => {
 const PHP_BACKEND = `
   $cfg = wallet_config(); $cases = json_decode($argv[1], true); $meta = json_decode($argv[2], true); $out = [];
   $inspect = static function ($url, $kind) use ($meta) { return $meta[$url] ?? null; };
-  // La puerta del draft recibe el acceso por token, que es el de la CLI, con el interruptor abierto.
-  $draft = static fn(array $body) => gateway_seedance_25_draft_error($body, true, 'token', '/jobs/createTask')['msg'] ?? null;
+  // La puerta del draft, con el interruptor abierto.
+  $draft = static fn(array $body) => gateway_seedance_25_draft_error($body, true, '/jobs/createTask')['msg'] ?? null;
   foreach ($cases as $case) {
     $model = $case['model']; $error = null; $seconds = 0;
     try {
@@ -111,7 +111,7 @@ const PHP_BACKEND = `
 
 const askServer = (cases) => php(PHP_BACKEND, [JSON.stringify(cases.map((c) => ({ model: c.id, input: c.payload.input }))), JSON.stringify(metaFor(cases))], { sume: true });
 
-test('el catálogo publica las tarifas y los límites del contrato, sin promoción ni draft', () => {
+test('el catálogo publica las tarifas y los límites del contrato, sin promoción', () => {
   const normal = catalog.models[NORMAL];
   assert.deepEqual(normal.estimate.credits_per_second, NORMAL_RATES);
   assert.deepEqual(normal.estimate.credits_with_video, NORMAL_VIDEO_RATES);
@@ -133,16 +133,14 @@ test('el catálogo publica las tarifas y los límites del contrato, sin promoci�
   }
   for (const id of IDS) {
     const model = catalog.models[id];
-    assert.equal(model.min_cli_version, '2.3.15', id);
+    assert.equal(model.min_cli_version, id === LITE ? '2.3.16' : '2.3.15', id);
     assert.equal(modelUsable(model).ok, true, id);
-    assert.equal(model.params.draft, undefined, id);
     assert.equal(model.params.draft_task_id, undefined, id);
     assert.deepEqual(model.params.resolution.values.filter((value) => /draft/i.test(value)), [], id);
-    assert.equal(/draft/i.test(JSON.stringify(model)), false, id);
     assert.equal(JSON.stringify(model).includes(String.fromCharCode(0x2014)), false, id);
   }
-  assert.deepEqual(Object.keys(catalog.models).filter((id) => /draft/.test(id)), [], 'el modelo de subida a 1080p no se ofrece');
-  assert.match(plan(NORMAL, { prompt: 'x', draft: 'true' }).errors.join('\n'), /Parametro desconocido: --draft/);
+  for (const id of [TWO, MINI]) assert.equal(/draft/i.test(JSON.stringify(catalog.models[id])), false, id);
+  assert.match(plan(TWO, { prompt: 'x', draft: 'true' }).errors.join('\n'), /Parametro desconocido: --draft/);
   assert.match(plan(LITE, { prompt: 'x', draft_task_id: 'abc' }).errors.join('\n'), /Parametro desconocido: --draft_task_id/);
 });
 
@@ -350,7 +348,7 @@ test('compatibilidad: los parsers 2.3.7 a 2.3.14 aceptan el catálogo y no ofrec
     for (const id of IDS) {
       const usable = old.modelUsable(parsed.models[id]);
       assert.equal(usable.ok, false, `la CLI ${version} no debe ofrecer ${id}`);
-      assert.match(usable.reason, /Actualiza la skill.*2\.3\.15/, `${version} ${id}`);
+      assert.match(usable.reason, new RegExp('Actualiza la skill.*' + catalog.models[id].min_cli_version.replace(/\./g, '\\.')), `${version} ${id}`);
     }
     assert.equal(old.catalogCompatible(parsed).ok, true, version);
   }
@@ -409,7 +407,7 @@ test('CLI real: prepare mide los vídeos, respeta --max-credits y submit envía 
   const exec = (...args) => execute(process.execPath, [cli, ...args], { env, timeout: 30000 });
   const list = (name, files) => files.flatMap((file) => ['--' + name, file]);
 
-  await assert.rejects(exec('prepare', NORMAL, '--prompt', 'x', '--draft', 'true'), /Parametro desconocido: --draft/);
+  await assert.rejects(exec('prepare', TWO, '--prompt', 'x', '--draft', 'true'), /Parametro desconocido: --draft/);
   await assert.rejects(exec('prepare', NORMAL, '--prompt', 'x', '--mode', 'ref', ...list('reference_video_urls', [clip(16), clip(15)])), /no pueden sumar más de 30 segundos/);
   assert.equal(requests.length, 0, 'lo que se rechaza en local no llega al servidor');
 

@@ -3,6 +3,7 @@
 // al usuario sale siempre de la estimación de la CLI (`prepare` o la que calcula `info`), nunca de leer tablas a mano.
 import { estimateCredits, requiresServerQuote } from './catalog.mjs';
 import { LIGHT_ID, lightCredits } from './genjutsu-light.mjs';
+import { DRAFT_UPGRADE_ID } from './seedance-draft.mjs';
 
 const PRICE_PARAMS = ['by_param', 'row_param', 'column_param', 'rate_param', 'mode_param', 'quality_param', 'audio_param'];
 
@@ -136,6 +137,10 @@ export function pricingLines(model, now = Date.now()) {
       + Object.entries(rates).map(([resolution, credits]) => resolution + ' ' + String(credits).replace('.', ',') + ' cr').join(' · '));
     const examples = Object.keys(rates).map((resolution) => [resolution, lightCredits(model.estimate, resolution, 10)]).filter(([, credits]) => credits !== null);
     if (examples.length) lines.push('  Ejemplo con 10 s de vídeo: ' + examples.map(([resolution, credits]) => resolution + ' ' + credits + ' cr').join(' · '));
+    return lines;
+  }
+  if (model.id === DRAFT_UPGRADE_ID) {
+    lines.push('Precio: lo cotiza el servidor para cada draft. `drafts` lo muestra y `prepare` autoriza esa cifra exacta; da al usuario esa cifra.');
     return lines;
   }
   if (requiresServerQuote(model, {}) || model.estimate?.kind === 'higgsfield_quote') {

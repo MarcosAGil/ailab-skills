@@ -73,6 +73,10 @@ export function priceCases(F) {
   for (const seconds of [4, 8.2, 16, 30]) add('seedance-2-5', { ...P, mode: 'edit', reference_video_urls: [video(seconds)], resolution: '720p' }, 'edición de ' + seconds + ' s');
   add('seedance-2-5-lite', { ...P, mode: 'ref', reference_video_urls: tenVideos, reference_audio_urls: tenAudios, resolution: '1080p', duration: '4' }, 'diez vídeos y diez audios');
   add('seedance-2-5-lite', { ...P, mode: 'ref', reference_video_urls: [video(2)], resolution: '720p', duration: '30' }, 'mínimo de Lite: ceil(30 x 5 / 3) = 50 s');
+  // Modo draft (2.3.16): mismo precio que 480p. El paso a 1080p se compara con la reserva en tests/seedance-draft.test.mjs.
+  grid('seedance-2-5', { ...P, draft: 'true', resolution: '480p' }, { duration: ['4', '30'] });
+  grid('seedance-2-5-lite', { ...P, draft: 'true', resolution: '480p' }, { duration: ['4', '30'] });
+  for (const id of ['seedance-2-5', 'seedance-2-5-lite']) add(id, { ...P, draft: 'true', mode: 'ref', reference_video_urls: [video(8)], resolution: '480p', duration: '5' }, 'draft con vídeo');
   add('seedance-2', { ...P, mode: 'ref', reference_video_urls: [video(15)], resolution: '4k', duration: '15' }, 'vídeo de 15 s');
   add('seedance-2', { ...P, mode: 'ref', reference_video_urls: [video(8.2)], speed: 'fast', resolution: '720p', duration: '5' }, 'al segundo superior');
   add('seedance-2-mini', { ...P, mode: 'ref', reference_video_urls: [video(15)], resolution: '720p', duration: '15' }, 'vídeo de 15 s');

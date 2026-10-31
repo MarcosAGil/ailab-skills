@@ -11,6 +11,7 @@ import { assistantLimits, validateAssistantBatch, LEGACY_ASSISTANT_LIMITS } from
 import { createAssistantRequest, loadAssistantRequest, updateAssistantRequest, loadSession, createSession, saveSession, assistantRequestIntact } from './lib/assistant-requests.mjs';
 import { inspectFile, inspectPricingMetadata, inspectVideoMetadata, rehashMatches } from './lib/files.mjs';
 import { LIGHT_ID } from './lib/genjutsu-light.mjs';
+import { DRAFTS_ENDPOINT, decodeDraftCursor, draftLines, draftsRequest, encodeDraftCursor } from './lib/seedance-draft.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './lib/manifest.mjs';
 import { resolveOutputDir, downloadTo, saveTextTo } from './lib/output.mjs';
 import { uploadPath } from './lib/http.mjs';
@@ -140,6 +141,22 @@ function cmdLogout() {
 async function cmdBalance() {
   const me = await requireSession();
   out('Cuenta: ' + (me.user ? me.user.email : '¿?') + ' · tier ' + (me.user ? me.user.tier : '¿?') + ' · saldo ' + me.balance + ' cr.');
+}
+
+// Drafts de Seedance 2.5 de la cuenta, por páginas. Solo lee: no gasta y no necesita confirmación.
+async function cmdDrafts(opts) {
+  const given = singleOpt(opts, 'cursor');
+  if (given === true) fail('--cursor necesita el valor que imprime la página anterior.');
+  const cursor = given === undefined ? null : decodeDraftCursor(given);
+  if (given !== undefined && !cursor) fail('--cursor no es válido. Copia el valor que imprime la página anterior.');
+  await requireSession();
+  const page = await servicePost(DRAFTS_ENDPOINT, draftsRequest(cursor));
+  if (!page.ok) fail(explain(page));
+  const drafts = Array.isArray(page.data?.drafts) ? page.data.drafts : [];
+  if (!drafts.length) { out('No hay drafts de Seedance 2.5 en esta página. Se crean con prepare seedance-2-5 o seedance-2-5-lite y --draft true.'); return; }
+  out('Drafts de Seedance 2.5 (' + drafts.length + (page.data.has_more ? ', hay más' : '') + '):');
+  for (const draft of drafts) for (const line of draftLines(draft)) out(line);
+  if (page.data.has_more && page.data.next_cursor) out('Siguiente página: ' + cliCommand('drafts --cursor ' + encodeDraftCursor(page.data.next_cursor)));
 }
 
 async function cmdVoices(provider = 'eleven', opts = {}) {
@@ -714,6 +731,7 @@ async function cmdPrepare(cat, name, opts) {
         out('AVISO: la estimacion local (' + localLight + ' cr) no coincide con la cotizacion del servidor (' + quote.estimated_credits + ' cr). Manda el servidor; actualiza la skill con `update --confirmed` por si cambio la tarifa.');
       }
     }
+    if (quote.note) out(quote.note);
     out('La cotizacion caduca: ' + quote.expires_at + '. Pasada esa hora hay que volver a preparar.');
   } else {
     out('Estimacion: ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr') + (est.note ? ' (' + est.note + ')' : ''));
@@ -1042,7 +1060,7 @@ async function main() {
     out('Base: ' + BASE_URL);
     out('ElevenLabs: voices eleven [--language es --search texto --page 0] · voice-list · voice-options · voice-select <id> --owner <owner> --confirmed · voice-prepare <design|clone|create|renew|delete|resume> [opciones] · voice-submit <id> --confirmed · voice-status <id> · voice-samples <id> [--output dir]');
     out('Guia actualizada de uso y reglas criticas: guide');
-    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
+    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · drafts [--cursor valor] · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
   if (cmd === 'login') return cmdLogin();
@@ -1066,6 +1084,7 @@ async function main() {
   if (cmd === 'balance') return cmdBalance();
   if (cmd === 'voices') return cmdVoices(pos[1] || 'eleven', opts);
   if (cmd.startsWith('voice-')) { await requireSession(); return runVoiceCommand(cmd, pos.slice(1), opts, out); }
+  if (cmd === 'drafts') return cmdDrafts(opts);
   if (cmd === 'assistants') return cmdAssistants();
   if (cmd === 'assistant-prepare') return cmdAssistantPrepare(pos[1], opts);
   if (cmd === 'assistant-submit') return cmdAssistantSubmit(pos[1], opts);

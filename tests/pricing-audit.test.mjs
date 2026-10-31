@@ -40,6 +40,7 @@ const SERVER_QUOTED = {
   'higgsfield-soul-cinema': 'Higgsfield cotiza en el servidor (/estimate del proveedor).',
   'higgsfield-marketing-studio-image': 'Higgsfield cotiza en el servidor (/estimate del proveedor).',
   'higgsfield-genjutsu-light': 'Higgsfield cotiza en el servidor; la CLI calcula la misma cifra y se compara en su propia prueba (Genjutsu Light).',
+  'seedance-2-5-draft-1080p': 'El precio sale de la fila del servidor (`credits` del listado); se compara con la reserva en tests/seedance-draft.test.mjs.',
 };
 // Sobrecostes de la CLI sobre la reserva del servidor que tienen un motivo documentado (más allá del redondeo de 1 cr).
 const OVER_ALLOWED = [
@@ -157,7 +158,7 @@ test('la tarifa de la web coincide con la de la CLI salvo las diferencias docume
 
 test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un motivo documentado', { skip }, () => {
   const ids = Object.keys(catalog.models);
-  assert.equal(ids.length, 70);
+  assert.equal(ids.length, 71);
   const compared = new Set(results.filter((r) => reference(r) !== null && r.cli !== null).map((r) => r.id));
   const withoutFfmpeg = withFfmpeg ? [] : ['topaz-astra-precise-2-6', 'topaz-astra-creative-2', 'seedvr-video-upscaler'];
   const missing = ids.filter((id) => !compared.has(id) && !NO_SERVER_ESTIMATE[id] && !SERVER_QUOTED[id] && id !== 'krea-3' && !withoutFfmpeg.includes(id));
@@ -169,7 +170,7 @@ test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un mo
   for (const id of ['remove-background', 'eleven-speech-to-text', 'suno']) for (const r of results.filter((x) => x.id === id)) assert.equal(r.web.credits, r.cli, describe(r));
 });
 
-test('la skill lista los 70 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
+test('la skill lista los 71 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
   for (const [id, model] of Object.entries(catalog.models)) {
     assert.equal(model.enabled, true, id);
     assert.equal(model.status, 'active', id);
@@ -179,6 +180,7 @@ test('la skill lista los 70 modelos activos: solo un interruptor de servidor doc
     TOPAZ_ENABLED: ['topaz-bloom-2', 'topaz-wonder-3-5', 'topaz-astra-precise-2-6', 'topaz-astra-creative-2'],
     RESEMBLE_ENABLED: ['resemble-audio-enhancement'],
     SEEDANCE_25_PROVIDER: ['seedance-2-5-lite'],
+    SEEDANCE_25_DRAFT_ENABLED: ['seedance-2-5-draft-1080p'],
     HIGGSFIELD_FEATURE_FLAGS: ['higgsfield-marketing-studio-image'],
     GENJUTSU_LIGHT_ENABLED: ['higgsfield-genjutsu-light'],
   };
@@ -190,6 +192,7 @@ test('la skill lista los 70 modelos activos: solo un interruptor de servidor doc
   assert.equal(config.TOPAZ_ENABLED, false, 'valor del repositorio: Topaz cerrado hasta que Marcos lo abra');
   assert.equal(config.RESEMBLE_ENABLED, false);
   assert.equal(config.SEEDANCE_25_PROVIDER, 'kie');
+  assert.equal(config.SEEDANCE_25_DRAFT_ENABLED, true, 'modo draft abierto en la web y, desde 2.3.16, en la skill');
   assert.equal(config.HIGGSFIELD_FEATURE_FLAGS['higgsfield-marketing-studio-image'], false);
   assert.equal(config.GENJUTSU_LIGHT_ENABLED, true, 'Genjutsu Light abierto a todos (28/10/2026) con su propio interruptor');
   assert.equal(config.HIGGSFIELD_FEATURE_FLAGS['higgsfield-genjutsu-light'], undefined, 'Light no va en HIGGSFIELD_FEATURE_FLAGS');
