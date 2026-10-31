@@ -2177,7 +2177,7 @@
       "expensive": true,
       "id": "kling-2-6-motion-control",
       "label": "Kling 2.6 Motion Control",
-      "min_cli_version": "1.0.0",
+      "min_cli_version": "2.3.15",
       "output": "video",
       "params": {
         "character_orientation": {
@@ -2191,7 +2191,7 @@
         },
         "duration": {
           "default": 5,
-          "help": "Duracion estimada en segundos. SOLO se usa para calcular el coste (no se envia al modelo; el video de referencia debe durar de 3 a 30 s)",
+          "help": "Ya no cambia el coste ni se envia al modelo: la salida dura lo que el video, que AILAB mide (de 3 a 30 s; sin medir se reservan 30 s)",
           "max": 30,
           "min": 3,
           "type": "int"
@@ -2349,7 +2349,7 @@
       "expensive": true,
       "id": "kling-3-0-motion-control",
       "label": "Kling 3.0 Motion Control",
-      "min_cli_version": "1.0.0",
+      "min_cli_version": "2.3.15",
       "output": "video",
       "params": {
         "background_source": {
@@ -2372,7 +2372,7 @@
         },
         "duration": {
           "default": 5,
-          "help": "Duracion estimada en segundos. SOLO se usa para calcular el coste (no se envia al modelo; el video de referencia debe durar de 3 a 30 s)",
+          "help": "Ya no cambia el coste ni se envia al modelo: la salida dura lo que el video, que AILAB mide (de 3 a 30 s; sin medir se reservan 30 s)",
           "max": 30,
           "min": 3,
           "type": "int"

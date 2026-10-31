@@ -54,6 +54,13 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
       assert.equal(catalog.models[id].estimate.video_param, 'reference_video_urls');
       continue;
     }
+    if (['kling-2-6-motion-control', 'kling-3-0-motion-control'].includes(id)) {
+      // Cambio versionado en 2.3.15: el servidor mide el vídeo y deja de atender a --duration. Las CLI anteriores dejan de
+      // ofrecerlos en lugar de autorizar por debajo de la reserva (ver tests/motion-control-precios.test.mjs).
+      assert.equal(catalog.models[id].min_cli_version, '2.3.15');
+      assert.equal(catalog.models[id].estimate.kind, 'per_second_table');
+      continue;
+    }
     if (beforePriceAudit[id]) {
       // Por qué cambia cada uno (todos contra el servidor real, ver tests/pricing-audit.test.mjs):
       //  - kling-v3: tarifa por audio y margen decimal; lipsync-heygen-*: margen decimal; avatar-photo-video: tarifa por resolución.

@@ -87,8 +87,11 @@ export function priceCases(F) {
   add('kling-2-5-turbo-pro', { ...P, image_urls: [image()], duration: '10' });
   grid('kling-3-0', P, { mode: ['std', 'pro', '4K'], duration: ['3', '5', '15'] });
   add('kling-3-0', { ...P, mode: 'pro', sound: 'true', duration: '5' });
-  grid('kling-2-6-motion-control', { ...P, input_urls: [image()], video_urls: [video(8)] }, { mode: ['720p', '1080p'], duration: ['3', '5', '30'] });
-  grid('kling-3-0-motion-control', { ...P, input_urls: [image()], video_urls: [video(8)] }, { mode: ['720p', '1080p'], duration: ['3', '5', '30'] });
+  // Motion Control cobra por el vídeo medido: --duration ya no cambia nada.
+  for (const seconds of [3, 8, 30]) {
+    grid('kling-2-6-motion-control', { ...P, input_urls: [image()], video_urls: [video(seconds)] }, { mode: ['720p', '1080p'], duration: ['3', '30'] });
+    grid('kling-3-0-motion-control', { ...P, input_urls: [image()], video_urls: [video(seconds)] }, { mode: ['720p', '1080p'], duration: ['3', '30'] });
+  }
   grid('kling-o3', P, { mode: ['t2v'], resolution: ['720p', '1080p', '4k'], audio: ['true', 'false'], duration: ['3', '15'] });
   grid('kling-o3', { ...P, mode: 'i2v', image_urls: [image()] }, { resolution: ['720p', '4k'], audio: ['true', 'false'], duration: ['5'] });
   grid('kling-o3', { ...P, mode: 'ref', image_urls: [image()] }, { resolution: ['720p', '1080p'], audio: ['false'], duration: ['5'] });

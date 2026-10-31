@@ -10,6 +10,7 @@ import { KLING4_ID, kling4Estimate, kling4Problems } from './kling4.mjs';
 import { LITE_ID, liteEstimate, liteProblems } from './seedance-lite.mjs';
 import { LIGHT_ID, lightEstimate, lightProblems } from './genjutsu-light.mjs';
 import { SEEDANCE_IDS, seedanceEstimate, seedanceProblems } from './seedance.mjs';
+import { MOTION_CONTROL_IDS, motionEstimate } from './motion-control.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1', 'higgsfield-v1'];
 
@@ -521,6 +522,7 @@ export function estimateCredits(model, params, now = Date.now()) {
   if (model.id === KLING4_ID) return kling4Estimate(model, params);
   if (model.id === LITE_ID) return liteEstimate(model, params);
   if (SEEDANCE_IDS.includes(model.id)) return seedanceEstimate(model, params, (hasVideo) => seedanceRate(e, params, hasVideo, now));
+  if (MOTION_CONTROL_IDS.includes(model.id)) return motionEstimate(model, params);
   if (e.kind === 'topaz_image') {
     const megapixels = Number(params[e.megapixels_param]);
     const tiers = e.provider_credits_by_max_megapixels || {};

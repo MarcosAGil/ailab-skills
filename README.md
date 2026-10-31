@@ -72,7 +72,7 @@ la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza
 
 ## Cambios relevantes
 
-- 2.3.15: precios exactos de Seedance 2.5 Normal y Lite, 10 vídeos y 10 audios de referencia en ambos; Seedance 2.5, 2.0 y Mini miden los vídeos de referencia y presupuestan (salida + entrada) con la tarifa con vídeo; Editar vídeo cobra 2 x segundos del clip.
+- 2.3.15: precios exactos de Seedance 2.5 Normal y Lite, 10 vídeos y 10 audios de referencia en ambos; Seedance 2.5, 2.0 y Mini miden los vídeos de referencia y presupuestan (salida + entrada) con la tarifa con vídeo; Editar vídeo cobra 2 x segundos del clip. Kling 2.6 y 3.0 Motion Control cobran por el vídeo medido, no por `--duration`.
 - 2.3.14: Genjutsu Light (`higgsfield-genjutsu-light`); Higgsfield termina las tareas `nsfw` y `rejected` con su motivo, y un 429 o 5xx al consultar espera con retroceso.
 - 2.3.13: `guide` devuelve la guía de uso vigente; Seed Audio reserva 100 cr y cobra la duración
   real (0,625 cr/s, nunca más de 100 cr); el arranque avisa de plugin antiguo, doble instalación y

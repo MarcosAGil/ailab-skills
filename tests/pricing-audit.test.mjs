@@ -45,6 +45,7 @@ const SERVER_QUOTED = {
 const OVER_ALLOWED = [
   { id: 'seedream-v5-pro', when: (a) => a.mode === 'layers', reason: 'Descomposición en capas: el número de capas lo decide el modelo. El servidor reserva 8 o 15 cr y la CLI autoriza hasta 300 cr como tope del cargo final.' },
   { id: 'grok-imagine-video-1-5', when: () => true, max: 3, reason: 'El proveedor cobra una tarifa de imagen que no desglosa antes de generar (lo dice la nota de la web): la CLI suma 2 cr por imagen y el servidor no la reserva.' },
+  { id: 'kling-o3', when: (a) => a.mode === 'transform', reason: 'Transformar: el servidor reserva los segundos medidos del vídeo y la CLI autoriza la cota de 16 s, igual que la web.' },
 ];
 // Diferencias entre la tarifa de la web y la de la CLI (más de 1 cr). La web publica una tabla genérica; la CLI y el servidor
 // reservan según el modo y los archivos reales.
@@ -54,6 +55,8 @@ const WEB_DIFFERENCES = {
   'seedance-2-5': 'La tabla genérica de la web no refleja la duración automática (30 s de salida reservados).',
   'grok-imagine-video-1-5': 'La CLI suma 2 cr por imagen (tarifa del proveedor no desglosada); la web solo lo menciona en su nota.',
   'kling-o3': 'La tabla genérica de la web no refleja la tarifa con vídeo de entrada, la de audio ni los 16 s reservados en Transformación.',
+  'kling-2-6-motion-control': 'La tabla genérica de la web usa la duración que se elige; la web real, la CLI y el servidor cobran por el vídeo medido.',
+  'kling-3-0-motion-control': 'La tabla genérica de la web usa la duración que se elige; la web real, la CLI y el servidor cobran por el vídeo medido.',
   'minimax-h3': 'La tabla genérica de la web no suma 15 s por vídeo de referencia ni las imágenes a partir de la sexta.',
   'kling-v3': 'La web es conservadora (redondea a 23 y 34 cr/s y Pro presupone audio); el servidor reserva 22,4 cr/s y 33,6 con audio.',
   'crystal-upscaler': 'El servidor reserva 61 cr aunque la salida sea menor; la web muestra el coste por megapíxel.',
