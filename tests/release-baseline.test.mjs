@@ -18,7 +18,7 @@ const baseline = JSON.parse(fs.readFileSync(new URL('./fixtures/catalog-1.18.0-2
 // de referencia). El fixture guarda lo que valían antes; restaurarlo reproduce el hash de la línea base.
 const beforePriceAudit = JSON.parse(fs.readFileSync(new URL('./fixtures/estimates-before-price-audit.json', import.meta.url), 'utf8')).models;
 
-test('la release conserva los contratos anteriores excepto las ampliaciones versionadas de Eleven, Wan 3.0 y Seed Audio y la auditoría de precios', () => {
+test('la release conserva los contratos anteriores excepto las ampliaciones versionadas de Eleven, Wan 3.0, Seed Audio y Seedance y la auditoría de precios', () => {
   assert.equal(Object.keys(baseline.model_sha256).length, 61);
   for (const [id, expected] of Object.entries(baseline.model_sha256)) {
     assert.ok(catalog.models[id], 'No puede desaparecer ' + id);
@@ -47,9 +47,15 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
       assert.equal(restored, expected, 'Seed Audio solo puede cambiar su estimate');
       continue;
     }
+    if (['seedance-2', 'seedance-2-5', 'seedance-2-mini'].includes(id)) {
+      // Cambio versionado en 2.3.15: el servidor factura los segundos de los vídeos de referencia y los mide. Las CLI
+      // anteriores dejan de ofrecerlos en lugar de autorizar por debajo de la reserva (ver tests/seedance-precios.test.mjs).
+      assert.equal(catalog.models[id].min_cli_version, '2.3.15');
+      assert.equal(catalog.models[id].estimate.video_param, 'reference_video_urls');
+      continue;
+    }
     if (beforePriceAudit[id]) {
       // Por qué cambia cada uno (todos contra el servidor real, ver tests/pricing-audit.test.mjs):
-      //  - seedance-2, seedance-2-5, seedance-2-mini: promociones caducadas fuera; Fast se reserva como Normal desde la terminal.
       //  - kling-v3: tarifa por audio y margen decimal; lipsync-heygen-*: margen decimal; avatar-photo-video: tarifa por resolución.
       //  - crystal-upscaler y seedvr2-image-upscaler: reserva mínima del servidor; eleven-sound-fx: 25 cr, no 26.
       //  - minimax-h3: el servidor admite un solo vídeo y un solo audio de referencia.
@@ -64,7 +70,7 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
   assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'higgsfield-genjutsu-light', 'higgsfield-marketing-studio-image', 'higgsfield-soul-cinema', 'ideogram-v45', 'kling-4-0', 'krea-3', 'nano-banana-2-1', 'seedance-2-5-lite']);
-  assert.equal(catalog.catalog_version, '1.26.0');
+  assert.equal(catalog.catalog_version, '1.27.0');
   assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
@@ -100,8 +106,8 @@ test('los nuevos contratos públicos no contienen costes o endpoints privados', 
   }
 });
 
-test('una instalación 2.3.14 no retrocede al runtime estable anterior', async () => {
-  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.14');
+test('una instalación 2.3.15 no retrocede al runtime estable anterior', async () => {
+  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.15');
   let installations = 0;
   const checked = await checkAndMaybeUpdate({
     force: true,
@@ -109,7 +115,7 @@ test('una instalación 2.3.14 no retrocede al runtime estable anterior', async (
     releaseInstaller: async () => { installations++; throw new Error('No debe instalar una versión anterior'); },
   });
   assert.equal(checked.ok, true);
-  assert.equal(checked.current, '2.3.14');
+  assert.equal(checked.current, '2.3.15');
   assert.equal(checked.update, null);
   assert.equal(installations, 0);
 });

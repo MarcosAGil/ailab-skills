@@ -64,6 +64,18 @@ export function priceCases(F) {
   grid('seedance-1-5-pro', P, { resolution: ['480p', '720p', '1080p'], duration: ['4', '8', '12'] });
   grid('seedance-2-5-lite', P, { resolution: ['480p', '720p', '1080p'], duration: ['4', '10', '30'] });
   grid('seedance-2-5-lite', { ...P, mode: 'ref', reference_video_urls: [video(8)] }, { resolution: ['480p', '1080p'], duration: ['4', '10'] });
+  // Seedance 2.5 y Lite: cada vídeo sube al segundo superior y se suman. Automática y edición también cuentan la entrada.
+  const tenVideos = Array.from({ length: 10 }, () => video(3));
+  const tenAudios = Array.from({ length: 10 }, () => audio(3));
+  add('seedance-2-5', { ...P, mode: 'ref', reference_video_urls: [video(3.2), video(4.1)], reference_audio_urls: [audio(3), audio(4)], resolution: '1080p', duration: '6' }, 'dos vídeos y dos audios');
+  add('seedance-2-5', { ...P, mode: 'ref', reference_video_urls: tenVideos, reference_audio_urls: tenAudios, resolution: '720p', duration: '30' }, 'diez vídeos y diez audios');
+  grid('seedance-2-5', { ...P, mode: 'ref', auto_duration: 'true', reference_video_urls: [video(8)] }, { resolution: ['480p', '720p', '1080p'] });
+  for (const seconds of [4, 8.2, 16, 30]) add('seedance-2-5', { ...P, mode: 'edit', reference_video_urls: [video(seconds)], resolution: '720p' }, 'edición de ' + seconds + ' s');
+  add('seedance-2-5-lite', { ...P, mode: 'ref', reference_video_urls: tenVideos, reference_audio_urls: tenAudios, resolution: '1080p', duration: '4' }, 'diez vídeos y diez audios');
+  add('seedance-2-5-lite', { ...P, mode: 'ref', reference_video_urls: [video(2)], resolution: '720p', duration: '30' }, 'mínimo de Lite: ceil(30 x 5 / 3) = 50 s');
+  add('seedance-2', { ...P, mode: 'ref', reference_video_urls: [video(15)], resolution: '4k', duration: '15' }, 'vídeo de 15 s');
+  add('seedance-2', { ...P, mode: 'ref', reference_video_urls: [video(8.2)], speed: 'fast', resolution: '720p', duration: '5' }, 'al segundo superior');
+  add('seedance-2-mini', { ...P, mode: 'ref', reference_video_urls: [video(15)], resolution: '720p', duration: '15' }, 'vídeo de 15 s');
   grid('grok-imagine-video', P, { resolution: ['480p', '720p'], duration: ['6', '10', '15'] });
   add('grok-imagine-video', { ...P, image_urls: [image()], resolution: '720p', duration: '10' });
   grid('grok-imagine-video-1-5', { ...P, image_urls: [image()] }, { resolution: ['480p', '720p'], duration: ['1', '8', '15'] });

@@ -9,6 +9,7 @@ import { WAN3_ID, wan3Estimate, wan3Problems } from './wan3.mjs';
 import { KLING4_ID, kling4Estimate, kling4Problems } from './kling4.mjs';
 import { LITE_ID, liteEstimate, liteProblems } from './seedance-lite.mjs';
 import { LIGHT_ID, lightEstimate, lightProblems } from './genjutsu-light.mjs';
+import { SEEDANCE_IDS, seedanceEstimate, seedanceProblems } from './seedance.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1', 'higgsfield-v1'];
 
@@ -423,6 +424,10 @@ export function validateParams(model, given) {
     // Seedance 2.5 Lite: modalidades excluyentes y vídeo de referencia medido en local.
     errors.push(...liteProblems(params, fileParams));
   }
+  if (SEEDANCE_IDS.includes(model.id)) {
+    // Seedance 2.5 Normal, 2.0 y Mini: los vídeos de referencia se facturan y deben ser medibles.
+    errors.push(...seedanceProblems(model, params, fileParams));
+  }
   if (model.id === LIGHT_ID) {
     // Genjutsu Light: el vídeo se mide en local y no puede pasar de 15 s (el servidor repite la medición).
     errors.push(...lightProblems(params, fileParams));
@@ -453,6 +458,13 @@ function effectivePerSecondTable(estimate, now = Date.now()) {
   return { ...table, ...(promo.previous_credits_per_second || {}) };
 }
 
+function effectiveVideoTable(estimate, now = Date.now()) {
+  const table = { ...(estimate.credits_with_video || {}) };
+  const ends = estimate.promo && estimate.promo.until ? Date.parse(String(estimate.promo.until)) : NaN;
+  if (!Number.isFinite(ends) || now < ends) return table;
+  return { ...table, ...(estimate.promo.previous_credits_with_video || {}) };
+}
+
 function effectiveMatrix(estimate, field, previousField, now = Date.now()) {
   const current = estimate[field] || {};
   const promo = estimate.promo;
@@ -466,6 +478,17 @@ function effectiveMatrix(estimate, field, previousField, now = Date.now()) {
     if (!merged[row]) merged[row] = { ...values };
   }
   return merged;
+}
+
+// Tarifa vigente de Seedance por segundo, con o sin vídeo de entrada. Una promoción caducada no cuenta.
+function seedanceRate(e, params, hasVideo, now) {
+  if (e.kind === 'per_second_matrix') {
+    const table = hasVideo
+      ? effectiveMatrix(e, 'credits_with_video_matrix', 'previous_credits_with_video_matrix', now)
+      : effectiveMatrix(e, 'credits_matrix', 'previous_credits_matrix', now);
+    return table[params[e.row_param]] && table[params[e.row_param]][params[e.column_param]];
+  }
+  return (hasVideo ? effectiveVideoTable(e, now) : effectivePerSecondTable(e, now))[params[e.by_param]];
 }
 
 export function estimateCredits(model, params, now = Date.now()) {
@@ -497,6 +520,7 @@ export function estimateCredits(model, params, now = Date.now()) {
   if (model.id === WAN3_ID) return wan3Estimate(model, params);
   if (model.id === KLING4_ID) return kling4Estimate(model, params);
   if (model.id === LITE_ID) return liteEstimate(model, params);
+  if (SEEDANCE_IDS.includes(model.id)) return seedanceEstimate(model, params, (hasVideo) => seedanceRate(e, params, hasVideo, now));
   if (e.kind === 'topaz_image') {
     const megapixels = Number(params[e.megapixels_param]);
     const tiers = e.provider_credits_by_max_megapixels || {};
@@ -590,9 +614,7 @@ export function estimateCredits(model, params, now = Date.now()) {
     const hasVideo = e.video_param && Array.isArray(params[e.video_param]) && params[e.video_param].length > 0;
     let table = effectivePerSecondTable(e, now);
     if (hasVideo && e.credits_with_video) {
-      table = { ...e.credits_with_video };
-      const ends = e.promo && e.promo.until ? Date.parse(String(e.promo.until)) : NaN;
-      if (Number.isFinite(ends) && now >= ends) table = { ...table, ...(e.promo.previous_credits_with_video || {}) };
+      table = effectiveVideoTable(e, now);
     } else if (e.audio_param && params[e.audio_param] && e.credits_with_audio) {
       table = { ...e.credits_with_audio };
     }

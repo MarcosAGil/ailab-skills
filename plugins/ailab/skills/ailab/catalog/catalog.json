@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.26.0",
+  "catalog_version": "1.27.0",
   "min_cli_version": "2.3.7",
   "models": {
     "krea-3": {
@@ -4033,7 +4033,7 @@
           }
         },
         "kind": "per_second_matrix",
-        "note": "coste real al terminar. Desde la terminal el modo Fast se reserva y se factura con la tarifa de Normal",
+        "note": "coste real al terminar. Desde la terminal el modo Fast se reserva y se factura con la tarifa de Normal. Con vídeo de referencia: (salida + entrada) x tarifa con vídeo; la entrada es el vídeo medido, al segundo superior.",
         "row_param": "speed",
         "seconds_param": "duration",
         "video_param": "reference_video_urls"
@@ -4041,7 +4041,7 @@
       "expensive": true,
       "id": "seedance-2",
       "label": "Seedance 2.0",
-      "min_cli_version": "2.1.0",
+      "min_cli_version": "2.3.15",
       "modes": [
         "t2v",
         "i2v",
@@ -4107,6 +4107,7 @@
         },
         "reference_video_urls": {
           "accept": "video",
+          "help": "Un vídeo MP4 o MOV de hasta 15 s. Sus segundos, al segundo superior, se suman a la salida y se cobran.",
           "max": 1,
           "type": "file[]"
         },
@@ -4149,28 +4150,24 @@
         "auto_duration_seconds": 30,
         "by_param": "resolution",
         "credits_per_second": {
-          "1080p": 161.5,
+          "1080p": 161.16,
           "480p": 28.56,
           "720p": 64.26
         },
         "credits_with_video": {
-          "1080p": 97.04,
+          "1080p": 96.9,
           "480p": 17.34,
           "720p": 38.76
         },
         "kind": "per_second_table",
-        "note": "Tarifas con comision AILAB incluida; el coste real lo confirma KIE al terminar.",
+        "note": "Tarifas con comision AILAB incluida; el coste real lo confirma el proveedor al terminar y nunca supera lo autorizado. Sin vídeo: salida x tarifa. Con vídeo de referencia: (salida + entrada) x tarifa con vídeo; la entrada es la suma de los vídeos, cada uno medido y al segundo superior. Duración automática: salida de 30 s. Editar vídeo: 2 x segundos del clip x tarifa con vídeo.",
         "seconds_param": "duration",
-        "mode_param": "mode",
-        "duration_by_mode": {
-          "edit": 30
-        },
         "video_param": "reference_video_urls"
       },
       "expensive": true,
       "id": "seedance-2-5",
       "label": "Seedance 2.5",
-      "min_cli_version": "2.1.0",
+      "min_cli_version": "2.3.15",
       "modes": [
         "t2v",
         "i2v",
@@ -4237,7 +4234,8 @@
         },
         "reference_audio_urls": {
           "accept": "audio",
-          "max": 1,
+          "help": "Hasta 10 audios que sumen como máximo 30 s. No añaden segundos al precio.",
+          "max": 10,
           "type": "file[]"
         },
         "reference_image_urls": {
@@ -4247,7 +4245,8 @@
         },
         "reference_video_urls": {
           "accept": "video",
-          "max": 1,
+          "help": "Hasta 10 vídeos MP4 o MOV que sumen como máximo 30 s. Cada vídeo se redondea al segundo superior y esos segundos se suman a la salida. En modo edit, exactamente un vídeo de 4 a 30 s.",
+          "max": 10,
           "required_when": {
             "mode": "edit"
           },
@@ -4288,14 +4287,14 @@
           "720p": 20.91
         },
         "kind": "per_second_table",
-        "note": "coste real al terminar; la referencia en video no cambia la tarifa",
+        "note": "coste real al terminar. Con vídeo de referencia la tarifa es la misma, pero se factura (salida + entrada); la entrada es el vídeo medido, al segundo superior.",
         "seconds_param": "duration",
         "video_param": "reference_video_urls"
       },
       "expensive": true,
       "id": "seedance-2-mini",
       "label": "Seedance 2.0 Mini",
-      "min_cli_version": "2.1.0",
+      "min_cli_version": "2.3.15",
       "modes": [
         "t2v",
         "i2v",
@@ -4363,6 +4362,7 @@
         },
         "reference_video_urls": {
           "accept": "video",
+          "help": "Un vídeo MP4 o MOV de hasta 15 s. Sus segundos, al segundo superior, se suman a la salida y se cobran.",
           "max": 1,
           "type": "file[]"
         },
@@ -5698,7 +5698,7 @@
     },
     "seedance-2-5-lite": {
       "label": "Seedance 2.5 Lite",
-      "description": "Seedance 2.5 en torno a un 27 % más barato, en prueba. Texto, primer y último fotograma o referencias (imágenes, un vídeo y un audio), de 4 a 30 s. No edita vídeo: para editar usa Seedance 2.5 Normal.",
+      "description": "Seedance 2.5 en torno a un 27 % más barato, en prueba. Texto, primer y último fotograma o referencias (imágenes, hasta 10 vídeos y 10 audios), de 4 a 30 s. No edita vídeo: para editar usa Seedance 2.5 Normal.",
       "section": "video",
       "vendor": "ByteDance",
       "tier": "hub",
@@ -5707,7 +5707,7 @@
       "enabled": true,
       "expensive": true,
       "driver": "jobs-v1",
-      "min_cli_version": "2.3.13",
+      "min_cli_version": "2.3.15",
       "aliases": [
         "seedance 2.5 lite",
         "seedance2.5lite",
@@ -5791,14 +5791,14 @@
         "reference_video_urls": {
           "type": "file[]",
           "accept": "video",
-          "max": 1,
-          "help": "Solo ref. Un vídeo MP4 o MOV de hasta 30 s. Su duración se suma a la de salida en el máximo reservado; se cobra el coste real."
+          "max": 10,
+          "help": "Solo ref. Hasta 10 vídeos MP4 o MOV que sumen como máximo 30,2 s. Cada vídeo se redondea al segundo superior y cuenta en el máximo reservado; se cobra el coste real."
         },
         "reference_audio_urls": {
           "type": "file[]",
           "accept": "audio",
-          "max": 1,
-          "help": "Solo ref. Un audio de referencia (Sume admite hasta 30,2 s)."
+          "max": 10,
+          "help": "Solo ref. Hasta 10 audios que sumen como máximo 30,2 s. No añaden segundos al precio."
         }
       },
       "estimate": {
@@ -5810,8 +5810,14 @@
           "720p": 47.1648,
           "1080p": 115.9944
         },
+        "credits_with_video": {
+          "480p": 12.546,
+          "720p": 28.2132,
+          "1080p": 69.4008
+        },
+        "video_param": "reference_video_urls",
         "approximate": true,
-        "note": "Tarifa de Sume con el servicio de AILAB. Sin vídeo de referencia es exacto. Con él se reserva la salida más los segundos del vídeo (al segundo superior, medidos por el servidor) y se cobra el coste real del proveedor, nunca más."
+        "note": "Tarifa de Sume con el servicio de AILAB. Sin vídeo de referencia es exacto. Con vídeo se reserva, a la tarifa con vídeo, el mayor de (salida + entrada) y ceil(salida x 5 / 3); la entrada es la suma de los vídeos, cada uno medido y al segundo superior. Se cobra el coste real del proveedor, nunca más."
       },
       "id": "seedance-2-5-lite"
     },

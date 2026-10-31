@@ -103,10 +103,10 @@ test('el catálogo publicado no conserva promociones ni textos con fechas de pro
     assert.doesNotMatch(text, /promocional hasta|rebajad[oa] hasta|hasta el \d{1,2} de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)|promoción termina/i, id);
   }
   // Tarifas que el servidor cobra hoy y que mostraba la promoción caducada.
-  assert.equal(catalog.models['seedance-2-5'].estimate.credits_per_second['1080p'], 161.5);
-  assert.equal(catalog.models['seedance-2-5'].estimate.credits_with_video['1080p'], 97.04);
+  assert.equal(catalog.models['seedance-2-5'].estimate.credits_per_second['1080p'], 161.16);
+  assert.equal(catalog.models['seedance-2-5'].estimate.credits_with_video['1080p'], 96.9);
   assert.deepEqual(catalog.models['seedance-2-mini'].estimate.credits_per_second, { '480p': 9.69, '720p': 20.91 });
-  assert.equal(estimateCredits(catalog.models['seedance-2-5'], { resolution: '1080p', duration: 10 }, TODAY).credits, 1615);
+  assert.equal(estimateCredits(catalog.models['seedance-2-5'], { resolution: '1080p', duration: 10 }, TODAY).credits, 1612);
   assert.equal(estimateCredits(catalog.models['seedance-2-mini'], { resolution: '720p', duration: 5 }, TODAY).credits, 105);
 });
 

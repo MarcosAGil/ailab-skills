@@ -11,7 +11,7 @@ import { Media } from './helpers/media.mjs';
 import { CANONICAL, canRunParity, php } from './helpers/php.mjs';
 
 // Seedance 2.5 Lite (ByteDance vía Sume). Contrato del servidor: sume_lite_contract, sume_route_lite,
-// gateway_seedance_25_lite_video_seconds y gateway_estimate_credits. Con AILAB_CANONICAL_REPO las
+// gateway_seedance_25_media_seconds y gateway_estimate_credits. Con AILAB_CANONICAL_REPO las
 // comparaciones usan el PHP real con metadatos simulados: sin red ni gasto.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-lite-skill-'));
@@ -27,6 +27,8 @@ const model = { id: 'seedance-2-5-lite', ...catalog.models['seedance-2-5-lite'] 
 const execute = promisify(execFile);
 const media = new Media(path.join(temporary, 'files'));
 const RATES = { '480p': 20.9712, '720p': 47.1648, '1080p': 115.9944 };
+const VIDEO_RATES = { '480p': 12.546, '720p': 28.2132, '1080p': 69.4008 };
+const credits = (rate, seconds) => Math.ceil(Number((rate * seconds).toFixed(6)));
 
 function plan(given) {
   const v = validateParams(model, given);
@@ -39,8 +41,8 @@ function plan(given) {
   return { ok: true, v, estimate, payload, meta };
 }
 
-test('el contrato publicado exige la skill 2.3.13, es Lite sin edición y las CLI anteriores lo ignoran', async () => {
-  assert.equal(model.min_cli_version, '2.3.13');
+test('el contrato publicado exige la skill 2.3.15, es Lite sin edición y las CLI anteriores lo ignoran', async () => {
+  assert.equal(model.min_cli_version, '2.3.15');
   assert.equal(model.enabled, true);
   assert.deepEqual(model.modes, ['t2v', 'i2v', 'ref'], 'Lite no edita vídeo');
   assert.deepEqual(model.params.mode.values, ['t2v', 'i2v', 'ref']);
@@ -49,40 +51,49 @@ test('el contrato publicado exige la skill 2.3.13, es Lite sin edición y las CL
   assert.deepEqual([model.params.duration.min, model.params.duration.max, model.params.duration.default], [4, 30, 5]);
   assert.deepEqual(model.params.resolution.values, ['480p', '720p', '1080p']);
   assert.equal(model.params.reference_image_urls.max, 30);
-  assert.equal(model.params.reference_video_urls.max, 1);
-  assert.equal(model.params.reference_audio_urls.max, 1);
+  assert.equal(model.params.reference_video_urls.max, 10);
+  assert.equal(model.params.reference_audio_urls.max, 10);
   assert.equal(model.estimate.kind, 'per_second_table');
   assert.deepEqual(model.estimate.credits_per_second, RATES);
+  assert.deepEqual(model.estimate.credits_with_video, VIDEO_RATES);
   const text = JSON.stringify(model);
   for (const forbidden of ['bytedance/seedance', 'provider_contract', 'callBackUrl', 'SUME_API_KEY']) assert.equal(text.includes(forbidden), false, forbidden);
   assert.equal(text.includes(String.fromCharCode(0x2014)), false);
   assert.equal(modelUsable(model).ok, true);
   if (!CANONICAL) return;
-  for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12']) {
+  for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14']) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
     const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
     assert.equal(old.modelUsable(parsed.models['seedance-2-5-lite']).ok, false, 'la CLI ' + version + ' no debe ofrecer Lite');
   }
 });
 
-test('sin vídeo, 3 resoluciones y 27 duraciones dan la tarifa por segundo; con vídeo se reserva salida más entrada', () => {
+test('sin vídeo, 3 resoluciones y 27 duraciones dan la tarifa por segundo; con vídeo se reserva el mayor de salida más entrada y ceil(salida x 5 / 3)', () => {
   let checked = 0;
   for (const resolution of ['480p', '720p', '1080p']) for (let duration = 4; duration <= 30; duration += 1) {
     const result = plan({ prompt: 'Una escena', resolution, duration });
     assert.equal(result.ok, true, result.errors?.join('\n'));
-    assert.equal(result.estimate.credits, Math.ceil(Number((RATES[resolution] * duration).toFixed(6))), `${resolution} ${duration}`);
+    assert.equal(result.estimate.credits, credits(RATES[resolution], duration), `${resolution} ${duration}`);
     assert.equal(result.estimate.approximate, false);
     checked += 1;
   }
   assert.equal(checked, 81);
   assert.equal(plan({ prompt: 'x' }).estimate.credits, 236, '5 s a 720p');
-  // Un vídeo de 8,2 s se redondea a 9 s: 10 s de salida + 9 s = 19 s a 720p.
+  // Un vídeo de 8,2 s se redondea a 9 s: 10 s de salida + 9 s = 19 s a 720p, por encima de ceil(10 x 5 / 3) = 17.
   const withVideo = plan({ mode: 'ref', prompt: 'Mira @Video1', duration: 10, reference_video_urls: [media.video('lv82.mp4', 8.2)] });
   assert.equal(withVideo.ok, true, withVideo.errors?.join('\n'));
-  assert.equal(withVideo.estimate.credits, Math.ceil(Number((RATES['720p'] * 19).toFixed(6))));
-  assert.equal(withVideo.estimate.credits, 897);
+  assert.equal(withVideo.estimate.credits, credits(VIDEO_RATES['720p'], 19));
+  assert.equal(withVideo.estimate.credits, 537);
   assert.equal(withVideo.estimate.approximate, true);
   assert.match(withVideo.estimate.note, /10 s de salida \+ 9 s de vídeo de referencia = 19 s/);
+  // 30 s de salida con un vídeo de 2 s: 32 s no llegan a ceil(30 x 5 / 3) = 50.
+  const minimum = plan({ mode: 'ref', prompt: 'Mira @Video1', duration: 30, resolution: '1080p', reference_video_urls: [media.video('lv2.mp4', 2)] });
+  assert.equal(minimum.estimate.credits, credits(VIDEO_RATES['1080p'], 50));
+  assert.match(minimum.estimate.note, /factura al menos 50 s/);
+  // Diez vídeos suman cada uno al alza: 10 x 3,01 s son 30,1 s exactos y 40 s facturables.
+  const ten = plan({ mode: 'ref', prompt: 'x', duration: 4, reference_video_urls: Array.from({ length: 10 }, (_, i) => media.video(`lvd${i}.mp4`, 3.01)) });
+  assert.equal(ten.ok, true, ten.errors?.join('\n'));
+  assert.equal(ten.estimate.credits, credits(VIDEO_RATES['720p'], 44));
   // Imágenes y audio no suman segundos.
   const images = plan({ mode: 'ref', prompt: 'x', reference_image_urls: [media.image('li1.png')], reference_audio_urls: [media.wavAudio('la1.wav', 5)] });
   assert.equal(images.estimate.credits, 236);
@@ -105,9 +116,12 @@ test('límites de la CLI: modalidades excluyentes, materiales y vídeo medido', 
     ['ref sin referencias', { prompt: 'x', mode: 'ref' }, /al menos una imagen/],
     ['ref con fotogramas', { prompt: 'x', mode: 'ref', first_frame_url: img('f.png'), reference_image_urls: [img('g.png')] }, /no combina fotogramas con referencias/],
     ['31 imágenes', { prompt: 'x', mode: 'ref', reference_image_urls: Array.from({ length: 31 }, (_, i) => img(`h${i}.png`)) }, /como mucho 30/],
-    ['dos vídeos', { prompt: 'x', mode: 'ref', reference_video_urls: [media.video('v1.mp4', 4), media.video('v2.mp4', 4)] }, /como mucho 1/],
-    ['dos audios', { prompt: 'x', mode: 'ref', reference_audio_urls: [media.wavAudio('a1.wav', 2), media.wavAudio('a2.wav', 2)] }, /como mucho 1/],
-    ['vídeo de 31 s', { prompt: 'x', mode: 'ref', reference_video_urls: [media.video('v31.mp4', 31)] }, /no pueden sumar más de 30 segundos/],
+    ['once vídeos', { prompt: 'x', mode: 'ref', reference_video_urls: Array.from({ length: 11 }, (_, i) => media.video(`v${i}.mp4`, 1)) }, /como mucho 10/],
+    ['once audios', { prompt: 'x', mode: 'ref', reference_audio_urls: Array.from({ length: 11 }, (_, i) => media.wavAudio(`a${i}.wav`, 1)) }, /como mucho 10/],
+    ['vídeo de 31 s', { prompt: 'x', mode: 'ref', reference_video_urls: [media.video('v31.mp4', 31)] }, /Los vídeos de referencia de Seedance 2\.5 Lite no pueden sumar más de 30,2 segundos\./],
+    ['dos vídeos que pasan de 30,2 s', { prompt: 'x', mode: 'ref', reference_video_urls: [media.video('vs1.mp4', 15.2), media.video('vs2.mp4', 15.1)] }, /no pueden sumar más de 30,2 segundos/],
+    ['audios que pasan de 30,2 s', { prompt: 'x', mode: 'ref', reference_audio_urls: [media.wavAudio('as1.wav', 15.2), media.wavAudio('as2.wav', 15.1)] }, /Los audios de referencia de Seedance 2\.5 Lite no pueden sumar más de 30,2 segundos\./],
+    ['un vídeo como audio', { prompt: 'x', mode: 'ref', reference_audio_urls: [media.video('va.mp4', 3)] }, /Un audio de referencia no es un archivo de audio válido\./],
     ['WebM', { prompt: 'x', mode: 'ref', reference_video_urls: [media.put('lite.webm', Buffer.concat([Buffer.from('1a45dfa3', 'hex'), Buffer.alloc(64)]), { mime: 'video/webm', duration: 5 })] }, /MP4 o MOV medible/],
     ['edición', { prompt: 'x', mode: 'edit' }, /debe ser uno de/],
   ];
@@ -150,6 +164,8 @@ function validCases() {
     ['ref con un vídeo de 5,0004 s (5,000 en milésimas)', { mode: 'ref', prompt: '@Video1', reference_video_urls: [media.video('lcv4.mp4', 5.0004)] }],
     ['ref con un audio', { mode: 'ref', prompt: '@Audio1', reference_audio_urls: [media.wavAudio('lca.wav', 6)] }],
     ['ref con imagen, vídeo y audio', { mode: 'ref', prompt: '@Image1 @Video1 @Audio1', duration: 15, reference_image_urls: [img('lcm.png')], reference_video_urls: [media.video('lcv5.mp4', 3)], reference_audio_urls: [media.mp3Audio('lca2.mp3', 3)] }],
+    ['ref con mínimo de Lite: 30 s y un vídeo de 2 s', { mode: 'ref', prompt: '@Video1', duration: 30, resolution: '1080p', reference_video_urls: [media.video('lcv6.mp4', 2)] }],
+    ['ref con diez vídeos y diez audios', { mode: 'ref', prompt: '@Video10 @Audio10', duration: 4, resolution: '480p', reference_video_urls: Array.from({ length: 10 }, (_, i) => media.video(`lcd${i}.mp4`, 3.01)), reference_audio_urls: Array.from({ length: 10 }, (_, i) => media.wavAudio(`lce${i}.wav`, 3.01)) }],
   ];
 }
 
@@ -160,7 +176,7 @@ const PHP_BACKEND = `
     $inspect = static fn($url, $kind) => $meta[$url] ?? null;
     $error = sume_lite_contract($input, $cfg); $seconds = 0;
     if ($error === null) {
-      try { $seconds = gateway_seedance_25_lite_video_seconds($input, 1, $inspect); }
+      try { $seconds = gateway_seedance_25_media_seconds($input, 1, GATEWAY_SEEDANCE_25_LITE_REFERENCE_SECONDS, 'Seedance 2.5 Lite', $inspect); }
       catch (InvalidArgumentException $e) { $error = $e->getMessage(); }
     }
     if ($error !== null) { $out[] = ['ok' => false, 'error' => $error]; continue; }
@@ -191,7 +207,7 @@ test('paridad con el PHP real: el servidor acepta lo que envía la CLI, reserva 
     if (input.mode === 'i2v') assert.equal(sume.payload.aspect_ratio, 'adaptive');
     if (input.mode === 'ref') assert.deepEqual(sume.payload.reference_video_urls, input.reference_video_urls);
   });
-  assert.equal(cases.length, 14);
+  assert.equal(cases.length, 16);
   // Las cifras con vídeo incluyen sus segundos medidos por el servidor.
   assert.equal(results[8].seconds, 9);
   assert.equal(results[11].seconds, 5, '5,0004 s se redondea a milésimas (5,000) y no sube al segundo superior');
@@ -205,8 +221,10 @@ test('paridad con el PHP real: lo que la CLI rechaza en local el servidor tambi�
     meta: Object.fromEntries(files.map((file) => [url(file), media.meta[file]])),
   });
   const v31 = media.video('rj31.mp4', 31);
-  const two = [media.video('rj1.mp4', 4), media.video('rj2.mp4', 4)];
-  const a = [media.wavAudio('rja1.wav', 2), media.wavAudio('rja2.wav', 2)];
+  const elevenVideos = Array.from({ length: 11 }, (_, i) => media.video(`rjv${i}.mp4`, 1));
+  const elevenAudios = Array.from({ length: 11 }, (_, i) => media.wavAudio(`rja${i}.wav`, 1));
+  const overVideos = [media.video('rj1.mp4', 15.2), media.video('rj2.mp4', 15.1)];
+  const overAudios = [media.wavAudio('rja1.wav', 15.2), media.wavAudio('rja2.wav', 15.1)];
   const first = img('rjf.png');
   const imgs = Array.from({ length: 31 }, (_, i) => img(`rji${i}.png`));
   const rejected = [
@@ -221,15 +239,24 @@ test('paridad con el PHP real: lo que la CLI rechaza en local el servidor tambi�
     ['fotogramas con referencias', raw({ mode: 'ref', first_frame_url: url(first), reference_image_urls: [url(first)] }, [first])],
     ['ref sin referencias', raw({ mode: 'ref' })],
     ['31 imágenes', raw({ mode: 'ref', reference_image_urls: imgs.map(url) }, imgs)],
-    ['dos vídeos', raw({ mode: 'ref', reference_video_urls: two.map(url) }, two)],
-    ['dos audios', raw({ mode: 'ref', reference_audio_urls: a.map(url) }, a)],
+    ['once vídeos', raw({ mode: 'ref', reference_video_urls: elevenVideos.map(url) }, elevenVideos)],
+    ['once audios', raw({ mode: 'ref', reference_audio_urls: elevenAudios.map(url) }, elevenAudios)],
     ['vídeo de 31 s', raw({ mode: 'ref', reference_video_urls: [url(v31)] }, [v31])],
+    ['vídeos que pasan de 30,2 s', raw({ mode: 'ref', reference_video_urls: overVideos.map(url) }, overVideos)],
+    ['audios que pasan de 30,2 s', raw({ mode: 'ref', reference_audio_urls: overAudios.map(url) }, overAudios)],
     ['edición', raw({ mode: 'edit' })],
     ['búsqueda web', raw({ web_search: true })],
     ['parámetro ajeno', raw({ callBackUrl: 'https://evil.example' })],
   ];
   const results = php(PHP_BACKEND, [JSON.stringify(rejected.map(([, c]) => c))], { sume: true });
   rejected.forEach(([name], index) => assert.equal(results[index].ok, false, `${name}: el servidor debía rechazarlo`));
+  // Los mensajes que la CLI anticipa son los del servidor.
+  const message = (name) => results[rejected.findIndex(([label]) => label === name)].error;
+  for (const [name, given] of [
+    ['vídeo de 31 s', { prompt: 'x', mode: 'ref', reference_video_urls: [v31] }],
+    ['vídeos que pasan de 30,2 s', { prompt: 'x', mode: 'ref', reference_video_urls: overVideos }],
+    ['audios que pasan de 30,2 s', { prompt: 'x', mode: 'ref', reference_audio_urls: overAudios }],
+  ]) assert.ok(plan(given).errors.includes(message(name)), name + ': ' + message(name));
 });
 
 test('paridad con el PHP real: ruta del servidor y puerta de acceso de Lite (piloto, token y cookie)', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
@@ -253,7 +280,7 @@ test('paridad con el PHP real: ruta del servidor y puerta de acceso de Lite (pil
   assert.equal(matrix.length, 32);
   // El valor por defecto del repositorio deja Lite cerrado: la apertura vive en config.local.php del servidor.
   const defaults = php("$c = wallet_config(); echo json_encode([$c['SEEDANCE_25_PROVIDER'], $c['SUME_LITE_MAX_REFERENCE_VIDEOS'], $c['SUME_LITE_MAX_REFERENCE_AUDIOS'], $c['SUME_MAX_REFERENCE_IMAGES'], $c['SUME_MAX_PROMPT_CHARS']]);");
-  assert.deepEqual(defaults, ['kie', 1, 1, 30, 15000]);
+  assert.deepEqual(defaults, ['kie', 10, 10, 30, 15000]);
   const source = fs.readFileSync(path.join(CANONICAL, 'app/api/wallet/gateway.php'), 'utf8');
   assert.match(source, /wallet_require_scope\('generate'\)/);
   assert.match(source, /sume_lite_gate\(\$user, \(string\)\(\$auth\['auth_type'\] \?\? ''\), \$cfg\)/);
@@ -300,7 +327,7 @@ test('CLI real: prepare mide el vídeo y autoriza salida más entrada; submit en
   await assert.rejects(exec('prepare', 'seedance-2-5-lite', '--prompt', 'x', '--mode', 'edit'), /debe ser uno de/);
   await assert.rejects(exec('prepare', 'seedance-lite', '--prompt', 'x'), /Modelo no encontrado/);
   assert.equal(requests.length, 0);
-  const expected = Math.ceil(Number((RATES['720p'] * 19).toFixed(6)));
+  const expected = credits(VIDEO_RATES['720p'], 19);
   const args = ['seedance-2-5-lite', '--mode', 'ref', '--prompt', 'Mira @Video1', '--duration', '10', '--reference_video_urls', clip];
   const { stdout } = await exec('prepare', ...args, '--max-credits', String(expected));
   assert.match(stdout, new RegExp(`Estimacion: ~${expected} cr`));

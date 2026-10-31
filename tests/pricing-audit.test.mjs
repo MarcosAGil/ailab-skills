@@ -51,8 +51,7 @@ const OVER_ALLOWED = [
 const WEB_DIFFERENCES = {
   'seedream-v5-pro': 'La web muestra la reserva de 15 cr; la CLI autoriza hasta 300 cr en capas.',
   'seedance-2': 'La web envía Fast al modelo rápido (11,93 y 25,3 cr/s); desde la terminal el servidor lo envía al Seedance 2.0 normal y lo reserva con la tarifa de Normal. Con vídeo, la web aplica además la tarifa con vídeo al Fast.',
-  'seedance-2-5': 'La tabla genérica de la web no refleja la duración automática ni la edición (30 s reservados).',
-  'seedance-2-5-lite': 'La tabla genérica de la web no suma los segundos del vídeo de referencia.',
+  'seedance-2-5': 'La tabla genérica de la web no refleja la duración automática (30 s de salida reservados).',
   'grok-imagine-video-1-5': 'La CLI suma 2 cr por imagen (tarifa del proveedor no desglosada); la web solo lo menciona en su nota.',
   'kling-o3': 'La tabla genérica de la web no refleja la tarifa con vídeo de entrada, la de audio ni los 16 s reservados en Transformación.',
   'minimax-h3': 'La tabla genérica de la web no suma 15 s por vídeo de referencia ni las imágenes a partir de la sexta.',

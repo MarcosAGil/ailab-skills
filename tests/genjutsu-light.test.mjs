@@ -74,7 +74,7 @@ test('el contrato publicado: modelo nuevo, activo desde la skill 2.3.14, con cot
   assert.equal(model.estimate.max_credits, 612);
   assert.equal(requiresServerQuote(model), true);
   assert.equal(modelUsable(model).ok, true);
-  assert.equal(modelUsable({ ...model, min_cli_version: '2.3.15' }).ok, false);
+  assert.equal(modelUsable({ ...model, min_cli_version: '2.3.16' }).ok, false);
   assert.equal(resolveModel(catalog, 'genjutsu-light').id, ID);
   assert.equal(resolveModel(catalog, 'genjutsu light').id, ID);
   assert.equal(resolveModel(catalog, 'genjutsu').id, 'genjutsu', 'Genjutsu Normal sigue siendo `genjutsu`');

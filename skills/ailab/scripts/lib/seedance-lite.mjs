@@ -1,26 +1,31 @@
 // Seedance 2.5 Lite (ByteDance, servido por Sume). Contrato en el servidor: `sume_lite_contract` y
-// `sume_route_lite` (api/wallet/sume-gateway.php), `gateway_seedance_25_lite_video_seconds` y
-// `gateway_estimate_credits` (api/wallet/gateway.php).
+// `sume_route_lite` (api/wallet/sume-gateway.php), `gateway_seedance_25_media_seconds`,
+// `gateway_seedance_25_lite_billed_seconds` y `gateway_estimate_credits` (api/wallet/gateway.php).
 //
-// Modalidades: texto a vídeo (t2v), primer y último fotograma (i2v) y referencias (ref: imágenes, un
-// vídeo y un audio). Lite no edita vídeo (eso sigue en Seedance 2.5 Normal), no combina fotogramas con
-// referencias y no tiene duración automática.
+// Modalidades: texto a vídeo (t2v), primer y último fotograma (i2v) y referencias (ref: imágenes, hasta
+// 10 vídeos y 10 audios). Lite no edita vídeo (eso sigue en Seedance 2.5 Normal), no combina fotogramas
+// con referencias y no tiene duración automática.
 //
-// El precio es tarifa de Sume x 1,02 por segundo. Con un vídeo de referencia el servidor reserva
-// (salida + segundos del vídeo, medidos por él) y cobra el coste real; aquí se presupuesta esa misma
-// reserva para que el máximo autorizado nunca quede por debajo (si lo hiciera, el servidor rechaza con 402).
+// El precio es tarifa de Sume x 1,02 por segundo. Con vídeo de referencia el servidor reserva el mayor de
+// (salida + entrada) y ceil(salida x 5 / 3) a la tarifa con vídeo, y cobra el coste real; aquí se presupuesta
+// esa misma reserva para que el máximo autorizado nunca quede por debajo (si lo hiciera, el servidor rechaza
+// con 402).
 import { inspectPricingMetadata } from './files.mjs';
-import { phpRound } from './kling4.mjs';
+import { items, measureAudios, measureVideos, seedanceCredits } from './seedance.mjs';
 
 export const LITE_ID = 'seedance-2-5-lite';
 
-function items(value) {
-  if (Array.isArray(value)) return value.slice();
-  return value === undefined || value === null || value === '' ? [] : [value];
+const LABEL = 'Seedance 2.5 Lite';
+const REFERENCE_SECONDS = 30.2;
+const MAX_REFERENCES = 10;
+
+// Mayor de (salida + entrada) y ceil(salida x 5 / 3), con enteros: `gateway_seedance_25_lite_billed_seconds`.
+export function liteBilledSeconds(output, inputSeconds) {
+  return Math.max(output + inputSeconds, Math.floor((output * 5 + 2) / 3));
 }
 
-// Valida lo que la CLI puede comprobar en local y mide el vídeo de referencia. Devuelve
-// { problems, inputSeconds, exactSeconds }.
+// Valida lo que la CLI puede comprobar en local y mide los materiales de referencia. Devuelve
+// { problems, inputSeconds }.
 export function liteInspect(params, fileParams = {}) {
   const problems = [];
   const mode = String(params.mode ?? 't2v');
@@ -32,7 +37,7 @@ export function liteInspect(params, fileParams = {}) {
   const frames = first.length + last.length;
   const references = images.length + videos.length + audios.length;
   const prompt = String(params.prompt ?? '');
-  const result = { problems, inputSeconds: 0, exactSeconds: 0 };
+  const result = { problems, inputSeconds: 0 };
 
   if (!prompt.trim()) problems.push('Seedance 2.5 Lite requiere un prompt.');
   else if (Array.from(prompt).length > 15000) problems.push('El prompt de Seedance 2.5 Lite supera los 15.000 caracteres (ahora ' + Array.from(prompt).length + ').');
@@ -43,8 +48,8 @@ export function liteInspect(params, fileParams = {}) {
   if (mode === 'ref' && frames) problems.push('Seedance 2.5 Lite no combina fotogramas con referencias. Usa i2v o ref.');
   if (last.length && !first.length) problems.push('El último fotograma exige un primer fotograma.');
   if (images.length > 30) problems.push('Seedance 2.5 Lite admite hasta 30 imágenes de referencia.');
-  if (videos.length > 1) problems.push('Seedance 2.5 Lite admite un único vídeo de referencia.');
-  if (audios.length > 1) problems.push('Seedance 2.5 Lite admite un único audio de referencia.');
+  if (videos.length > MAX_REFERENCES) problems.push('Se ha superado el máximo de vídeos de referencia de Seedance 2.5 Lite.');
+  if (audios.length > MAX_REFERENCES) problems.push('Se ha superado el máximo de audios de referencia de Seedance 2.5 Lite.');
 
   for (const file of [...first, ...last, ...images]) {
     const metadata = inspectPricingMetadata(file);
@@ -52,24 +57,11 @@ export function liteInspect(params, fileParams = {}) {
       problems.push('Una imagen debe ser JPG, PNG o WebP válida: ' + file + '.');
     }
   }
-  for (const file of audios) {
-    const metadata = inspectPricingMetadata(file);
-    if (!metadata.ok || metadata.class !== 'audio') problems.push('El audio de referencia debe ser un audio válido y medible: ' + file + '.');
-  }
+  problems.push(...measureAudios(audios, REFERENCE_SECONDS, LABEL));
   if (mode === 'ref') {
-    for (const file of videos) {
-      const metadata = inspectPricingMetadata(file);
-      if (!metadata.ok || metadata.class !== 'video' || !['video/mp4', 'video/quicktime'].includes(metadata.mime) || !Number.isFinite(metadata.duration)) {
-        problems.push('El vídeo de referencia debe ser un MP4 o MOV medible (la CLI no puede medir WebM): ' + file + '.');
-        continue;
-      }
-      // El servidor suma la duración sin redondear para el tope y cada vídeo al segundo superior para cobrar.
-      result.exactSeconds += metadata.duration;
-      result.inputSeconds += Math.ceil(phpRound(metadata.duration, 3));
-    }
-    if (result.exactSeconds > 30.2 + 1e-9) {
-      problems.push('Los vídeos de referencia de Seedance 2.5 Lite no pueden sumar más de 30 segundos (ahora ' + phpRound(result.exactSeconds, 2) + ' s).');
-    }
+    const measured = measureVideos(videos, REFERENCE_SECONDS, LABEL);
+    problems.push(...measured.problems);
+    result.inputSeconds = measured.inputSeconds;
   }
   return result;
 }
@@ -78,7 +70,8 @@ export function liteProblems(params, fileParams = {}) {
   return liteInspect(params, fileParams).problems;
 }
 
-// ceil(round(tarifa x (salida + entrada), 6)): la misma cuenta que gateway_estimate_credits.
+// La misma cuenta que gateway_estimate_credits: sin vídeo, la salida; con vídeo, la tarifa con vídeo y los
+// segundos de `liteBilledSeconds`.
 export function liteEstimate(model, params, fileParams = {}) {
   const e = model.estimate || {};
   // `estimateCredits` recibe los parámetros y las rutas de archivo en un único objeto.
@@ -86,17 +79,21 @@ export function liteEstimate(model, params, fileParams = {}) {
   const inspected = liteInspect(merged, merged);
   if (inspected.problems.length) return { credits: null, approximate: false, note: inspected.problems[0] };
   const output = Number(params.duration ?? 5);
-  const rate = Number(e.credits_per_second && e.credits_per_second[String(params.resolution ?? '720p')]);
+  const hasVideo = items(merged.reference_video_urls).length > 0;
+  const table = hasVideo ? e.credits_with_video : e.credits_per_second;
+  const rate = Number(table && table[String(params.resolution ?? '720p')]);
   if (!Number.isInteger(output) || output < 4 || output > 30 || !Number.isFinite(rate) || rate <= 0) {
     return { credits: null, approximate: false, note: 'tarifa de Seedance 2.5 Lite no disponible para esta combinación' };
   }
-  const billed = output + inspected.inputSeconds;
+  if (!hasVideo) return { credits: seedanceCredits(rate, output), approximate: false, note: output + ' s de salida · precio exacto' };
+  const sum = output + inspected.inputSeconds;
+  const billed = liteBilledSeconds(output, inspected.inputSeconds);
   return {
-    credits: Math.ceil(phpRound(rate * billed, 6)),
-    approximate: inspected.inputSeconds > 0,
-    note: inspected.inputSeconds > 0
-      ? output + ' s de salida + ' + inspected.inputSeconds + ' s de vídeo de referencia = ' + billed + ' s · máximo reservado; se cobra el coste real del proveedor, nunca más'
-      : output + ' s de salida · precio exacto',
+    credits: seedanceCredits(rate, billed),
+    approximate: true,
+    note: output + ' s de salida + ' + inspected.inputSeconds + ' s de vídeo de referencia = ' + sum + ' s'
+      + (billed > sum ? ' (Lite con vídeo factura al menos ' + billed + ' s)' : '')
+      + ' · máximo reservado; se cobra el coste real del proveedor, nunca más',
   };
 }
 
