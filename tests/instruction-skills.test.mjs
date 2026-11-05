@@ -9,7 +9,7 @@ import {validateInstructionFiles} from '../tools/validate.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 // Skills oficiales de la comunidad de Ailendra Labs que solo son instrucciones (sin ejecutables).
 const INSTRUCTION_SKILLS=['estilo-espontaneo-viral','estilo-amateur-ccd','refinar-prompt','personaje-consistente'];
-const COMMUNITY=[...INSTRUCTION_SKILLS,'estilo-ugc'];
+const COMMUNITY=[...INSTRUCTION_SKILLS,'estilo-ugc','entorno-consistente-blender'];
 const walk=(dir,base=dir)=>fs.readdirSync(dir).flatMap(name=>{const p=path.join(dir,name);return fs.statSync(p).isDirectory()?walk(p,base):[path.relative(base,p)];});
 test('las skills de instrucciones se instalan completas, sin ejecutables ni claves',t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'community-install-'));
@@ -24,7 +24,7 @@ test('las skills de instrucciones se instalan completas, sin ejecutables ni clav
     assert.deepEqual(walk(dest).sort(),walk(path.join(root,'skills',id)).sort(),id+': se copian todos sus archivos');
   }
 });
-test('las cinco skills de la comunidad se declaran oficiales, llevan el logo y no tienen rutas personales ni rayas largas',()=>{
+test('las skills de la comunidad se declaran oficiales, llevan el logo y no tienen rutas personales ni rayas largas',()=>{
   for(const id of COMMUNITY){
     const skill=fs.readFileSync(path.join(root,'skills',id,'SKILL.md'),'utf8');
     assert.match(skill,new RegExp('^---\\nname: '+id+'\\n'));

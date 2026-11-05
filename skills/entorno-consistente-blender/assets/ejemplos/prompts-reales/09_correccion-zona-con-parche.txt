@@ -1,0 +1,5 @@
+Edit Image 1 and keep everything else exactly the same: same people, poses, room, framing and lighting.
+
+Only one change: remove the lid from the record player on top of the stack of books between the two sofas. The record player must look exactly like the one in Image 2: open, with no lid or dust cover, just the turntable with the black vinyl record on top.
+
+(Después: mascara.py sobre la zona de la tapa y componer_parche.py para pegar solo esa zona sobre la imagen buena.)

@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: visor 3D a pantalla completa, con paneles flotantes como los de un viewport. Tema único oscuro, por elección. */
+:root {
+  --bg: #121417;
+  --panel: rgba(24, 27, 31, 0.92);
+  --panel-solid: #181b1f;
+  --ink: #e8e3da;
+  --muted: #9a958c;
+  --line: #34383e;
+  --accent: #8fb8d8;
+  --accent-ink: #0f1a24;
+  --wood: #7a4a2a;
+  --note: #e3b25c;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.panel { position: fixed; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(6px); z-index: 5; }
+#left {
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  width: 250px; padding: 14px; display: flex; flex-direction: column; gap: 12px;
+  max-height: calc(100% - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto;
+}
+#right {
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  width: 300px; padding: 14px; display: flex; flex-direction: column; gap: 12px;
+  max-height: calc(100% - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto;
+}
+.marca { width: 112px; margin: 0 0 10px; opacity: 0.92; }
+.marca svg { width: 100%; height: auto; display: block; }
+h1 { font-family: var(--font-display); font-weight: 750; font-stretch: 80%; font-size: 1.35rem; margin: 0; line-height: 1.1; text-wrap: balance; }
+h2 { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0; }
+.sub { color: var(--muted); font-size: 0.8rem; margin: 4px 0 0; }
+.group { display: flex; flex-direction: column; gap: 6px; }
+.views { display: grid; grid-template-columns: 1fr; gap: 4px; }
+button {
+  font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 5px;
+  padding: 6px 9px; text-align: left; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.views button { display: flex; justify-content: space-between; gap: 8px; }
+.views button span:last-child { font-family: var(--font-mono); font-size: 0.72rem; opacity: 0.75; }
+.toggles { display: flex; flex-wrap: wrap; gap: 4px; }
+.toggles button { font-size: 0.8rem; }
+.help { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+.help kbd { font-family: var(--font-mono); font-size: 0.72rem; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; color: var(--ink); }
+#sel-empty { color: var(--muted); font-size: 0.85rem; }
+#sel-name { font-family: var(--font-mono); font-size: 0.9rem; color: var(--accent); word-break: break-all; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 0.82rem; }
+dt { color: var(--muted); }
+dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+textarea {
+  width: 100%; box-sizing: border-box; min-height: 64px; resize: vertical; font: inherit; font-size: 0.85rem;
+  background: var(--panel-solid); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 8px;
+}
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+.primary { background: var(--note); color: #1b1408; border-color: var(--note); font-weight: 600; }
+.primary:hover { border-color: var(--ink); }
+#notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+#notes li { border-left: 3px solid var(--note); padding: 4px 8px; font-size: 0.82rem; display: flex; gap: 8px; justify-content: space-between; align-items: start; }
+#notes li b { font-family: var(--font-mono); font-weight: 500; font-size: 0.75rem; color: var(--note); display: block; }
+#notes li button { padding: 0 6px; font-size: 0.75rem; flex: none; }
+#notes-empty { color: var(--muted); font-size: 0.82rem; }
+#status { font-size: 0.78rem; color: var(--note); min-height: 1em; }
+#hud {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  font-family: var(--font-mono); font-size: 0.75rem; padding: 6px 12px; z-index: 5; white-space: nowrap;
+}
+#toggle-panels { display: none; }
+@media (max-width: 760px) {
+  #left { width: auto; right: max(12px, env(safe-area-inset-right, 0px)); max-height: 42%; }
+  #right { top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); width: auto; max-height: 38%; }
+  .views { grid-template-columns: 1fr 1fr; }
+  #hud { display: none; }
+  .help { display: none; }
+}
+</style>
+
+<div id="stage"></div>
+
+<aside class="panel" id="left" aria-label="Vistas y controles">
+  <div>
+    <div class="marca" aria-label="Ailendra Labs">__LOGO__</div>
+    <h1>__TITLE__</h1>
+    <p class="sub">__SUBTITLE__</p>
+  </div>
+  <div class="group">
+    <h2>Cámaras de la hoja</h2>
+    <div class="views" id="views"></div>
+  </div>
+  <div class="group">
+    <h2>Navegación</h2>
+    <div class="toggles">
+      <button type="button" id="btn-orbit" class="on">Órbita</button>
+      <button type="button" id="btn-walk">Paseo a 1,6 m</button>
+    </div>
+  </div>
+  <div class="group">
+    <h2>Mostrar</h2>
+    <div class="toggles">
+      <button type="button" id="t-ceiling">Techo</button>
+      <button type="button" id="t-grid">Rejilla 1 m</button>
+      <button type="button" id="t-edges" class="on">Aristas</button>
+    </div>
+  </div>
+  <p class="help" id="help-orbit">Arrastra para girar, rueda para acercar y clic derecho (o dos dedos) para desplazar. Haz clic en un objeto para verlo y apuntar una corrección.</p>
+  <p class="help" id="help-walk" hidden>Arrastra para mirar. Muévete con <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o las flechas. Las paredes te frenan; pasa por los huecos entre ellas.</p>
+</aside>
+
+<aside class="panel" id="right" aria-label="Objeto seleccionado y correcciones">
+  <div class="group">
+    <h2>Objeto seleccionado</h2>
+    <p id="sel-empty">Haz clic en cualquier objeto de la escena.</p>
+    <div id="sel-box" hidden>
+      <div id="sel-name"></div>
+      <dl>
+        <dt>Grupo</dt><dd id="sel-coll"></dd>
+        <dt>Medidas</dt><dd id="sel-dim"></dd>
+        <dt>Posición</dt><dd id="sel-loc"></dd>
+      </dl>
+    </div>
+  </div>
+  <div class="group">
+    <h2>Apuntar corrección</h2>
+    <label for="note-text" class="sub" style="margin:0">Qué está mal y cómo lo quieres. Si no seleccionas nada, la nota es general.</label>
+    <textarea id="note-text" placeholder="Ej.: este mueble tiene que ser 20 cm más largo"></textarea>
+    <div class="row">
+      <button type="button" class="primary" id="add-note">Añadir a la lista</button>
+    </div>
+  </div>
+  <div class="group">
+    <h2>Lista de correcciones</h2>
+    <p id="notes-empty">Todavía no hay correcciones.</p>
+    <ol id="notes"></ol>
+    <div class="row">
+      <button type="button" id="copy-notes">Copiar lista</button>
+      <button type="button" id="clear-notes">Vaciar</button>
+    </div>
+    <p id="status" role="status"></p>
+    <p class="sub" style="margin:0">Copia la lista y pégamela en el chat. Yo aplico los cambios en Blender.</p>
+  </div>
+</aside>
+
+<div class="panel" id="hud">Vista libre</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const SCENE = __DATA__;
+
+// Etiquetas opcionales que escribe construir_visor.py: {nombre_cámara: [etiqueta, objetivo]} y {colección: etiqueta}
+const NICE = SCENE.labels || {};
+const COLL = SCENE.collections || {};
+
+const stage = document.getElementById("stage");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x121417);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 200);
+scene.add(new THREE.HemisphereLight(0xfff4e6, 0x3a4652, 0.75));
+const sun = new THREE.DirectionalLight(0xffffff, 0.55);
+sun.position.set(-3, 8, 4);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xdfe8ff, 0.25);
+fill.position.set(6, 4, -8);
+scene.add(fill);
+
+const meshes = [], edgeLines = [], ceiling = [];
+for (const o of SCENE.objects) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(o.v, 3));
+  g.setIndex(o.t);
+  g.computeVertexNormals();
+  const col = new THREE.Color();
+  col.setRGB(o.c[0], o.c[1], o.c[2]);
+  const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.85, metalness: 0, flatShading: o.t.length > 200 ? false : true,
+    transparent: o.c[3] < 1, opacity: o.c[3], side: THREE.DoubleSide });
+  const m = new THREE.Mesh(g, mat);
+  m.userData = o;
+  scene.add(m);
+  meshes.push(m);
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), new THREE.LineBasicMaterial({ color: 0x0b0c0e, transparent: true, opacity: 0.45 }));
+  scene.add(e);
+  edgeLines.push(e);
+  if (o.coll === (SCENE.ceiling || "Techo")) { ceiling.push(m, e); }
+}
+ceiling.forEach(x => x.visible = false);
+
+// Límites de la escena (calculados, no escritos a mano)
+const box = new THREE.Box3();
+meshes.forEach(m => box.expandByObject(m));
+const CX = (box.min.x + box.max.x) / 2, CZ = (box.min.z + box.max.z) / 2;
+const SPAN = Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
+const ORBIT_POS = [box.min.x - 0.3 * SPAN, Math.max(6, 0.9 * SPAN), box.max.z + 0.55 * SPAN];
+
+const GS = Math.ceil(SPAN) + 4;
+const grid = new THREE.GridHelper(GS, GS, 0xe3b25c, 0xe3b25c);
+grid.material.transparent = true; grid.material.opacity = 0.35;
+grid.position.set(CX, 0.005, CZ);
+grid.visible = false;
+scene.add(grid);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(CX, 0.8, CZ);
+camera.position.set(...ORBIT_POS);
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+resize();
+
+const hud = document.getElementById("hud");
+function vfovFromLens(lens) { return THREE.MathUtils.radToDeg(2 * Math.atan((36 * 9 / 16) / (2 * lens))); }
+
+// Vistas
+let walk = false;
+const viewsEl = document.getElementById("views");
+const freeBtn = document.createElement("button");
+freeBtn.type = "button";
+freeBtn.innerHTML = "<span>Vista libre</span><span>órbita</span>";
+freeBtn.addEventListener("click", () => {
+  setWalk(false);
+  camera.fov = 50; camera.updateProjectionMatrix();
+  controls.target.set(CX, 0.8, CZ);
+  camera.position.set(...ORBIT_POS);
+  hud.textContent = "Vista libre";
+});
+viewsEl.appendChild(freeBtn);
+for (const c of SCENE.cameras) {
+  const [label, lens] = NICE[c.name] || [c.name, ""];
+  const b = document.createElement("button");
+  b.type = "button";
+  b.innerHTML = "<span>" + label + "</span><span>" + lens + "</span>";
+  b.addEventListener("click", () => goCam(c, label));
+  viewsEl.appendChild(b);
+}
+function goCam(c, label) {
+  setWalk(false);
+  if (c.ortho) {
+    camera.fov = 30;
+    const d = (c.oscale * 9 / 16) / 2 / Math.tan(THREE.MathUtils.degToRad(15)) * 1.05;
+    camera.position.set(c.pos[0], d, c.pos[2] + 0.001);
+    controls.target.set(c.pos[0], 0, c.pos[2]);
+  } else {
+    camera.fov = vfovFromLens(c.lens);
+    camera.position.set(...c.pos);
+    controls.target.set(...c.tgt);
+  }
+  camera.updateProjectionMatrix();
+  hud.textContent = label + " · encuadre aproximado (el visor no recorta a 16:9)";
+}
+
+// Paseo
+const keys = {};
+let yaw = 0, pitch = 0;
+const btnOrbit = document.getElementById("btn-orbit"), btnWalk = document.getElementById("btn-walk");
+function setWalk(on) {
+  walk = on;
+  controls.enabled = !on;
+  btnOrbit.classList.toggle("on", !on);
+  btnWalk.classList.toggle("on", on);
+  document.getElementById("help-orbit").hidden = on;
+  document.getElementById("help-walk").hidden = !on;
+  if (on) {
+    camera.fov = 65; camera.updateProjectionMatrix();
+    camera.position.set(...(SCENE.walkStart || [CX, 1.6, box.max.z - 0.9]));
+    yaw = 0; pitch = 0;
+    applyLook();
+    hud.textContent = "Paseo a 1,6 m de altura";
+  }
+}
+btnOrbit.addEventListener("click", () => { setWalk(false); hud.textContent = "Vista libre"; });
+btnWalk.addEventListener("click", () => setWalk(true));
+function applyLook() {
+  const dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+  camera.lookAt(camera.position.clone().add(dir));
+}
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "TEXTAREA") return;
+  keys[e.key.toLowerCase()] = true;
+});
+window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+
+// Colisiones: borde de la escena y cualquier objeto de la colección de estructura de más de 1,5 m de alto
+const R = 0.25;
+const WALLS = meshes.filter(m => m.userData.coll === (SCENE.structure || "Estructura") && m.userData.dim[2] > 1.5)
+  .map(m => new THREE.Box3().setFromObject(m));
+function blocked(x, z) {
+  if (x < box.min.x + R || x > box.max.x - R || z < box.min.z + R || z > box.max.z - R) return true;
+  for (const b of WALLS) if (x > b.min.x - R && x < b.max.x + R && z > b.min.z - R && z < b.max.z + R) return true;
+  return false;
+}
+
+// Selección por clic
+const ray = new THREE.Raycaster();
+const ptr = new THREE.Vector2();
+let downAt = null, dragging = false, lastX = 0, lastY = 0, selected = null;
+renderer.domElement.addEventListener("pointerdown", e => {
+  downAt = [e.clientX, e.clientY]; lastX = e.clientX; lastY = e.clientY; dragging = true;
+});
+window.addEventListener("pointermove", e => {
+  if (!dragging || !walk) return;
+  yaw += (e.clientX - lastX) * 0.004;
+  pitch = Math.max(-1.2, Math.min(1.2, pitch - (e.clientY - lastY) * 0.004));
+  lastX = e.clientX; lastY = e.clientY;
+  applyLook();
+});
+window.addEventListener("pointerup", e => {
+  dragging = false;
+  if (!downAt) return;
+  const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]);
+  downAt = null;
+  if (moved > 5 || e.target !== renderer.domElement) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hits = ray.intersectObjects(meshes.filter(m => m.visible));
+  select(hits.length ? hits[0].object : null);
+});
+function fmt(n) { return n.toFixed(2).replace(".", ","); }
+function select(m) {
+  if (selected) selected.material.emissive.setHex(0x000000);
+  selected = m;
+  document.getElementById("sel-empty").hidden = !!m;
+  document.getElementById("sel-box").hidden = !m;
+  if (!m) return;
+  m.material.emissive.setHex(0x3a5a78);
+  const o = m.userData;
+  document.getElementById("sel-name").textContent = o.name;
+  document.getElementById("sel-coll").textContent = COLL[o.coll] || o.coll;
+  document.getElementById("sel-dim").textContent = fmt(o.dim[0]) + " × " + fmt(o.dim[1]) + " × " + fmt(o.dim[2]) + " m";
+  document.getElementById("sel-loc").textContent = "x " + fmt(o.loc[0]) + " · y " + fmt(o.loc[1]) + " · z " + fmt(o.loc[2]);
+}
+
+// Toggles
+function toggle(id, fn) {
+  const b = document.getElementById(id);
+  b.addEventListener("click", () => { const on = !b.classList.contains("on"); b.classList.toggle("on", on); fn(on); });
+}
+toggle("t-ceiling", on => ceiling.forEach(x => x.visible = on));
+toggle("t-grid", on => grid.visible = on);
+toggle("t-edges", on => edgeLines.forEach(x => { if (!ceiling.includes(x)) x.visible = on; else x.visible = on && ceiling[0].visible; }));
+
+// Correcciones
+const KEY = SCENE.storageKey || "entorno-correcciones-v1";
+let notes = [];
+try { notes = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { notes = []; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(notes)); } catch (e) {} }
+const notesEl = document.getElementById("notes");
+function renderNotes() {
+  notesEl.innerHTML = "";
+  document.getElementById("notes-empty").hidden = notes.length > 0;
+  notes.forEach((n, i) => {
+    const li = document.createElement("li");
+    const t = document.createElement("div");
+    const b = document.createElement("b"); b.textContent = n.obj || "General";
+    const p = document.createElement("span"); p.textContent = n.text;
+    t.append(b, p);
+    const del = document.createElement("button"); del.type = "button"; del.textContent = "Quitar";
+    del.addEventListener("click", () => { notes.splice(i, 1); save(); renderNotes(); });
+    li.append(t, del);
+    notesEl.appendChild(li);
+  });
+}
+renderNotes();
+const status = document.getElementById("status");
+document.getElementById("add-note").addEventListener("click", () => {
+  const ta = document.getElementById("note-text");
+  const text = ta.value.trim();
+  if (!text) { status.textContent = "Escribe la corrección antes de añadirla."; return; }
+  notes.push({ obj: selected ? selected.userData.name : "", text });
+  ta.value = ""; status.textContent = "Añadida."; save(); renderNotes();
+});
+document.getElementById("clear-notes").addEventListener("click", () => {
+  if (!notes.length) return;
+  notes = []; save(); renderNotes(); status.textContent = "Lista vaciada.";
+});
+document.getElementById("copy-notes").addEventListener("click", () => {
+  if (!notes.length) { status.textContent = "La lista está vacía."; return; }
+  const text = "Correcciones blockout sala de espera:\n" + notes.map((n, i) => (i + 1) + ". [" + (n.obj || "General") + "] " + n.text).join("\n");
+  const fallback = () => {
+    const ta = document.getElementById("note-text");
+    ta.value = text; ta.select();
+    status.textContent = "Lista puesta en el cuadro de texto: pulsa Cmd+C para copiarla.";
+  };
+  try {
+    navigator.clipboard.writeText(text).then(() => { status.textContent = "Lista copiada. Pégala en el chat."; }, fallback);
+  } catch (e) { fallback(); }
+});
+
+// Bucle
+const clock = new THREE.Clock();
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (walk) {
+    const sp = 2.2 * dt;
+    const f = (keys["w"] || keys["arrowup"] ? 1 : 0) - (keys["s"] || keys["arrowdown"] ? 1 : 0);
+    const s = (keys["d"] || keys["arrowright"] ? 1 : 0) - (keys["a"] || keys["arrowleft"] ? 1 : 0);
+    if (f || s) {
+      const dx = (Math.sin(yaw) * f + Math.cos(yaw) * s) * sp;
+      const dz = (-Math.cos(yaw) * f + Math.sin(yaw) * s) * sp;
+      const p = camera.position;
+      if (!blocked(p.x + dx, p.z)) p.x += dx;
+      if (!blocked(p.x, p.z + dz)) p.z += dz;
+      applyLook();
+    }
+  } else {
+    controls.update();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+</script>

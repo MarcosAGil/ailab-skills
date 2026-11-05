@@ -56,10 +56,12 @@ migración desde la skill manual) está en [`docs/instalacion-plugin.md`](docs/i
 | `refinar-prompt` | Estable | Auditoría crítica de prompts de Seedance 2.5 y sus referencias. |
 | `personaje-consistente` | Beta | Personaje de IA consistente: ficha, hojas de referencia y voz con AILAB. |
 | `vervideo` | Beta | Análisis completo o editorial de vídeos locales y URLs públicas, con tu clave de OpenRouter. |
+| `entorno-consistente-blender` | Beta | Espacio consistente en Blender: cualquier vista, con personajes en posición y pose exactas, con Image Prompter y Nano Banana 2.1 en AILAB. |
 
 Las cinco skills de la comunidad son autocontenidas y sirven con cualquier plataforma que use
 Seedance 2.5; con AILAB rinden mejor. Solo `personaje-consistente` genera (con tus créditos y tu
-aprobación en cada fase).
+aprobación en cada fase). `entorno-consistente-blender` construye el espacio en Blender y genera sus
+vistas con AILAB, también con tus créditos y tu aprobación.
 
 El índice legible por máquinas está en [`registry.json`](registry.json). Cada skill
 es independiente y vive dentro de `skills/<id>/`.
@@ -90,6 +92,8 @@ acredita por sí sola disponibilidad en producción.
   en `~/.config/openrouter/.env` (permisos `600`; nunca dentro de la skill ni en el chat).
 - Para instalar las skills de la comunidad desde el repositorio: Git. `estilo-ugc` usa Python 3 para
   sus scripts de comprobación (opcional); `personaje-consistente`, FFmpeg y FFprobe (opcional).
+- Para `entorno-consistente-blender`: Blender 4.2 o posterior, el MCP de Blender (`uvx mcp-for-blender`),
+  Python 3.9 o posterior con Pillow y el plugin de AILAB; FFmpeg opcional.
 
 ## Instalación manual de las skills
 
