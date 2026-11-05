@@ -1,5 +1,5 @@
 ---
-name: entorno-consistente-blender
+name: entorno-consistente
 description: Método de Ailendra Labs para crear cualquier espacio (habitación, tienda, local, set, exterior) 100 % consistente y generar de él todas las imágenes que se quieran, desde cualquier ángulo y con cualquier personaje en posición y pose exactas. Claude construye el espacio en Blender por MCP a escala real, el usuario lo revisa en un visor web sin abrir Blender, se colocan maniquíes con la pose de cada personaje, Image Prompter (AILAB) escribe el prompt, Nano Banana 2.1 (AILAB) genera la foto y cada imagen se comprueba con contornos y se corrige con edición y parche local. Úsala cuando el usuario quiera un entorno consistente entre planos, una hoja de entorno, varias vistas del mismo espacio, meter personajes en un sitio o pose concretos, un contrapicado, perfil o cenital de un espacio ya creado, corregir un detalle sin rehacer la imagen, o diga que la IA le mueve los objetos o le cambia el espacio entre generaciones, aunque no mencione Blender.
 ---
 

@@ -119,11 +119,11 @@
       }
     },
     {
-      "id": "entorno-consistente-blender",
+      "id": "entorno-consistente",
       "name": "Entorno consistente",
       "version": "0.1.0",
       "channel": "beta",
-      "path": "skills/entorno-consistente-blender",
+      "path": "skills/entorno-consistente",
       "description": "Espacio 100 % consistente con Blender y AILAB: cualquier vista, con personajes en posición y pose exactas.",
       "minimum_python": "3.9",
       "self_test": {
