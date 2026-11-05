@@ -13,7 +13,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 test('el registro público y todas las skills son válidos', () => {
   const result = validateRepository();
   assert.equal(result.registry.schema_version, 1);
-  assert.deepEqual(result.registry.skills.map((skill) => skill.id), ['ailab', 'estilo-espontaneo-viral', 'estilo-amateur-ccd', 'estilo-ugc', 'refinar-prompt', 'personaje-consistente', 'vervideo']);
+  assert.deepEqual(result.registry.skills.map((skill) => skill.id), ['ailab', 'estilo-espontaneo-viral', 'estilo-amateur-ccd', 'estilo-ugc', 'refinar-prompt', 'personaje-consistente', 'vervideo', 'entorno-consistente-blender']);
   assert.ok(result.results[0].files > 10);
   // Las skills oficiales de la comunidad publican en la guía de la web solo su SKILL.md.
   for (const skill of result.registry.skills.slice(1, 6)) assert.deepEqual(skill.guide_references, [], skill.id);

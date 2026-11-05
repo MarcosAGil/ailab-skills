@@ -172,6 +172,32 @@
         "vervideo"
       ],
       "workflow": "Completo comprime si hace falta y envía el vídeo a OpenRouter para analizarlo. Mini extrae escenas y el hook localmente, transcribe el audio mediante OpenRouter y el agente compone un informe editorial. Solo descarga URLs públicas; no elude accesos privados. No genera vídeos. Los modelos y requisitos vigentes están en el SKILL.md de la versión instalada."
+    },
+    {
+      "id": "entorno-consistente-blender",
+      "category": "Creación",
+      "icon": "workflow",
+      "summary": "Crea cualquier espacio en Blender y genera de él todas las imágenes que quieras, desde cualquier ángulo y con tus personajes en una posición y pose exactas, sin que nada cambie de sitio.",
+      "features": [
+        "Espacio a escala real en Blender, revisado en un visor 3D web sin abrir Blender",
+        "Personajes con maniquíes en la pose que quieras y vistas del mismo momento",
+        "Prompt con Image Prompter e imagen con Nano Banana 2.1 en AILAB",
+        "Control con contornos y corrección con edición y parche local"
+      ],
+      "requirements": [
+        "Blender 4.2 o posterior y el MCP de Blender (uvx mcp-for-blender)",
+        "Python 3.9 con Pillow y Node.js 18",
+        "Plugin de AILAB y créditos para Image Prompter y Nano Banana 2.1",
+        "FFmpeg opcional para los GIFs"
+      ],
+      "billing": "La skill es gratuita. Cada consulta a Image Prompter y cada imagen de Nano Banana 2.1 usan tus créditos de AILAB; te dice antes cuántas imágenes y cuánto cuestan y solo gasta cuando tú lo pides.",
+      "setup": "Instala antes el plugin de AILAB (ficha AILAB), Blender y el MCP de Blender, y luego esta skill con el comando de la ficha. Abre una conversación nueva e invoca $entorno-consistente-blender: su primera fase comprueba tu equipo y te dice qué falta.",
+      "example": "Usa $entorno-consistente-blender con esta imagen de una sala de espera vintage: quiero la pared de los sofás entera, una vista cenital y un contrapicado del hombre que lee el periódico en el sofá de la izquierda.",
+      "install_ids": [
+        "ailab",
+        "entorno-consistente-blender"
+      ],
+      "workflow": "Comprueba tu equipo, construye el espacio en Blender y te enseña el visor web, aplica materiales y luz, coloca a los personajes, renderiza cada vista, pide el prompt a Image Prompter y genera con Nano Banana 2.1. Revisa cada imagen con contornos y corrige solo lo que falla. Se detiene antes de cada gasto."
     }
   ]
 }

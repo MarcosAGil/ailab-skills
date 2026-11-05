@@ -117,6 +117,28 @@
         ],
         "expect": "Analiza un video completo"
       }
+    },
+    {
+      "id": "entorno-consistente-blender",
+      "name": "Entorno consistente",
+      "version": "0.1.0",
+      "channel": "beta",
+      "path": "skills/entorno-consistente-blender",
+      "description": "Espacio 100 % consistente con Blender y AILAB: cualquier vista, con personajes en posición y pose exactas.",
+      "minimum_python": "3.9",
+      "self_test": {
+        "command": "python3",
+        "args": [
+          "scripts/construir_visor.py",
+          "--help"
+        ],
+        "expect": "--escena"
+      },
+      "guide_references": [],
+      "clients": [
+        "claude-code",
+        "codex"
+      ]
     }
   ]
 }
