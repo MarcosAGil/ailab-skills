@@ -1,5 +1,5 @@
 {
-  "name": "entorno-consistente-blender",
+  "name": "entorno-consistente",
   "version": "0.1.0",
   "private": true,
   "description": "Espacio 100 % consistente con Blender y AILAB: cualquier vista, con personajes en posición y pose exactas."
