@@ -1,6 +1,6 @@
 <p align="center"><img src="assets/AILL.png" alt="Ailendra Labs" width="120"></p>
 
-# entorno-consistente-blender
+# entorno-consistente
 
 > **Skill oficial de la comunidad de Ailendra Labs.** Sirve para cualquier espacio y cualquier personaje, y funciona mucho mejor con AILAB: los prompts los escribe Image Prompter y las imágenes las genera Nano Banana 2.1 en AILAB. Es autocontenida: todo lo que necesita está dentro de su carpeta, salvo Blender y el plugin de AILAB, que se instalan aparte.
 
@@ -50,10 +50,10 @@ La primera fase ejecuta `scripts/comprobar_entorno.sh`, que lo revisa todo y te 
 
 ```bash
 mkdir -p ~/.claude/skills
-cp -R entorno-consistente-blender ~/.claude/skills/
+cp -R entorno-consistente ~/.claude/skills/
 ```
 
-Reinicia la sesión y pídele "crea un entorno consistente de esta sala", o invócala con `/entorno-consistente-blender`.
+Reinicia la sesión y pídele "crea un entorno consistente de esta sala", o invócala con `/entorno-consistente`.
 
 **Otros agentes**
 
