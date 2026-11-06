@@ -23,10 +23,10 @@ const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'ut
 const media = new Media(path.join(temporary, 'files'));
 const parity = { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' };
 
-const MOTION = { 'kling-2-6-motion-control': { '720p': 12, '1080p': 19 }, 'kling-3-0-motion-control': { '720p': 21, '1080p': 29 } };
+const MOTION = { 'kling-2-6-motion-control': { '720p': 12.852, '1080p': 20.604 }, 'kling-3-0-motion-control': { '720p': 23.154, '1080p': 30.804 } };
 const IDS = Object.keys(MOTION);
 const O3 = 'kling-o3';
-const O3_RATES = { '720p': 20.4, '1080p': 27.54, '4k': 68.34 };
+const O3_RATES = { '720p': 23.154, '1080p': 30.804, '4k': 77.01 };
 const OLD_RUNTIMES = ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14'];
 // Segundos del vídeo y los que factura: al segundo superior, entre 3 y 30 s.
 const CLIPS = [[1, 3], [2.9, 3], [3, 3], [3.2, 4], [5, 5], [8.4, 9], [29.6, 30], [30, 30], [31, 30], [60, 30]];
@@ -87,12 +87,12 @@ test('Motion Control: la CLI cobra por el vídeo medido, no por --duration', () 
         for (const duration of [undefined, '3', '30']) {
           const result = motion(id, clip(seconds), mode, duration ? { duration } : {});
           assert.equal(result.ok, true, JSON.stringify(result.errors));
-          assert.equal(result.estimate.credits, rate * billed, `${id} ${mode} ${seconds} s con --duration ${duration}`);
+          assert.equal(result.estimate.credits, Math.ceil(rate * billed), `${id} ${mode} ${seconds} s con --duration ${duration}`);
           assert.match(result.estimate.note, new RegExp(`^${billed} s medidos`));
         }
       }
       const unmeasured = motion(id, webm, mode);
-      assert.equal(unmeasured.estimate.credits, rate * 30, 'sin medir, el peor caso del servidor');
+      assert.equal(unmeasured.estimate.credits, Math.ceil(rate * 30), 'sin medir, el peor caso del servidor');
       assert.match(unmeasured.estimate.note, /sin medir/);
     }
   }
@@ -140,7 +140,7 @@ test('regla de oro con el PHP real: en Transformar la CLI autoriza la cota de 16
   });
   // Medido: 5 s al 1080p, no 16. Sin medir, el servidor llega a la misma cota que la CLI.
   const [measured, unmeasured] = askServer([transform(clip(5), '1080p'), transform(webm, '1080p')]);
-  assert.equal(measured.credits, Math.ceil(27.54 * 5));
+  assert.equal(measured.credits, Math.ceil(O3_RATES['1080p'] * 5));
   assert.equal(unmeasured.credits, transform(webm, '1080p').estimate.credits);
 });
 

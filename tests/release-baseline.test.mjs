@@ -18,6 +18,17 @@ const baseline = JSON.parse(fs.readFileSync(new URL('./fixtures/catalog-1.18.0-2
 // de referencia). El fixture guarda lo que valían antes; restaurarlo reproduce el hash de la línea base.
 const beforePriceAudit = JSON.parse(fs.readFileSync(new URL('./fixtures/estimates-before-price-audit.json', import.meta.url), 'utf8')).models;
 
+// Tarifas de Kling antes de 2.3.17 (Kie las subió el 4 de noviembre de 2026; ver tests/motion-control-precios.test.mjs).
+const KLING_BEFORE_KIE_2026_11 = {
+  'kling-3-0': { credits_per_second: { '4K': 69, pro: 29, std: 21 } },
+  'kling-o3': {
+    credits_per_second: { '1080p': 18.36, '4k': 68.34, '720p': 14.28 },
+    credits_with_audio: { '1080p': 23.46, '4k': 68.34, '720p': 18.36 },
+    credits_with_video: { '1080p': 27.54, '4k': 68.34, '720p': 20.4 },
+    note: 'Tarifa base sin audio. Con audio nativo: 18,36 (720p) / 23,46 (1080p) cr/s. Con video de entrada (transform siempre; ref con video): 20,4 / 27,54 cr/s. En 4K la tarifa es unica (68,34 cr/s). Coste real al terminar',
+  },
+};
+
 test('la release conserva los contratos anteriores excepto las ampliaciones versionadas de Eleven, Wan 3.0, Seed Audio y Seedance y la auditoría de precios', () => {
   assert.equal(Object.keys(baseline.model_sha256).length, 61);
   for (const [id, expected] of Object.entries(baseline.model_sha256)) {
@@ -61,6 +72,13 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
       assert.equal(catalog.models[id].estimate.kind, 'per_second_table');
       continue;
     }
+    if (KLING_BEFORE_KIE_2026_11[id]) {
+      // Cambio de 2.3.17: solo cambian las tarifas del estimate (y la nota de O3) a la tarifa de Kie x 1,02.
+      const restored = structuredClone(catalog.models[id]);
+      Object.assign(restored.estimate, KLING_BEFORE_KIE_2026_11[id]);
+      assert.equal(crypto.createHash('sha256').update(stableStringify(restored)).digest('hex'), expected, id + ' solo puede cambiar sus tarifas');
+      continue;
+    }
     if (beforePriceAudit[id]) {
       // Por qué cambia cada uno (todos contra el servidor real, ver tests/pricing-audit.test.mjs):
       //  - kling-v3: tarifa por audio y margen decimal; lipsync-heygen-*: margen decimal; avatar-photo-video: tarifa por resolución.
@@ -77,7 +95,7 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
   assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'higgsfield-genjutsu-light', 'higgsfield-marketing-studio-image', 'higgsfield-soul-cinema', 'ideogram-v45', 'kling-4-0', 'krea-3', 'nano-banana-2-1', 'seedance-2-5-draft-1080p', 'seedance-2-5-lite']);
-  assert.equal(catalog.catalog_version, '1.28.0');
+  assert.equal(catalog.catalog_version, '1.29.0');
   assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
@@ -113,8 +131,8 @@ test('los nuevos contratos públicos no contienen costes o endpoints privados', 
   }
 });
 
-test('una instalación 2.3.16 no retrocede al runtime estable anterior', async () => {
-  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.16');
+test('una instalación 2.3.17 no retrocede al runtime estable anterior', async () => {
+  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.17');
   let installations = 0;
   const checked = await checkAndMaybeUpdate({
     force: true,
@@ -122,7 +140,7 @@ test('una instalación 2.3.16 no retrocede al runtime estable anterior', async (
     releaseInstaller: async () => { installations++; throw new Error('No debe instalar una versión anterior'); },
   });
   assert.equal(checked.ok, true);
-  assert.equal(checked.current, '2.3.16');
+  assert.equal(checked.current, '2.3.17');
   assert.equal(checked.update, null);
   assert.equal(installations, 0);
 });
