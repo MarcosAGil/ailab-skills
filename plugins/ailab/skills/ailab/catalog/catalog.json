@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.28.0",
+  "catalog_version": "1.29.0",
   "min_cli_version": "2.3.7",
   "models": {
     "krea-3": {
@@ -2167,8 +2167,8 @@
         "approximate": true,
         "by_param": "mode",
         "credits_per_second": {
-          "1080p": 19,
-          "720p": 12
+          "1080p": 20.604,
+          "720p": 12.852
         },
         "kind": "per_second_table",
         "note": "estimacion conservadora; el cobro final usa el coste real informado por el proveedor",
@@ -2238,9 +2238,9 @@
         "approximate": true,
         "by_param": "mode",
         "credits_per_second": {
-          "4K": 69,
-          "pro": 29,
-          "std": 21
+          "4K": 77.01,
+          "pro": 30.804,
+          "std": 23.154
         },
         "kind": "per_second_table",
         "note": "estimacion conservadora con audio",
@@ -2339,8 +2339,8 @@
         "approximate": true,
         "by_param": "mode",
         "credits_per_second": {
-          "1080p": 29,
-          "720p": 21
+          "1080p": 30.804,
+          "720p": 23.154
         },
         "kind": "per_second_table",
         "note": "estimacion conservadora; el cobro final usa el coste real informado por el proveedor",
@@ -2421,26 +2421,26 @@
         "audio_param": "audio",
         "by_param": "resolution",
         "credits_per_second": {
-          "1080p": 18.36,
-          "4k": 68.34,
-          "720p": 14.28
+          "1080p": 20.604,
+          "4k": 77.01,
+          "720p": 15.402
         },
         "credits_with_audio": {
-          "1080p": 23.46,
-          "4k": 68.34,
-          "720p": 18.36
+          "1080p": 25.704,
+          "4k": 77.01,
+          "720p": 20.604
         },
         "credits_with_video": {
-          "1080p": 27.54,
-          "4k": 68.34,
-          "720p": 20.4
+          "1080p": 30.804,
+          "4k": 77.01,
+          "720p": 23.154
         },
         "duration_by_mode": {
           "transform": 16
         },
         "kind": "per_second_table",
         "mode_param": "mode",
-        "note": "Tarifa base sin audio. Con audio nativo: 18,36 (720p) / 23,46 (1080p) cr/s. Con video de entrada (transform siempre; ref con video): 20,4 / 27,54 cr/s. En 4K la tarifa es unica (68,34 cr/s). Coste real al terminar",
+        "note": "Tarifa base sin audio. Con audio nativo: 20,604 (720p) / 25,704 (1080p) cr/s. Con video de entrada (transform siempre; ref con video): 23,154 / 30,804 cr/s. En 4K la tarifa es unica (77,01 cr/s). Coste real al terminar",
         "seconds_param": "duration",
         "video_param": "video_urls"
       },

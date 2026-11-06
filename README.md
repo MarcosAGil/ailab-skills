@@ -74,6 +74,7 @@ la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza
 
 ## Cambios relevantes
 
+- 2.3.17: tarifas de Kling de Kie del 4 de noviembre de 2026 x 1,02 en Kling 3.0 (23,154 / 30,804 / 77,01 cr/s), Kling O3 y Kling 2.6 y 3.0 Motion Control; Kling 2.5 Turbo no cambia.
 - 2.3.16: modo draft de Seedance 2.5 Normal y Lite (`--draft true`), comando `drafts` y `seedance-2-5-draft-1080p` para generar un draft a 1080p al precio que fija el servidor.
 - 2.3.15: precios exactos de Seedance 2.5 Normal y Lite, 10 vídeos y 10 audios de referencia en ambos; Seedance 2.5, 2.0 y Mini miden los vídeos de referencia y presupuestan (salida + entrada) con la tarifa con vídeo; Editar vídeo cobra 2 x segundos del clip. Kling 2.6 y 3.0 Motion Control cobran por el vídeo medido, no por `--duration`.
 - 2.3.14: Genjutsu Light (`higgsfield-genjutsu-light`); Higgsfield termina las tareas `nsfw` y `rejected` con su motivo, y un 429 o 5xx al consultar espera con retroceso.
