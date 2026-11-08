@@ -51,6 +51,14 @@ Los modelos de edición a veces tocan más de lo pedido: en el caso real, al qui
 
 Ejemplo visual: `assets/ejemplos/correccion-con-parche.jpg`.
 
+## 3b. Detalles pequeños: editar un recorte
+
+Si el fallo es pequeño (un botón de más bajo un dedo, un objeto diminuto), editar la imagen entera falla a menudo: el modelo no distingue cuál de varios objetos iguales es el que sobra (en el caso real quitó el botón equivocado). Funciona mucho mejor así:
+
+1. Recorta la zona con proporción 16:9 (por ejemplo 711 × 400 px) y amplíala a 2048 × 1152.
+2. Edítala con un prompt que describa lo que se ve de izquierda a derecha y cuál sobra ("a red button, a white button, a second white button, and a third white button partly hidden under the fingers... remove the third white button").
+3. Reduce el resultado al tamaño del recorte, pégalo en su sitio sobre la imagen original y aplica `componer_parche.py` con una máscara solo de la zona cambiada.
+
 ## 4. Repetir solo lo que falla
 
 Si una vista no se puede corregir con parche (encuadre muy movido, personaje mal), repite **solo esa vista**: mismo prompt o con una frase concreta sobre el fallo. Nunca rehagas todo el set por una imagen.
