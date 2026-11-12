@@ -12,6 +12,7 @@ import { createAssistantRequest, loadAssistantRequest, updateAssistantRequest, l
 import { inspectFile, inspectPricingMetadata, inspectVideoMetadata, rehashMatches } from './lib/files.mjs';
 import { LIGHT_ID } from './lib/genjutsu-light.mjs';
 import { DRAFTS_ENDPOINT, decodeDraftCursor, draftLines, draftsRequest, encodeDraftCursor } from './lib/seedance-draft.mjs';
+import { OMNI12_VIDEOS_ENDPOINT, omni12VideoLines, omni12VideosRequest } from './lib/omni12.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './lib/manifest.mjs';
 import { resolveOutputDir, downloadTo, saveTextTo } from './lib/output.mjs';
 import { uploadPath } from './lib/http.mjs';
@@ -157,6 +158,23 @@ async function cmdDrafts(opts) {
   out('Drafts de Seedance 2.5 (' + drafts.length + (page.data.has_more ? ', hay más' : '') + '):');
   for (const draft of drafts) for (const line of draftLines(draft)) out(line);
   if (page.data.has_more && page.data.next_cursor) out('Siguiente página: ' + cliCommand('drafts --cursor ' + encodeDraftCursor(page.data.next_cursor)));
+}
+
+// Vídeos de Gemini Omni Flash 1.2 que se pueden extender, por páginas. Solo lee: no gasta y no necesita confirmación.
+async function cmdOmni12Videos(opts) {
+  const given = singleOpt(opts, 'cursor');
+  if (given === true) fail('--cursor necesita el valor que imprime la página anterior.');
+  const cursor = given === undefined ? null : decodeDraftCursor(given);
+  if (given !== undefined && !cursor) fail('--cursor no es válido. Copia el valor que imprime la página anterior.');
+  await requireSession();
+  const page = await servicePost(OMNI12_VIDEOS_ENDPOINT, omni12VideosRequest(cursor));
+  if (!page.ok) fail(explain(page));
+  const videos = Array.isArray(page.data?.videos) ? page.data.videos : [];
+  if (!videos.length) { out('No hay vídeos que extender en esta página. Se pueden extender los de Gemini Omni Flash 1.2 de tu cuenta a 360p o 720p y de 15 s o menos.'); return; }
+  out('Vídeos de Gemini Omni Flash 1.2 que puedes extender (' + videos.length + (page.data.has_more ? ', hay más' : '') + '):');
+  for (const video of videos) for (const line of omni12VideoLines(video)) out(line);
+  out('Para alargar uno: ' + cliCommand('prepare gemini-omni-flash-1-2-extend --task_id <task_id> --prompt "..." --duration 5'));
+  if (page.data.has_more && page.data.next_cursor) out('Siguiente página: ' + cliCommand('omni12-videos --cursor ' + encodeDraftCursor(page.data.next_cursor)));
 }
 
 async function cmdVoices(provider = 'eleven', opts = {}) {
@@ -640,7 +658,7 @@ async function cmdPrepare(cat, name, opts) {
   const ceiling = creditCeiling(opts);
   const serverQuote = requiresServerQuote(m, v.params);
   const est = estimateCredits(m, { ...v.params, ...v.fileParams });
-  if (['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control'].includes(m.id)) {
+  if (['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control', 'gemini-omni-flash-1-2'].includes(m.id)) {
     if (!Number.isFinite(est.credits) || est.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Actualiza AILAB o consulta el catálogo; no se ha enviado nada.');
     if (ceiling !== null && est.credits > ceiling) fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
   }
@@ -819,7 +837,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   } else if (estimateAgain.credits !== m0.estimated_credits || estimateAgain.credits !== m0.max_credits_authorized) {
     fail('La estimacion o el maximo autorizado del manifiesto no coincide con el plan confirmado. Vuelve a preparar.');
   }
-  if (['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control'].includes(model.id)) {
+  if (['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control', 'gemini-omni-flash-1-2'].includes(model.id)) {
     const ceiling = creditCeiling(opts);
     if (!Number.isFinite(estimateAgain.credits) || estimateAgain.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Vuelve a preparar; no se ha enviado nada.');
     if (ceiling !== null && estimateAgain.credits > ceiling) fail('El coste (' + estimateAgain.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
@@ -1060,7 +1078,7 @@ async function main() {
     out('Base: ' + BASE_URL);
     out('ElevenLabs: voices eleven [--language es --search texto --page 0] · voice-list · voice-options · voice-select <id> --owner <owner> --confirmed · voice-prepare <design|clone|create|renew|delete|resume> [opciones] · voice-submit <id> --confirmed · voice-status <id> · voice-samples <id> [--output dir]');
     out('Guia actualizada de uso y reglas criticas: guide');
-    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · drafts [--cursor valor] · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
+    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · drafts [--cursor valor] · omni12-videos [--cursor valor] · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
   if (cmd === 'login') return cmdLogin();
@@ -1085,6 +1103,7 @@ async function main() {
   if (cmd === 'voices') return cmdVoices(pos[1] || 'eleven', opts);
   if (cmd.startsWith('voice-')) { await requireSession(); return runVoiceCommand(cmd, pos.slice(1), opts, out); }
   if (cmd === 'drafts') return cmdDrafts(opts);
+  if (cmd === 'omni12-videos') return cmdOmni12Videos(opts);
   if (cmd === 'assistants') return cmdAssistants();
   if (cmd === 'assistant-prepare') return cmdAssistantPrepare(pos[1], opts);
   if (cmd === 'assistant-submit') return cmdAssistantSubmit(pos[1], opts);

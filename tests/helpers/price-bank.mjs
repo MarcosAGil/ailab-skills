@@ -29,7 +29,8 @@ const SERVER_SETTINGS = {
   SESSION_SECRET: 'fake-session-secret-for-price-audit-not-production', PUBLIC_ORIGIN: 'https://ailab.test', ADMIN_KEY: 'fake-admin-key',
 };
 
-export async function startPriceBank({ canonical, skillRoot, workers = 4, balance = 50000000 }) {
+// `settings` sustituye ajustes del servidor para una prueba concreta (por ejemplo, KIE_BASE hacia un Kie simulado en local).
+export async function startPriceBank({ canonical, skillRoot, workers = 4, balance = 50000000, settings: overrides = {} }) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-price-audit-'));
   const wallet = path.join(temp, 'app/api/wallet');
   fs.mkdirSync(wallet, { recursive: true });
@@ -49,6 +50,7 @@ export async function startPriceBank({ canonical, skillRoot, workers = 4, balanc
     TOPAZ_API_KEY: 'fake', TOPAZ_BASE: dead, APIMART_KEY: 'fake', APIMART_BASE: dead, RESEMBLE_API_KEY: 'fake', RESEMBLE_API_BASE: dead,
     OPENROUTER_API_KEY: 'fake', OPENROUTER_API_BASE: dead, ELEVEN_KEY: 'fake', ELEVEN_API_BASE: dead, HEYGEN_KEY: 'fake', HEYGEN_API_BASE: dead,
     HIGGSFIELD_API_KEY: 'fake-id:fake-secret', HIGGSFIELD_BASE: dead, VIDEOROUTER_API_KEY: 'fake', VIDEOROUTER_BASE: dead,
+    ...overrides,
   };
   const config = path.join(wallet, 'config.php');
   // Interruptores de Higgsfield: Genjutsu Light está abierto en el repositorio (GENJUTSU_LIGHT_ENABLED) y aquí se fija

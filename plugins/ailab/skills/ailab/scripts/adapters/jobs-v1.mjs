@@ -1,17 +1,26 @@
 // Driver jobs-v1: modelos Kie por el camino /jobs/createTask + /jobs/recordInfo
 // del gateway del wallet. Construye el payload de forma DECLARATIVA desde el
 // catalogo (params validados + fixed) y extrae el resultado del record.
-import { gatewayPost, gatewayGet, apiPost, servicePost } from '../lib/http.mjs';
+import { gatewayPost, gatewayGet, apiPost, servicePost, serviceGet } from '../lib/http.mjs';
 import { KLING4_ID, kling4Input } from '../lib/kling4.mjs';
 import { LITE_ID, liteInput } from '../lib/seedance-lite.mjs';
 import { MOTION_CONTROL_IDS } from '../lib/motion-control.mjs';
 import { DRAFTS_ENDPOINT, MAX_DRAFT_PAGES, draftNotFound, draftQuote, draftsRequest } from '../lib/seedance-draft.mjs';
+import {
+  OMNI12_ID, OMNI12_EXTEND_ID, OMNI_RESOURCE_IDS, OMNI_RESOURCE_ENDPOINT, OMNI12_VIDEOS_ENDPOINT, OMNI12_MAX_PAGES,
+  omni12Input, omni12ExtendInput, omni12ExtendQuote, omni12VideoNotFound, omni12VideosRequest,
+  omniResourceAction, omniResourceInput, omniResourceText,
+} from '../lib/omni12.mjs';
 
 export function buildPayload(model, params, uploadedByParam) {
   // Kling 4.0 y Seedance 2.5 Lite: el servidor normaliza una forma exacta (sujetos y voces en listas de
   // objetos, campos que solo existen en una modalidad); la construye el módulo del modelo.
   if (model.id === KLING4_ID) return { model: model.id, input: kling4Input(params, uploadedByParam) };
   if (model.id === LITE_ID) return { model: model.id, input: liteInput(params, uploadedByParam) };
+  // Gemini Omni Flash 1.2 (Kie), su Extend y los recursos de Gemini Omni: cada modalidad lleva solo sus campos.
+  if (model.id === OMNI12_ID) return { model: model.id, input: omni12Input(params, uploadedByParam) };
+  if (model.id === OMNI12_EXTEND_ID) return { model: model.id, input: omni12ExtendInput(params, uploadedByParam) };
+  if (OMNI_RESOURCE_IDS.includes(model.id)) return { model: model.id, input: omniResourceInput(model, params, uploadedByParam) };
   const input = { ...(model.fixed || {}) };
   for (const [k, v] of Object.entries(params)) input[k] = v;
   for (const [k, urls] of Object.entries(uploadedByParam)) {
@@ -33,9 +42,26 @@ export function buildPayload(model, params, uploadedByParam) {
   return payload;
 }
 
+// Extend de Gemini Omni Flash 1.2: la cotización es la cifra que el servidor da para ese vídeo y esa duración en el
+// listado de vídeos extensibles (`credits_by_duration`), la misma que reserva al enviar.
+async function omni12ExtendQuoteFor(payload) {
+  let cursor = null;
+  for (let page = 0; page < OMNI12_MAX_PAGES; page++) {
+    const n = await servicePost(OMNI12_VIDEOS_ENDPOINT, omni12VideosRequest(cursor));
+    if (!n.ok) return { ok: false, normalized: n };
+    const videos = Array.isArray(n.data?.videos) ? n.data.videos : [];
+    const found = videos.find((video) => video.task_id === payload.input.task_id);
+    if (found) return omni12ExtendQuote(found, payload.input.duration);
+    if (!n.data?.has_more || !n.data?.next_cursor) break;
+    cursor = n.data.next_cursor;
+  }
+  return omni12VideoNotFound();
+}
+
 // Paso a 1080p de un draft: la cotización es el `credits` que el servidor da para ese draft en el listado. No hay endpoint de
 // cotización: la puerta del gateway solo admite model, input, client_request_id y max_credits_authorized.
 export async function quote(model, payload) {
+  if (model.id === OMNI12_EXTEND_ID) return omni12ExtendQuoteFor(payload);
   let cursor = null;
   for (let page = 0; page < MAX_DRAFT_PAGES; page++) {
     const n = await servicePost(DRAFTS_ENDPOINT, draftsRequest(cursor));
@@ -49,7 +75,28 @@ export async function quote(model, payload) {
   return draftNotFound();
 }
 
+// Character ID y Voice ID: omni-resource.php los crea en el acto, gratis, y registra una tarea ya terminada.
+async function submitResource(model, payload, intent) {
+  const body = { input: payload.input, ...(intent.client_request_id ? { client_request_id: intent.client_request_id } : {}) };
+  const n = await servicePost(OMNI_RESOURCE_ENDPOINT + '?action=' + omniResourceAction(model), body);
+  if (!n.ok) return { ok: false, normalized: n };
+  const taskId = n.data && n.data.taskId;
+  const resource = n.data && n.data.resource;
+  if (!taskId || !resource || !resource.resource_id) return { ok: false, normalized: { ...n, ok: false, kind: 'invalid_response', message: 'El servidor no devolvió el recurso creado. Revisa el historial antes de reintentar.' } };
+  return { ok: true, taskRef: { serverTaskId: String(taskId), providerRequestId: String(taskId), costTaskId: String(taskId), resource } };
+}
+
+async function checkResource(taskRef) {
+  if (taskRef.resource && taskRef.resource.resource_id) return { status: 'success', texts: [omniResourceText(taskRef.resource)], urls: [] };
+  const n = await serviceGet(OMNI_RESOURCE_ENDPOINT, { action: 'status', task_id: taskRef.providerRequestId });
+  if (!n.ok) return { status: 'error', normalized: n };
+  const resource = n.data && n.data.resource;
+  if (String(n.data?.state) === 'success' && resource && resource.resource_id) return { status: 'success', texts: [omniResourceText(resource)], urls: [] };
+  return { status: 'fail', error: 'El recurso no se creó.' };
+}
+
 export async function submit(model, payload, intent = {}) {
+  if (OMNI_RESOURCE_IDS.includes(model.id)) return submitResource(model, payload, intent);
   const body = {
     ...payload,
     ...(intent.client_request_id ? { client_request_id: intent.client_request_id } : {}),
@@ -64,6 +111,7 @@ export async function submit(model, payload, intent = {}) {
 
 // Una consulta de estado. Devuelve {status:'pending'|'success'|'fail', urls, error, normalized}
 export async function check(model, taskRef) {
+  if (OMNI_RESOURCE_IDS.includes(model.id)) return checkResource(taskRef);
   const recordPath = model.record_path || '/jobs/recordInfo';
   const n = await gatewayGet(recordPath + '?taskId=' + encodeURIComponent(taskRef.providerRequestId));
   if (!n.ok) return { status: 'error', normalized: n };

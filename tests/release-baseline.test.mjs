@@ -102,8 +102,8 @@ test('la release conserva los contratos anteriores excepto las ampliaciones vers
     const actual = crypto.createHash('sha256').update(stableStringify(catalog.models[id])).digest('hex');
     assert.equal(actual, expected, 'El contrato publicado de ' + id + ' no debe cambiar');
   }
-  assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'gemini-omni-flash-1-2', 'gpt-image-2-6', 'higgsfield-genjutsu-light', 'higgsfield-marketing-studio-image', 'higgsfield-soul-cinema', 'ideogram-v45', 'kling-4-0', 'krea-3', 'nano-banana-2-1', 'seedance-2-5-draft-1080p', 'seedance-2-5-lite', 'seedream-5-5']);
-  assert.equal(catalog.catalog_version, '1.31.0');
+  assert.deepEqual(Object.keys(catalog.models).filter(id => !baseline.model_sha256[id]).sort(), ['flux-3', 'gemini-omni-audio', 'gemini-omni-character', 'gemini-omni-flash-1-2', 'gemini-omni-flash-1-2-extend', 'gpt-image-2-6', 'higgsfield-genjutsu-light', 'higgsfield-marketing-studio-image', 'higgsfield-soul-cinema', 'ideogram-v45', 'kling-4-0', 'krea-3', 'nano-banana-2-1', 'seedance-2-5-draft-1080p', 'seedance-2-5-lite', 'seedream-5-5']);
+  assert.equal(catalog.catalog_version, '1.32.0');
   assert.equal(catalog.min_cli_version, '2.3.7');
 });
 
@@ -139,8 +139,8 @@ test('los nuevos contratos públicos no contienen costes o endpoints privados', 
   }
 });
 
-test('una instalación 2.3.18 no retrocede al runtime estable anterior', async () => {
-  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.18');
+test('una instalación 2.3.19 no retrocede al runtime estable anterior', async () => {
+  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.19');
   let installations = 0;
   const checked = await checkAndMaybeUpdate({
     force: true,
@@ -148,7 +148,7 @@ test('una instalación 2.3.18 no retrocede al runtime estable anterior', async (
     releaseInstaller: async () => { installations++; throw new Error('No debe instalar una versión anterior'); },
   });
   assert.equal(checked.ok, true);
-  assert.equal(checked.current, '2.3.18');
+  assert.equal(checked.current, '2.3.19');
   assert.equal(checked.update, null);
   assert.equal(installations, 0);
 });

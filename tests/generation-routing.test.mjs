@@ -41,6 +41,12 @@ globalThis.fetch = async (url, init) => {
     return Response.json({ code: 200, data: { request_id: 'mock' } });
   }
   if (endpoint.endsWith('/assistant.php') || endpoint.endsWith('/task.php')) return Response.json({ ok: true });
+  // Recursos de Gemini Omni (Character ID y Voice ID): AILAB los crea en el acto y devuelve una tarea ya terminada.
+  if (endpoint.endsWith('/api/wallet/omni-resource.php')) {
+    const action = parsed.searchParams.get('action');
+    assert.ok(['character', 'audio'].includes(action), action);
+    return Response.json({ code: 200, data: { taskId: 'mock', state: 'success', resource: { kind: 'gemini-omni-' + action, resource_id: action + '_mock', name: 'Mock' } } });
+  }
   if (endpoint.endsWith('/gateway.php')) {
     const route = parsed.searchParams.get('path');
     if (init.method === 'GET') {
@@ -103,7 +109,9 @@ async function exercise(model, overrides = {}, uploads = {}) {
   assert.equal(submitted.ok, true, JSON.stringify(submitted));
   const sent = calls.at(-1);
   assert.equal(sent.body.client_request_id, intent.client_request_id);
-  assert.equal(sent.body.max_credits_authorized, intent.max_credits_authorized);
+  // Los recursos de Gemini Omni son gratis: el servidor no reserva nada y el cuerpo no lleva máximo autorizado.
+  if (['gemini-omni-character', 'gemini-omni-audio'].includes(model.id)) assert.equal(sent.body.max_credits_authorized, undefined);
+  else assert.equal(sent.body.max_credits_authorized, intent.max_credits_authorized);
   const result = await adapter.check(model, submitted.taskRef);
   assert.equal(result.status, 'success', JSON.stringify(result));
   assert.equal(await adapter.realCost(submitted.taskRef), 7);

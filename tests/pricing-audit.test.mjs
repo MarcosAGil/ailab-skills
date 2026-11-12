@@ -41,6 +41,12 @@ const SERVER_QUOTED = {
   'higgsfield-marketing-studio-image': 'Higgsfield cotiza en el servidor (/estimate del proveedor).',
   'higgsfield-genjutsu-light': 'Higgsfield cotiza en el servidor; la CLI calcula la misma cifra y se compara en su propia prueba (Genjutsu Light).',
   'seedance-2-5-draft-1080p': 'El precio sale de la fila del servidor (`credits` del listado); se compara con la reserva en tests/seedance-draft.test.mjs.',
+  'gemini-omni-flash-1-2-extend': 'El precio sale del listado de vídeos extensibles del servidor (`credits_by_duration`); se compara con la reserva en tests/omni-12.test.mjs.',
+};
+// Recursos gratuitos: crearlos no reserva ni cobra créditos (tests/omni-12.test.mjs lo comprueba contra omni-resource.php).
+const FREE = {
+  'gemini-omni-character': 'Crear un Character ID de Gemini Omni no cuesta créditos.',
+  'gemini-omni-audio': 'Crear un Voice ID de Gemini Omni no cuesta créditos.',
 };
 // Sobrecostes de la CLI sobre la reserva del servidor que tienen un motivo documentado (más allá del redondeo de 1 cr).
 const OVER_ALLOWED = [
@@ -58,6 +64,7 @@ const WEB_DIFFERENCES = {
   'grok-imagine-video-1-5': 'La CLI suma 2 cr por imagen (tarifa del proveedor no desglosada); la web solo lo menciona en su nota.',
   'kling-o3': 'La tabla genérica de la web no refleja la tarifa con vídeo de entrada, la de audio ni los 16 s reservados en Transformación.',
   'kling-2-6-motion-control': 'La tabla genérica de la web usa la duración que se elige; la web real, la CLI y el servidor cobran por el vídeo medido.',
+  'gemini-omni-flash-1-2': 'Al editar, la tabla genérica de la web usa la fila con vídeo (máximo de 15 s); la web real, la CLI y el servidor cobran los segundos medidos del vídeo.',
   'kling-3-0-motion-control': 'La tabla genérica de la web usa la duración que se elige; la web real, la CLI y el servidor cobran por el vídeo medido.',
   'minimax-h3': 'La tabla genérica de la web no suma 15 s por vídeo de referencia ni las imágenes a partir de la sexta.',
   'kling-v3': 'La web es conservadora (redondea a 23 y 34 cr/s y Pro presupone audio); el servidor reserva 22,4 cr/s y 33,6 con audio.',
@@ -160,10 +167,10 @@ test('la tarifa de la web coincide con la de la CLI salvo las diferencias docume
 
 test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un motivo documentado', { skip }, () => {
   const ids = Object.keys(catalog.models);
-  assert.equal(ids.length, 74);
+  assert.equal(ids.length, 77);
   const compared = new Set(results.filter((r) => reference(r) !== null && r.cli !== null).map((r) => r.id));
   const withoutFfmpeg = withFfmpeg ? [] : ['topaz-astra-precise-2-6', 'topaz-astra-creative-2', 'seedvr-video-upscaler'];
-  const missing = ids.filter((id) => !compared.has(id) && !NO_SERVER_ESTIMATE[id] && !SERVER_QUOTED[id] && id !== 'krea-3' && !withoutFfmpeg.includes(id));
+  const missing = ids.filter((id) => !compared.has(id) && !NO_SERVER_ESTIMATE[id] && !SERVER_QUOTED[id] && !FREE[id] && id !== 'krea-3' && !withoutFfmpeg.includes(id));
   // eleven-tts v4 lo cotiza el servidor por voz; sus versiones flash, multi y v3 sí se comparan.
   assert.deepEqual(missing, []);
   assert.ok(compared.has('eleven-tts'));
@@ -172,7 +179,7 @@ test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un mo
   for (const id of ['remove-background', 'eleven-speech-to-text', 'suno']) for (const r of results.filter((x) => x.id === id)) assert.equal(r.web.credits, r.cli, describe(r));
 });
 
-test('la skill lista los 74 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
+test('la skill lista los 77 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
   for (const [id, model] of Object.entries(catalog.models)) {
     assert.equal(model.enabled, true, id);
     assert.equal(model.status, 'active', id);
@@ -182,7 +189,8 @@ test('la skill lista los 74 modelos activos: solo un interruptor de servidor doc
     TOPAZ_ENABLED: ['topaz-bloom-2', 'topaz-wonder-3-5', 'topaz-astra-precise-2-6', 'topaz-astra-creative-2'],
     RESEMBLE_ENABLED: ['resemble-audio-enhancement'],
     SEEDANCE_25_PROVIDER: ['seedance-2-5-lite'],
-    VIDEOROUTER_MODE: ['gemini-omni-flash-1-2', 'seedream-5-5'],
+    VIDEOROUTER_MODE: ['seedream-5-5'],
+    OMNI_12_PROVIDER: ['gemini-omni-flash-1-2', 'gemini-omni-flash-1-2-extend'],
     SEEDANCE_25_DRAFT_ENABLED: ['seedance-2-5-draft-1080p'],
     HIGGSFIELD_FEATURE_FLAGS: ['higgsfield-marketing-studio-image'],
     GENJUTSU_LIGHT_ENABLED: ['higgsfield-genjutsu-light'],
@@ -196,6 +204,7 @@ test('la skill lista los 74 modelos activos: solo un interruptor de servidor doc
   assert.equal(config.RESEMBLE_ENABLED, false);
   assert.equal(config.SEEDANCE_25_PROVIDER, 'kie');
   assert.equal(config.VIDEOROUTER_MODE, 'off', 'valor del repositorio: VideoRouter se abre en videorouter.local.php del servidor');
+  assert.equal(config.OMNI_12_PROVIDER, 'kie', 'Gemini Omni Flash 1.2 va por Kie; videorouter es la vuelta atrás (solo texto y frames)');
   assert.equal(config.SEEDANCE_25_DRAFT_ENABLED, true, 'modo draft abierto en la web y, desde 2.3.16, en la skill');
   assert.equal(config.HIGGSFIELD_FEATURE_FLAGS['higgsfield-marketing-studio-image'], false);
   assert.equal(config.GENJUTSU_LIGHT_ENABLED, true, 'Genjutsu Light abierto a todos (28/10/2026) con su propio interruptor');
