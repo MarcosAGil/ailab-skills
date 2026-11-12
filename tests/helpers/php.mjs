@@ -28,14 +28,16 @@ function skillHiggsfieldFunctions() {
 }
 
 // `higgsfield` carga el gateway web de Higgsfield; `skillHiggsfield` las funciones del endpoint de la skill.
-export function php(code, args = [], { sume = false, higgsfield = false, skillHiggsfield = false } = {}) {
+// `videorouter` carga la biblioteca de VideoRouter (sin efectos al incluirla).
+export function php(code, args = [], { sume = false, videorouter = false, higgsfield = false, skillHiggsfield = false } = {}) {
   const wallet = path.join(CANONICAL, 'app/api/wallet');
   const prelude = STDIN
     + (skillHiggsfield ? `require ${JSON.stringify(skillHiggsfieldFunctions())}; ` : '')
     + (higgsfield
       ? `define('AILAB_HIGGSFIELD_FUNCTIONS_ONLY', true); require ${JSON.stringify(path.join(wallet, 'higgsfield-gateway.php'))}; `
       : skillHiggsfield ? '' : `define('AILAB_GATEWAY_FUNCTIONS_ONLY', true); require ${JSON.stringify(path.join(wallet, 'gateway.php'))}; `)
-    + (sume ? `require_once ${JSON.stringify(path.join(wallet, 'sume-gateway.php'))}; ` : '');
+    + (sume ? `require_once ${JSON.stringify(path.join(wallet, 'sume-gateway.php'))}; ` : '')
+    + (videorouter ? `require_once ${JSON.stringify(path.join(wallet, 'videorouter-gateway.php'))}; ` : '');
   return JSON.parse(execFileSync('php', ['-r', prelude + code], {
     encoding: 'utf8', timeout: 30000, input: JSON.stringify(args), maxBuffer: 64 * 1024 * 1024,
   }));

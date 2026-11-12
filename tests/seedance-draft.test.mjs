@@ -96,7 +96,9 @@ const askServer = (cases) => {
 };
 
 test('catálogo: draft sin valor por defecto, una adición que entienden los parsers antiguos, y el modelo de 1080p', () => {
-  for (const id of [NORMAL, LITE]) {
+  // Desde la 2.3.18 Lite va por VideoRouter, que no tiene draft: el parámetro desaparece y las CLI anteriores no ofrecen Lite.
+  assert.equal(catalog.models[LITE].params.draft, undefined);
+  for (const id of [NORMAL]) {
     const spec = catalog.models[id].params.draft;
     assert.deepEqual(Object.keys(spec).sort(), ['help', 'type'], id + ': con `default` todas las CLI enviarían draft: false y el servidor lo rechaza');
     assert.equal(spec.type, 'bool');
@@ -105,7 +107,7 @@ test('catálogo: draft sin valor por defecto, una adición que entienden los par
     assert.equal(catalog.models[id].params.resolution.default, '720p', 'el valor por defecto de una generación normal no cambia');
   }
   assert.equal(catalog.models[NORMAL].min_cli_version, '2.3.15', 'la 2.3.15 envía draft tal cual: funciona o falla sin cobro');
-  assert.equal(catalog.models[LITE].min_cli_version, '2.3.16', 'la 2.3.15 descartaría draft y cobraría un vídeo normal');
+  assert.equal(catalog.models[LITE].min_cli_version, '2.3.18', 'una CLI que aún ofrezca draft en Lite no debe usarlo');
   assert.equal(catalog.min_cli_version, '2.3.7');
   const model = catalog.models[UPGRADE];
   assert.equal(model.id, UPGRADE);
@@ -121,7 +123,7 @@ test('catálogo: draft sin valor por defecto, una adición que entienden los par
   assert.equal(model.estimate.kind, 'flat_credits');
   assert.equal(model.estimate.credits, 6687);
   assert.equal(modelUsable(model).ok, true);
-  const text = JSON.stringify([catalog.models[NORMAL].params.draft, catalog.models[LITE].params.draft, model]);
+  const text = JSON.stringify([catalog.models[NORMAL].params.draft, model]);
   for (const forbidden of ['bytedance/', 'provider_contract', 'callBackUrl', 'SUME_API_KEY', 'borrador', String.fromCharCode(0x2014)]) assert.equal(text.toLowerCase().includes(forbidden.toLowerCase()), false, forbidden);
 });
 
@@ -130,15 +132,16 @@ test('sin --draft el cuerpo no cambia: ni draft ni 480p, y --draft false equival
     const plain = plan(id, { prompt: 'x' });
     assert.equal('draft' in plain.payload.input, false, id);
     assert.equal(plain.payload.input.resolution, '720p', id);
-    const off = plan(id, { prompt: 'x', draft: 'false' });
-    assert.deepEqual(off.payload, plain.payload, id);
-    assert.equal(off.estimate.credits, plain.estimate.credits, id);
   }
+  const off = plan(NORMAL, { prompt: 'x', draft: 'false' });
+  assert.deepEqual(off.payload, plan(NORMAL, { prompt: 'x' }).payload);
+  // Lite ya no conoce --draft, ni siquiera con false.
+  assert.match(plan(LITE, { prompt: 'x', draft: 'false' }).errors.join(' '), /Parametro desconocido: --draft/);
 });
 
 test('draft: 480p, cuerpo exacto y el mismo precio que 480p, con y sin vídeo', () => {
   const image = media.image('marco.png', 1024, 768);
-  for (const id of [NORMAL, LITE]) {
+  for (const id of [NORMAL]) {
     const combos = [
       { duration: 5 },
       { duration: 30, aspect_ratio: '9:16' },
@@ -162,10 +165,10 @@ test('draft: 480p, cuerpo exacto y el mismo precio que 480p, con y sin vídeo', 
   // El argumento suelto `--draft` llega como true.
   assert.equal(plan(NORMAL, { prompt: 'x', draft: true }).payload.input.draft, true);
   assert.equal(plan(NORMAL, { prompt: 'x', draft: true, duration: 5 }).estimate.credits, 143, 'ceil(28,56 x 5)');
-  assert.equal(plan(LITE, { prompt: 'x', draft: true, duration: 6 }).estimate.credits, 126, 'ceil(20,9712 x 6)');
+  assert.match(plan(LITE, { prompt: 'x', draft: true, duration: 6 }).errors.join(' '), /Parametro desconocido: --draft/);
   // La CLI revalida lo congelado en el manifiesto al enviar: mismo resultado.
-  const frozen = plan(LITE, { prompt: 'x', draft: true, duration: 6 }).params;
-  const again = validateParams({ id: LITE, ...catalog.models[LITE] }, { ...frozen });
+  const frozen = plan(NORMAL, { prompt: 'x', draft: true, duration: 6 }).params;
+  const again = validateParams({ id: NORMAL, ...catalog.models[NORMAL] }, { ...frozen });
   assert.deepEqual(again.params, frozen);
 });
 
@@ -173,8 +176,6 @@ test('combinaciones inválidas: la CLI las rechaza sin red', () => {
   const cases = [
     ['720p', NORMAL, { draft: 'true', resolution: '720p' }, ONLY_480],
     ['1080p', NORMAL, { draft: 'true', resolution: '1080p' }, ONLY_480],
-    ['720p en Lite', LITE, { draft: 'true', resolution: '720p' }, ONLY_480],
-    ['1080p en Lite', LITE, { draft: 'true', resolution: '1080p' }, ONLY_480],
     ['duración automática', NORMAL, { draft: 'true', auto_duration: 'true' }, FIXED],
     ['edición', NORMAL, { draft: 'true', mode: 'edit', reference_video_urls: [clip(5)] }, NO_EDIT],
   ];
@@ -184,9 +185,8 @@ test('combinaciones inválidas: la CLI las rechaza sin red', () => {
     assert.ok(result.errors.includes(message), name + ': ' + result.errors.join(' | '));
   }
   assert.match(plan(NORMAL, { prompt: 'x', draft: 'true', duration: 3 }).errors.join(' '), /--duration minimo 4/);
-  assert.match(plan(LITE, { prompt: 'x', draft: 'true', duration: 31 }).errors.join(' '), /--duration maximo 30/);
-  assert.match(plan(LITE, { prompt: 'x', draft: 'true', auto_duration: 'true' }).errors.join(' '), /Parametro desconocido: --auto_duration/);
-  assert.match(plan(LITE, { prompt: 'x', draft: 'true', mode: 'edit' }).errors.join(' '), /debe ser uno de/);
+  assert.match(plan(NORMAL, { prompt: 'x', draft: 'true', duration: 31 }).errors.join(' '), /--duration maximo 30/);
+  assert.match(plan(LITE, { prompt: 'x', draft: 'true' }).errors.join(' '), /Parametro desconocido: --draft/);
   assert.match(plan(NORMAL, { prompt: 'x', draft: 'quizás' }).errors.join(' '), /--draft debe ser/);
   assert.match(plan(UPGRADE, {}).errors.join(' '), /Falta el parametro obligatorio --draft_task_id/);
   assert.match(plan(UPGRADE, { draft_task_id: '   ' }).errors.join(' '), /no puede estar vacío/);
@@ -207,7 +207,7 @@ test('el precio de 1080p no sale de la CLI', () => {
   assert.deepEqual(plan(UPGRADE, { draft_task_id: ' tarea-1 ' }).payload, { model: UPGRADE, input: { draft_task_id: 'tarea-1' } });
 });
 
-test('regla de oro con el PHP real: draft reserva lo mismo que estima la CLI en cada duración y entrada, Kie y Sume', parity, () => {
+test('regla de oro con el PHP real: draft reserva lo mismo que estima la CLI en cada duración y entrada (Normal por Kie)', parity, () => {
   const cases = [];
   const add = (id, given) => {
     const planned = plan(id, { prompt: 'Una escena', draft: 'true', ...given });
@@ -216,7 +216,6 @@ test('regla de oro con el PHP real: draft reserva lo mismo que estima la CLI en 
   };
   for (const duration of range(4, 30)) {
     for (const input of range(0, 39)) add(NORMAL, { duration, ...(input ? { mode: 'ref', reference_video_urls: videosBilling(input) } : {}) });
-    for (const input of range(0, 40)) add(LITE, { duration, ...(input ? { mode: 'ref', reference_video_urls: videosBilling(input) } : {}) });
   }
   const results = askServer(cases);
   assert.equal(results.length, cases.length);
@@ -226,7 +225,7 @@ test('regla de oro con el PHP real: draft reserva lo mismo que estima la CLI en 
     assert.equal(c.estimate.credits, server.credits, c.label);
     assert.equal(server.forward.draft, true, c.label);
   });
-  assert.equal(cases.length, 2187);
+  assert.equal(cases.length, 1080);
 });
 
 test('paridad con el PHP real: lo que la CLI rechaza el servidor lo rechaza con el mismo texto, y al revés lo acepta', parity, () => {
@@ -236,7 +235,6 @@ test('paridad con el PHP real: lo que la CLI rechaza el servidor lo rechaza con 
   const refused = [
     ['720p', NORMAL, { resolution: '720p' }, raw(NORMAL, { resolution: '720p' }), ONLY_480],
     ['1080p', NORMAL, { resolution: '1080p' }, raw(NORMAL, { resolution: '1080p' }), ONLY_480],
-    ['720p en Lite', LITE, { resolution: '720p' }, raw(LITE, { resolution: '720p' }), ONLY_480],
     ['duración automática', NORMAL, { auto_duration: 'true' }, raw(NORMAL, { auto_duration: true }), FIXED],
     ['edición', NORMAL, { mode: 'edit', reference_video_urls: [clip(5)] }, raw(NORMAL, { mode: ' edit ', reference_video_urls: [media.url(clip(5))] }, [clip(5)]), NO_EDIT],
   ];
@@ -255,8 +253,6 @@ test('paridad con el PHP real: lo que la CLI rechaza el servidor lo rechaza con 
   const accepted = [
     [NORMAL, { mode: 'i2v', first_frame_url: image, last_frame_url: image }],
     [NORMAL, { mode: 'ref', reference_image_urls: [image], reference_video_urls: [clip(3)] }],
-    [LITE, { mode: 'i2v', first_frame_url: image }],
-    [LITE, { mode: 'ref', reference_image_urls: [image], reference_video_urls: [clip(3)] }],
   ].map(([id, given]) => plan(id, { prompt: 'x', draft: 'true', duration: 6, ...given }));
   const answers = askServer(accepted);
   accepted.forEach((c, index) => {
@@ -401,7 +397,6 @@ test('generar un draft: prepare con presupuesto, sin --confirmed no se envía y 
   const p = await fakePlatform(t, []);
   for (const [id, seconds, credits, keys] of [
     [NORMAL, '5', 143, ['aspect_ratio', 'auto_duration', 'draft', 'duration', 'generate_audio', 'mode', 'prompt', 'resolution']],
-    [LITE, '6', 126, ['aspect_ratio', 'draft', 'duration', 'generate_audio', 'mode', 'prompt', 'resolution']],
   ]) {
     const prepared = await p.exec('prepare', id, '--draft', 'true', '--prompt', 'Una taza', '--duration', seconds);
     assert.equal(prepared.code, 0, prepared.stderr);
@@ -490,6 +485,7 @@ test('generar a 1080p: el coste sale del listado, se autoriza esa cifra exacta y
 });
 
 test('compatibilidad: los parsers 2.3.7 a 2.3.15 aceptan el catálogo; solo la 2.3.15 ofrece Normal, y ninguna Lite ni 1080p', parity, async () => {
+  const needs = { [LITE]: '2.3.18', [UPGRADE]: '2.3.16' };
   const raw = fs.readFileSync(catalogPath, 'utf8');
   for (const version of OLD_RUNTIMES) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
@@ -499,7 +495,7 @@ test('compatibilidad: los parsers 2.3.7 a 2.3.15 aceptan el catálogo; solo la 2
     for (const id of [LITE, UPGRADE]) {
       const usable = old.modelUsable(parsed.models[id]);
       assert.equal(usable.ok, false, `la CLI ${version} no debe ofrecer ${id}`);
-      assert.match(usable.reason, /Actualiza la skill.*2\.3\.16/, `${version} ${id}`);
+      assert.ok(usable.reason.includes('Actualiza la skill') && usable.reason.includes(needs[id]), `${version} ${id}: ${usable.reason}`);
     }
     assert.equal(old.modelUsable(parsed.models[NORMAL]).ok, version === '2.3.15', `${version} ${NORMAL}`);
     // Sin --draft nada cambia para esa CLI: `draft` no tiene valor por defecto y no aparece en sus parámetros.
@@ -568,9 +564,10 @@ test('extremo a extremo con el PHP real: token, listado, autorización igual a l
   assert.match(draft.stdout, /Estimacion: ~143 cr/);
   await bank.cli('submit', manifestOf(draft.stdout), '--confirmed');
   assert.equal(bank.reservationFor(manifestOf(draft.stdout)), 143);
-  const invalid = await bank.cliForced('prepare', LITE, '--draft', 'true', '--prompt', 'Una taza', '--duration', '6');
-  const server = await bank.cliForced('submit', manifestOf(invalid.stdout), '--confirmed');
-  assert.match(server.stderr + server.stdout, /La estimacion de 126 creditos supera el maximo autorizado de 1/);
+  // Desde la 2.3.18 la CLI ya no ofrece draft en Lite (VideoRouter no lo tiene) y no envía nada.
+  const lite = await bank.cli('prepare', LITE, '--draft', 'true', '--prompt', 'Una taza', '--duration', '6');
+  assert.notEqual(lite.code, 0);
+  assert.match(lite.stderr, /Parametro desconocido: --draft/);
 });
 
 test('guide, referencia y SKILL.md explican el flujo, dentro del contrato de vocabulario', () => {

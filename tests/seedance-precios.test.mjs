@@ -35,8 +35,8 @@ const IDS = [NORMAL, LITE, TWO, MINI];
 const OLD_RUNTIMES = ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14'];
 const NORMAL_RATES = { '480p': 28.56, '720p': 64.26, '1080p': 161.16 };
 const NORMAL_VIDEO_RATES = { '480p': 17.34, '720p': 38.76, '1080p': 96.9 };
-const LITE_RATES = { '480p': 20.9712, '720p': 47.1648, '1080p': 115.9944 };
-const LITE_VIDEO_RATES = { '480p': 12.546, '720p': 28.2132, '1080p': 69.4008 };
+const LITE_RATES = { '480p': 19.482, '720p': 41.922, '1080p': 103.122 };
+const LITE_VIDEO_RATES = { '480p': 11.8932, '720p': 25.5612, '1080p': 62.8932 };
 const range = (from, to) => Array.from({ length: to - from + 1 }, (_, index) => from + index);
 
 const clips = new Map();
@@ -105,6 +105,8 @@ const PHP_BACKEND = `
     foreach ($route['strip_input'] ?? [] as $key) { unset($forward[$key]); }
     $billing = ['_billing_input_seconds' => $seconds];
     if ($model === 'seedance-2-5') { $billing['_billing_edit'] = (string)($input['workflow_mode'] ?? '') === 'edit'; }
+    // Desde la 2.3.18 el Lite va por VideoRouter: el servidor lo fija al validar y reserva con su tabla.
+    if ($model === 'seedance-2-5-lite') { $billing['_billing_lite_provider'] = 'videorouter'; }
     $out[] = ['ok' => true, 'seconds' => $seconds, 'credits' => gateway_estimate_credits($route['gateway_model'], array_merge($forward, $billing)), 'forward' => $forward];
   }
   echo json_encode($out, JSON_UNESCAPED_UNICODE);`;
@@ -133,7 +135,7 @@ test('el catálogo publica las tarifas y los límites del contrato, sin promoci�
   }
   for (const id of IDS) {
     const model = catalog.models[id];
-    assert.equal(model.min_cli_version, id === LITE ? '2.3.16' : '2.3.15', id);
+    assert.equal(model.min_cli_version, id === LITE ? '2.3.18' : '2.3.15', id);
     assert.equal(modelUsable(model).ok, true, id);
     assert.equal(model.params.draft_task_id, undefined, id);
     assert.deepEqual(model.params.resolution.values.filter((value) => /draft/i.test(value)), [], id);
@@ -271,7 +273,7 @@ test('paridad con el PHP real: el servidor acepta el cuerpo que construye la CLI
     for (const key of ['prompt', 'resolution', 'reference_image_urls', 'reference_video_urls', 'reference_audio_urls', 'first_frame_url', 'last_frame_url']) {
       assert.deepEqual(server.forward[key], c.payload.input[key], `${name}: ${key}`);
     }
-    for (const key of ['_billing_input_seconds', '_billing_edit']) assert.equal(key in server.forward, false, `${name}: ${key} no viaja al proveedor`);
+    for (const key of ['_billing_input_seconds', '_billing_edit', '_billing_lite_provider']) assert.equal(key in server.forward, false, `${name}: ${key} no viaja al proveedor`);
     for (const key of ['draft', 'draft_task_id']) assert.equal(key in c.payload.input, false, key);
   });
   assert.equal(results[4].forward.duration, -1, 'Editar vídeo va con duración automática');

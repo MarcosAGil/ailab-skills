@@ -19,12 +19,13 @@ export const MEMBER_TOKEN = 'ailp_' + 'm'.repeat(48);
 export const PARENT_TASK = 'tarea-origen-grok-0001';
 
 // Interruptores de servidor que en el repositorio están cerrados y se abren aquí para poder calcular su precio:
-// Topaz (TOPAZ_ENABLED) y Resemble (RESEMBLE_ENABLED). En producción siguen siendo decisión de Marcos.
+// Topaz (TOPAZ_ENABLED), Resemble (RESEMBLE_ENABLED) y VideoRouter (VIDEOROUTER_MODE y Lite por VideoRouter desde la 2.3.18).
+// En producción siguen siendo decisión de Marcos.
 const SERVER_SETTINGS = {
   REQUIRE_AILAB_ACCESS: false, MAX_CREATES_PER_MIN: 100000, MAX_PENDING_TASKS: 100000, DAILY_CREDIT_CAP: 0, MAX_TOKEN_REQUESTS_PER_MIN: 0,
   SKILL_UPLOAD_USER_QUOTA_24H: 0, SKILL_UPLOAD_CLEANUP_LIMIT: 0, RECOVERY_ENABLED: false, __secrets_ok: true,
   TOPAZ_ENABLED: true, TOPAZ_PUBLIC_ENABLED: true, RESEMBLE_ENABLED: true, RESEMBLE_PUBLIC_ENABLED: true,
-  SEEDANCE_25_PROVIDER: 'sume', KLING_4_0_ENABLED: true, KLING_4_0_SUBJECTS_ENABLED: true,
+  SEEDANCE_25_PROVIDER: 'videorouter', VIDEOROUTER_MODE: 'on', KLING_4_0_ENABLED: true, KLING_4_0_SUBJECTS_ENABLED: true,
   SESSION_SECRET: 'fake-session-secret-for-price-audit-not-production', PUBLIC_ORIGIN: 'https://ailab.test', ADMIN_KEY: 'fake-admin-key',
 };
 
@@ -47,7 +48,7 @@ export async function startPriceBank({ canonical, skillRoot, workers = 4, balanc
     KIE_API_KEY: 'fake', KIE_BASE: dead, SUME_API_KEY: 'fake', SUME_BASE: dead, FAL_KEY: 'fake', FAL_QUEUE_BASE: dead, FAL_API_BASE: dead,
     TOPAZ_API_KEY: 'fake', TOPAZ_BASE: dead, APIMART_KEY: 'fake', APIMART_BASE: dead, RESEMBLE_API_KEY: 'fake', RESEMBLE_API_BASE: dead,
     OPENROUTER_API_KEY: 'fake', OPENROUTER_API_BASE: dead, ELEVEN_KEY: 'fake', ELEVEN_API_BASE: dead, HEYGEN_KEY: 'fake', HEYGEN_API_BASE: dead,
-    HIGGSFIELD_API_KEY: 'fake-id:fake-secret', HIGGSFIELD_BASE: dead,
+    HIGGSFIELD_API_KEY: 'fake-id:fake-secret', HIGGSFIELD_BASE: dead, VIDEOROUTER_API_KEY: 'fake', VIDEOROUTER_BASE: dead,
   };
   const config = path.join(wallet, 'config.php');
   // Interruptores de Higgsfield: Genjutsu Light está abierto en el repositorio (GENJUTSU_LIGHT_ENABLED) y aquí se fija

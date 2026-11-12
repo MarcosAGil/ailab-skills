@@ -10,7 +10,8 @@ node <skill-dir>/scripts/ailab.mjs prepare seedance-2-5 --draft true --prompt ".
 node <skill-dir>/scripts/ailab.mjs submit <manifest_id> --confirmed
 ```
 
-- Modelos: `seedance-2-5` y `seedance-2-5-lite`, en `t2v`, `i2v` y `ref`.
+- Modelo: `seedance-2-5`, en `t2v`, `i2v` y `ref`. Desde la skill 2.3.18, `seedance-2-5-lite` no tiene draft; los
+  drafts de Lite creados antes siguen apareciendo en `drafts`.
 - Solo 480p (sin `--resolution` se usa 480p) y duración fija de 4 a 30 s.
 - Sin edición y sin `--auto_duration`. La CLI lo rechaza antes de enviar nada.
 - Cuesta lo mismo que 480p en la misma combinación: `prepare` da la cifra, con o sin vídeo de referencia.

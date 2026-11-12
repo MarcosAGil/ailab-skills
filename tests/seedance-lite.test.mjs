@@ -10,7 +10,8 @@ import test from 'node:test';
 import { Media } from './helpers/media.mjs';
 import { CANONICAL, canRunParity, php } from './helpers/php.mjs';
 
-// Seedance 2.5 Lite (ByteDance vía Sume). Contrato del servidor: sume_lite_contract, sume_route_lite,
+// Seedance 2.5 Lite (ByteDance, por VideoRouter desde la 2.3.18; antes por Sume). Contrato del servidor:
+// sume_lite_contract (validación pública), vr_seedance_params y vr_seedance_credits; sume_route_lite sigue en el servidor,
 // gateway_seedance_25_media_seconds y gateway_estimate_credits. Con AILAB_CANONICAL_REPO las
 // comparaciones usan el PHP real con metadatos simulados: sin red ni gasto.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -26,8 +27,9 @@ const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'ut
 const model = { id: 'seedance-2-5-lite', ...catalog.models['seedance-2-5-lite'] };
 const execute = promisify(execFile);
 const media = new Media(path.join(temporary, 'files'));
-const RATES = { '480p': 20.9712, '720p': 47.1648, '1080p': 115.9944 };
-const VIDEO_RATES = { '480p': 12.546, '720p': 28.2132, '1080p': 69.4008 };
+// Tarifa de VideoRouter x 1,02 (95.500 / 205.500 / 505.500 y 58.300 / 125.300 / 308.300 micro-USD/s, 0,005 USD por crédito).
+const RATES = { '480p': 19.482, '720p': 41.922, '1080p': 103.122 };
+const VIDEO_RATES = { '480p': 11.8932, '720p': 25.5612, '1080p': 62.8932 };
 const credits = (rate, seconds) => Math.ceil(Number((rate * seconds).toFixed(6)));
 
 function plan(given) {
@@ -41,12 +43,14 @@ function plan(given) {
   return { ok: true, v, estimate, payload, meta };
 }
 
-test('el contrato publicado exige la skill 2.3.16, es Lite sin edición y las CLI anteriores lo ignoran', async () => {
-  assert.equal(model.min_cli_version, '2.3.16');
+test('el contrato publicado exige la skill 2.3.18, es Lite sin edición ni draft y las CLI anteriores lo ignoran', async () => {
+  assert.equal(model.min_cli_version, '2.3.18');
+  assert.equal(model.params.draft, undefined, 'VideoRouter no tiene draft de Lite');
+  assert.equal(model.vendor, 'ByteDance · VideoRouter');
   assert.equal(model.enabled, true);
   assert.deepEqual(model.modes, ['t2v', 'i2v', 'ref'], 'Lite no edita vídeo');
   assert.deepEqual(model.params.mode.values, ['t2v', 'i2v', 'ref']);
-  assert.match(model.description, /No edita vídeo/);
+  assert.match(model.description, /Sin draft ni edición de vídeo/);
   assert.equal(model.params.prompt.max_len, 15000);
   assert.deepEqual([model.params.duration.min, model.params.duration.max, model.params.duration.default], [4, 30, 5]);
   assert.deepEqual(model.params.resolution.values, ['480p', '720p', '1080p']);
@@ -61,14 +65,14 @@ test('el contrato publicado exige la skill 2.3.16, es Lite sin edición y las CL
   assert.equal(text.includes(String.fromCharCode(0x2014)), false);
   assert.equal(modelUsable(model).ok, true);
   if (!CANONICAL) return;
-  for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14', '2.3.15']) {
+  for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14', '2.3.15', '2.3.16', '2.3.17']) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
     const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
     assert.equal(old.modelUsable(parsed.models['seedance-2-5-lite']).ok, false, 'la CLI ' + version + ' no debe ofrecer Lite');
   }
 });
 
-test('sin vídeo, 3 resoluciones y 27 duraciones dan la tarifa por segundo; con vídeo se reserva el mayor de salida más entrada y ceil(salida x 5 / 3)', () => {
+test('sin vídeo, 3 resoluciones y 27 duraciones dan la tarifa por segundo; con vídeo se reserva salida más entrada, sin mínimo de 5/3', () => {
   let checked = 0;
   for (const resolution of ['480p', '720p', '1080p']) for (let duration = 4; duration <= 30; duration += 1) {
     const result = plan({ prompt: 'Una escena', resolution, duration });
@@ -78,25 +82,26 @@ test('sin vídeo, 3 resoluciones y 27 duraciones dan la tarifa por segundo; con 
     checked += 1;
   }
   assert.equal(checked, 81);
-  assert.equal(plan({ prompt: 'x' }).estimate.credits, 236, '5 s a 720p');
-  // Un vídeo de 8,2 s se redondea a 9 s: 10 s de salida + 9 s = 19 s a 720p, por encima de ceil(10 x 5 / 3) = 17.
+  assert.equal(plan({ prompt: 'x' }).estimate.credits, 210, '5 s a 720p');
+  // Un vídeo de 8,2 s se redondea a 9 s: 10 s de salida + 9 s = 19 s a 720p.
   const withVideo = plan({ mode: 'ref', prompt: 'Mira @Video1', duration: 10, reference_video_urls: [media.video('lv82.mp4', 8.2)] });
   assert.equal(withVideo.ok, true, withVideo.errors?.join('\n'));
   assert.equal(withVideo.estimate.credits, credits(VIDEO_RATES['720p'], 19));
-  assert.equal(withVideo.estimate.credits, 537);
+  assert.equal(withVideo.estimate.credits, 486);
   assert.equal(withVideo.estimate.approximate, true);
   assert.match(withVideo.estimate.note, /10 s de salida \+ 9 s de vídeo de referencia = 19 s/);
-  // 30 s de salida con un vídeo de 2 s: 32 s no llegan a ceil(30 x 5 / 3) = 50.
+  // 30 s de salida con un vídeo de 2 s: 32 s. VideoRouter no aplica el mínimo de ceil(30 x 5 / 3) = 50 s de Sume.
   const minimum = plan({ mode: 'ref', prompt: 'Mira @Video1', duration: 30, resolution: '1080p', reference_video_urls: [media.video('lv2.mp4', 2)] });
-  assert.equal(minimum.estimate.credits, credits(VIDEO_RATES['1080p'], 50));
-  assert.match(minimum.estimate.note, /factura al menos 50 s/);
+  assert.equal(minimum.estimate.credits, credits(VIDEO_RATES['1080p'], 32));
+  assert.match(minimum.estimate.note, /30 s de salida \+ 2 s de vídeo de referencia = 32 s/);
+  assert.doesNotMatch(minimum.estimate.note, /al menos/);
   // Diez vídeos suman cada uno al alza: 10 x 3,01 s son 30,1 s exactos y 40 s facturables.
   const ten = plan({ mode: 'ref', prompt: 'x', duration: 4, reference_video_urls: Array.from({ length: 10 }, (_, i) => media.video(`lvd${i}.mp4`, 3.01)) });
   assert.equal(ten.ok, true, ten.errors?.join('\n'));
   assert.equal(ten.estimate.credits, credits(VIDEO_RATES['720p'], 44));
   // Imágenes y audio no suman segundos.
   const images = plan({ mode: 'ref', prompt: 'x', reference_image_urls: [media.image('li1.png')], reference_audio_urls: [media.wavAudio('la1.wav', 5)] });
-  assert.equal(images.estimate.credits, 236);
+  assert.equal(images.estimate.credits, 210);
   assert.equal(images.estimate.approximate, false);
 });
 
@@ -164,7 +169,7 @@ function validCases() {
     ['ref con un vídeo de 5,0004 s (5,000 en milésimas)', { mode: 'ref', prompt: '@Video1', reference_video_urls: [media.video('lcv4.mp4', 5.0004)] }],
     ['ref con un audio', { mode: 'ref', prompt: '@Audio1', reference_audio_urls: [media.wavAudio('lca.wav', 6)] }],
     ['ref con imagen, vídeo y audio', { mode: 'ref', prompt: '@Image1 @Video1 @Audio1', duration: 15, reference_image_urls: [img('lcm.png')], reference_video_urls: [media.video('lcv5.mp4', 3)], reference_audio_urls: [media.mp3Audio('lca2.mp3', 3)] }],
-    ['ref con mínimo de Lite: 30 s y un vídeo de 2 s', { mode: 'ref', prompt: '@Video1', duration: 30, resolution: '1080p', reference_video_urls: [media.video('lcv6.mp4', 2)] }],
+    ['ref sin mínimo de 5/3: 30 s y un vídeo de 2 s', { mode: 'ref', prompt: '@Video1', duration: 30, resolution: '1080p', reference_video_urls: [media.video('lcv6.mp4', 2)] }],
     ['ref con diez vídeos y diez audios', { mode: 'ref', prompt: '@Video10 @Audio10', duration: 4, resolution: '480p', reference_video_urls: Array.from({ length: 10 }, (_, i) => media.video(`lcd${i}.mp4`, 3.01)), reference_audio_urls: Array.from({ length: 10 }, (_, i) => media.wavAudio(`lce${i}.wav`, 3.01)) }],
   ];
 }
@@ -180,32 +185,32 @@ const PHP_BACKEND = `
       catch (InvalidArgumentException $e) { $error = $e->getMessage(); }
     }
     if ($error !== null) { $out[] = ['ok' => false, 'error' => $error]; continue; }
-    $est = $input; $est['_billing_input_seconds'] = $seconds;
-    $routed = $input; unset($routed['mode']);
-    $out[] = ['ok' => true, 'seconds' => $seconds, 'credits' => gateway_estimate_credits('bytedance/seedance-2-5-lite', $est),
-      'sume' => sume_route_lite($routed)];
+    // Desde la 2.3.18 el Lite va por VideoRouter: la reserva es vr_seedance_credits y la traducción, vr_seedance_params.
+    $vr = vr_seedance_params($input);
+    if (isset($vr['error'])) { $out[] = ['ok' => false, 'error' => $vr['error']]; continue; }
+    $p = $vr['params'];
+    $out[] = ['ok' => true, 'seconds' => $seconds, 'credits' => vr_seedance_credits($p['resolution'], $p['duration'], count($p['videos']) > 0, $seconds, $cfg), 'vr' => $p];
   }
   echo json_encode($out, JSON_UNESCAPED_UNICODE);`;
 
 test('paridad con el PHP real: el servidor acepta lo que envía la CLI, reserva lo mismo y enruta al modo correcto', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
   const cases = validCases().map(([name, given]) => ({ name, ...plan(given) }));
   for (const c of cases) assert.equal(c.ok, true, `${c.name}: ${c.errors?.join(' ')}`);
-  const results = php(PHP_BACKEND, [JSON.stringify(cases.map((c) => ({ input: c.payload.input, meta: c.meta })))], { sume: true });
+  const results = php(PHP_BACKEND, [JSON.stringify(cases.map((c) => ({ input: c.payload.input, meta: c.meta })))], { sume: true, videorouter: true });
   cases.forEach((c, index) => {
     const server = results[index];
     assert.equal(server.ok, true, `${c.name}: ${server.error}`);
     assert.ok(c.estimate.credits >= server.credits, `${c.name}: la CLI autoriza ${c.estimate.credits} y el servidor reserva ${server.credits}`);
     assert.equal(c.estimate.credits, server.credits, c.name);
-    const sume = server.sume;
+    const vr = server.vr;
     const input = c.payload.input;
-    assert.equal(sume.provider, 'sume');
-    assert.equal(sume.payload.prompt, input.prompt);
-    assert.equal(sume.payload.duration, input.duration);
-    assert.equal(sume.payload.resolution, input.resolution);
-    assert.equal(sume.payload.generate_audio, input.generate_audio);
-    assert.equal(sume.route, { t2v: 'lite-t2v', i2v: 'lite-i2v', ref: 'lite-ref' }[input.mode], c.name);
-    if (input.mode === 'i2v') assert.equal(sume.payload.aspect_ratio, 'adaptive');
-    if (input.mode === 'ref') assert.deepEqual(sume.payload.reference_video_urls, input.reference_video_urls);
+    assert.equal(vr.prompt, input.prompt);
+    assert.equal(vr.duration, input.duration);
+    assert.equal(vr.resolution, input.resolution);
+    assert.equal(vr.generate_audio, input.generate_audio);
+    assert.equal(vr.mode, input.mode, c.name);
+    if (input.mode === 'i2v') assert.equal(vr.aspect_ratio, '', 'con primer fotograma el proveedor decide el formato');
+    if (input.mode === 'ref') assert.deepEqual(vr.videos, input.reference_video_urls ?? []);
   });
   assert.equal(cases.length, 16);
   // Las cifras con vídeo incluyen sus segundos medidos por el servidor.
@@ -247,8 +252,9 @@ test('paridad con el PHP real: lo que la CLI rechaza en local el servidor tambi�
     ['edición', raw({ mode: 'edit' })],
     ['búsqueda web', raw({ web_search: true })],
     ['parámetro ajeno', raw({ callBackUrl: 'https://evil.example' })],
+    ['draft (VideoRouter no lo tiene)', raw({ draft: true, resolution: '480p' })],
   ];
-  const results = php(PHP_BACKEND, [JSON.stringify(rejected.map(([, c]) => c))], { sume: true });
+  const results = php(PHP_BACKEND, [JSON.stringify(rejected.map(([, c]) => c))], { sume: true, videorouter: true });
   rejected.forEach(([name], index) => assert.equal(results[index].ok, false, `${name}: el servidor debía rechazarlo`));
   // Los mensajes que la CLI anticipa son los del servidor.
   const message = (name) => results[rejected.findIndex(([label]) => label === name)].error;
@@ -304,14 +310,14 @@ test('CLI real: prepare mide el vídeo y autoriza salida más entrada; submit en
     requests.push({ path: url.pathname, query: url.searchParams.get('path'), body });
     if (url.pathname === '/result.mp4') { res.writeHead(200, { 'content-type': 'video/mp4' }); return res.end(Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(64)])); }
     let response = { ok: true, user: { email: 'test@example.invalid', tier: 'hub' }, balance: 5000 };
-    if (body.action === 'task_costs') response = { ok: true, costs: { 'sume_lite_job': 600 } };
+    if (body.action === 'task_costs') response = { ok: true, costs: { 'vr_lite_job': 470 } };
     if (url.pathname.endsWith('/upload.php')) {
       const name = base + 'uploads/' + requests.length + '.bin';
       response = { ok: true, code: 200, url: name, data: { url: name }, expires_at: '2099-01-01 00:00:00' };
     }
     if (url.pathname.endsWith('/gateway.php')) {
-      if (url.searchParams.get('path') === '/jobs/createTask') response = { code: 200, data: { taskId: 'sume_lite_job' } };
-      else response = { code: 200, data: { taskId: 'sume_lite_job', state: 'success', resultJson: JSON.stringify({ resultUrls: [base + 'result.mp4'] }) } };
+      if (url.searchParams.get('path') === '/jobs/createTask') response = { code: 200, data: { taskId: 'vr_lite_job' } };
+      else response = { code: 200, data: { taskId: 'vr_lite_job', state: 'success', resultJson: JSON.stringify({ resultUrls: [base + 'result.mp4'] }) } };
     }
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify(response));
@@ -326,6 +332,7 @@ test('CLI real: prepare mide el vídeo y autoriza salida más entrada; submit en
   const clip = media.video('lite-cli.mp4', 8.2);
   await assert.rejects(exec('prepare', 'seedance-2-5-lite', '--prompt', 'x', '--mode', 'edit'), /debe ser uno de/);
   await assert.rejects(exec('prepare', 'seedance-lite', '--prompt', 'x'), /Modelo no encontrado/);
+  await assert.rejects(exec('prepare', 'seedance-2-5-lite', '--prompt', 'x', '--draft', 'true'), /Parametro desconocido: --draft/);
   assert.equal(requests.length, 0);
   const expected = credits(VIDEO_RATES['720p'], 19);
   const args = ['seedance-2-5-lite', '--mode', 'ref', '--prompt', 'Mira @Video1', '--duration', '10', '--reference_video_urls', clip];
@@ -337,7 +344,7 @@ test('CLI real: prepare mide el vídeo y autoriza salida más entrada; submit en
   assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'manifests', id + '.json'), 'utf8')).max_credits_authorized, expected);
   await assert.rejects(exec('prepare', ...args, '--max-credits', String(expected - 1)), /supera el m[aá]ximo/i);
   const done = await exec('submit', id, '--confirmed');
-  assert.match(done.stdout, /Coste real: 600 cr/);
+  assert.match(done.stdout, /Coste real: 470 cr/);
   const sends = requests.filter((request) => request.query === '/jobs/createTask');
   assert.equal(sends.length, 1);
   assert.equal(sends[0].body.model, 'seedance-2-5-lite');
