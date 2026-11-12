@@ -1,15 +1,15 @@
-// Seedance 2.5 Lite (ByteDance, servido por Sume). Contrato en el servidor: `sume_lite_contract` y
-// `sume_route_lite` (api/wallet/sume-gateway.php), `gateway_seedance_25_media_seconds`,
-// `gateway_seedance_25_lite_billed_seconds` y `gateway_estimate_credits` (api/wallet/gateway.php).
+// Seedance 2.5 Lite (ByteDance, servido por VideoRouter). Contrato en el servidor: `sume_lite_contract` (validación
+// pública, api/wallet/sume-gateway.php), `vr_seedance_params`, `vr_seedance_billed_seconds` y `vr_seedance_credits`
+// (api/wallet/videorouter-gateway.php) y `gateway_seedance_25_media_seconds` (api/wallet/gateway.php).
 //
 // Modalidades: texto a vídeo (t2v), primer y último fotograma (i2v) y referencias (ref: imágenes, hasta
-// 10 vídeos y 10 audios). Lite no edita vídeo (eso sigue en Seedance 2.5 Normal), no combina fotogramas
-// con referencias y no tiene duración automática.
+// 10 vídeos y 10 audios). Lite no edita vídeo ni genera drafts (eso sigue en Seedance 2.5 Normal), no combina
+// fotogramas con referencias y no tiene duración automática.
 //
-// El precio es tarifa de Sume x 1,02 por segundo. Con vídeo de referencia el servidor reserva el mayor de
-// (salida + entrada) y ceil(salida x 5 / 3) a la tarifa con vídeo, y cobra el coste real; aquí se presupuesta
-// esa misma reserva para que el máximo autorizado nunca quede por debajo (si lo hiciera, el servidor rechaza
-// con 402).
+// El precio es tarifa de VideoRouter x 1,02 por segundo. Con vídeo de referencia el servidor reserva salida +
+// entrada a la tarifa con vídeo (cada vídeo al segundo superior), sin el mínimo de 5/3 que aplicaba Sume, y cobra
+// el coste real; aquí se presupuesta esa misma reserva para que el máximo autorizado nunca quede por debajo (si lo
+// hiciera, el servidor rechaza con 402).
 import { inspectPricingMetadata } from './files.mjs';
 import { items, measureAudios, measureVideos, seedanceCredits } from './seedance.mjs';
 
@@ -19,9 +19,9 @@ const LABEL = 'Seedance 2.5 Lite';
 const REFERENCE_SECONDS = 30.2;
 const MAX_REFERENCES = 10;
 
-// Mayor de (salida + entrada) y ceil(salida x 5 / 3), con enteros: `gateway_seedance_25_lite_billed_seconds`.
+// Salida + entrada, con enteros: `vr_seedance_billed_seconds` con vídeo de referencia.
 export function liteBilledSeconds(output, inputSeconds) {
-  return Math.max(output + inputSeconds, Math.floor((output * 5 + 2) / 3));
+  return output + Math.max(0, inputSeconds);
 }
 
 // Valida lo que la CLI puede comprobar en local y mide los materiales de referencia. Devuelve
@@ -85,14 +85,12 @@ export function liteEstimate(model, params, fileParams = {}) {
   if (!Number.isInteger(output) || output < 4 || output > 30 || !Number.isFinite(rate) || rate <= 0) {
     return { credits: null, approximate: false, note: 'tarifa de Seedance 2.5 Lite no disponible para esta combinación' };
   }
-  if (!hasVideo) return { credits: seedanceCredits(rate, output), approximate: false, note: output + ' s de salida · precio exacto' };
-  const sum = output + inspected.inputSeconds;
+  if (!hasVideo) return { credits: seedanceCredits(rate, output), approximate: false, note: output + ' s de salida · máximo reservado; se cobra el coste real del proveedor, nunca más' };
   const billed = liteBilledSeconds(output, inspected.inputSeconds);
   return {
     credits: seedanceCredits(rate, billed),
     approximate: true,
-    note: output + ' s de salida + ' + inspected.inputSeconds + ' s de vídeo de referencia = ' + sum + ' s'
-      + (billed > sum ? ' (Lite con vídeo factura al menos ' + billed + ' s)' : '')
+    note: output + ' s de salida + ' + inspected.inputSeconds + ' s de vídeo de referencia = ' + billed + ' s'
       + ' · máximo reservado; se cobra el coste real del proveedor, nunca más',
   };
 }
@@ -109,7 +107,6 @@ export function liteInput(params, uploaded = {}) {
     aspect_ratio: mode === 'i2v' ? 'adaptive' : String(params.aspect_ratio ?? 'adaptive'),
     generate_audio: params.generate_audio !== false,
   };
-  if (params.draft === true) input.draft = true;
   if (mode === 'i2v') {
     const first = items(uploaded.first_frame_url);
     const last = items(uploaded.last_frame_url);

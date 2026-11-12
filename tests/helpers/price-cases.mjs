@@ -27,6 +27,10 @@ export function priceCases(F) {
   add('nano-banana-2-1', { ...P, mode: 'edit', image_urls: [image()], resolution: '2K' });
   grid('gpt-image-2-5', P, { version: ['flare', 'sunburst'], resolution: ['1K', '2K', '4K'] });
   add('gpt-image-2-5', { ...P, version: 'sunburst', mode: 'i2i', image_urls: [image()], resolution: '2K' });
+  grid('gpt-image-2-6', P, { version: ['flare', 'sunburst'], resolution: ['1K', '2K', '4K'] });
+  add('gpt-image-2-6', { ...P, version: 'economy', resolution: '1K' });
+  add('gpt-image-2-6', { ...P, version: 'flare', mode: 'i2i', image_urls: [image()], resolution: '1K' });
+  add('gpt-image-2-6', { ...P, version: 'sunburst', mode: 'i2i', image_urls: [image(), image(800, 600)], resolution: '4K' });
   grid('gpt-image-2', P, { resolution: ['1K', '2K', '4K'] });
   add('gpt-image-2', { ...P, mode: 'i2i', image_urls: [image()], resolution: '4K', aspect_ratio: '16:9' });
   grid('nano-banana-2', P, { resolution: ['1K', '2K', '4K'] });
@@ -49,6 +53,10 @@ export function priceCases(F) {
   add('seedream-v5-pro', { ...P, mode: 'i2i', quality: 'basic', image_urls: [image(), image(800, 600), image(640, 640)] });
   add('seedream-v5-pro', { ...P, mode: 'i2i', quality: 'high', image_urls: [image(), image(800, 600)] });
   add('seedream-v5-pro', { ...P, mode: 'layers', layer_image: image(), layer_size: '2K' });
+  // Seedream 5.5 y Gemini Omni Flash 1.2 por VideoRouter (2.3.18): la reserva es la tarifa x 1,02 y se cobra el coste real.
+  grid('seedream-5-5', P, { mode: ['t2i'], resolution: ['1K', '2K'] });
+  grid('seedream-5-5', { ...P, mode: 'i2i', image_urls: [image()] }, { resolution: ['1K', '2K'] });
+  add('seedream-5-5', { ...P, mode: 'i2i', image_urls: [image(), image(800, 600), image(640, 640)], resolution: '2K', aspect_ratio: '21:9' });
 
   // --- Vídeo por Kie ---
   grid('seedance-2', P, { speed: ['normal', 'fast'], resolution: ['480p', '720p'], duration: ['4', '15'] });
@@ -72,11 +80,11 @@ export function priceCases(F) {
   grid('seedance-2-5', { ...P, mode: 'ref', auto_duration: 'true', reference_video_urls: [video(8)] }, { resolution: ['480p', '720p', '1080p'] });
   for (const seconds of [4, 8.2, 16, 30]) add('seedance-2-5', { ...P, mode: 'edit', reference_video_urls: [video(seconds)], resolution: '720p' }, 'edición de ' + seconds + ' s');
   add('seedance-2-5-lite', { ...P, mode: 'ref', reference_video_urls: tenVideos, reference_audio_urls: tenAudios, resolution: '1080p', duration: '4' }, 'diez vídeos y diez audios');
-  add('seedance-2-5-lite', { ...P, mode: 'ref', reference_video_urls: [video(2)], resolution: '720p', duration: '30' }, 'mínimo de Lite: ceil(30 x 5 / 3) = 50 s');
+  add('seedance-2-5-lite', { ...P, mode: 'ref', reference_video_urls: [video(2)], resolution: '720p', duration: '30' }, 'sin mínimo de 5/3 por VideoRouter: 30 + 2 = 32 s');
   // Modo draft (2.3.16): mismo precio que 480p. El paso a 1080p se compara con la reserva en tests/seedance-draft.test.mjs.
+  // Desde la 2.3.18 Lite va por VideoRouter y no tiene draft.
   grid('seedance-2-5', { ...P, draft: 'true', resolution: '480p' }, { duration: ['4', '30'] });
-  grid('seedance-2-5-lite', { ...P, draft: 'true', resolution: '480p' }, { duration: ['4', '30'] });
-  for (const id of ['seedance-2-5', 'seedance-2-5-lite']) add(id, { ...P, draft: 'true', mode: 'ref', reference_video_urls: [video(8)], resolution: '480p', duration: '5' }, 'draft con vídeo');
+  add('seedance-2-5', { ...P, draft: 'true', mode: 'ref', reference_video_urls: [video(8)], resolution: '480p', duration: '5' }, 'draft con vídeo');
   add('seedance-2', { ...P, mode: 'ref', reference_video_urls: [video(15)], resolution: '4k', duration: '15' }, 'vídeo de 15 s');
   add('seedance-2', { ...P, mode: 'ref', reference_video_urls: [video(8.2)], speed: 'fast', resolution: '720p', duration: '5' }, 'al segundo superior');
   add('seedance-2-mini', { ...P, mode: 'ref', reference_video_urls: [video(15)], resolution: '720p', duration: '15' }, 'vídeo de 15 s');
@@ -112,6 +120,9 @@ export function priceCases(F) {
   grid('kling-4-0', P, { resolution: ['720p', '1080p'], duration: ['3', '10', '30'] });
   grid('gemini-omni-flash-1-1', P, { resolution: ['360p', '720p', '1080p', '4k'], duration: ['4', '6', '8', '10'] });
   grid('gemini-omni-flash-1-1', { ...P, mode: 'reference', video_url: video(8) }, { resolution: ['720p', '4k'] });
+  grid('gemini-omni-flash-1-2', P, { resolution: ['360p', '720p', '1080p', '4k'], duration: ['3', '8', '15'] });
+  add('gemini-omni-flash-1-2', { ...P, aspect_ratio: '9:16', resolution: '360p', duration: '3' });
+  add('gemini-omni-flash-1-2', { ...P, mode: 'frames', first_frame_url: image(), last_frame_url: image(800, 600), resolution: '720p', duration: '10' });
   grid('gemini-omni-video', P, { resolution: ['720p', '1080p', '4k'], duration: ['4', '10'] });
   grid('gemini-omni-video', { ...P, video_url: video(8) }, { resolution: ['720p', '4k'] });
 

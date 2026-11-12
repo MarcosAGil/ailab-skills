@@ -153,7 +153,7 @@ async function cmdDrafts(opts) {
   const page = await servicePost(DRAFTS_ENDPOINT, draftsRequest(cursor));
   if (!page.ok) fail(explain(page));
   const drafts = Array.isArray(page.data?.drafts) ? page.data.drafts : [];
-  if (!drafts.length) { out('No hay drafts de Seedance 2.5 en esta página. Se crean con prepare seedance-2-5 o seedance-2-5-lite y --draft true.'); return; }
+  if (!drafts.length) { out('No hay drafts de Seedance 2.5 en esta página. Se crean con prepare seedance-2-5 y --draft true.'); return; }
   out('Drafts de Seedance 2.5 (' + drafts.length + (page.data.has_more ? ', hay más' : '') + '):');
   for (const draft of drafts) for (const line of draftLines(draft)) out(line);
   if (page.data.has_more && page.data.next_cursor) out('Siguiente página: ' + cliCommand('drafts --cursor ' + encodeDraftCursor(page.data.next_cursor)));

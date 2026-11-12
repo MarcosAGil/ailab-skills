@@ -1,11 +1,12 @@
-// Modo draft de Seedance 2.5: un draft (Normal por Kie, Lite por Sume) a 480p que luego se genera a 1080p. Contrato en el
+// Modo draft de Seedance 2.5: un draft (Normal por Kie; Lite ya no crea drafts nuevos) a 480p que luego se genera a 1080p. Contrato en el
 // servidor: `gateway_seedance_25_draft_error` (api/wallet/gateway.php) y api/wallet/seedance-drafts.php. Detalle para el
 // agente en references/seedance-draft.md.
 //
 // Este módulo no toca la red: catalog.mjs lo importa y su copia firmada debe seguir siendo autónoma. El precio de 1080p sale
 // siempre del servidor (`credits` del listado); la CLI nunca lo calcula, así que no hay tarifa de draft en el runtime.
 export const DRAFT_UPGRADE_ID = 'seedance-2-5-draft-1080p';
-export const DRAFT_MODEL_IDS = ['seedance-2-5', 'seedance-2-5-lite'];
+// Desde la 2.3.18 Lite va por VideoRouter, que no tiene draft. Los drafts de Lite ya creados siguen en `drafts`.
+export const DRAFT_MODEL_IDS = ['seedance-2-5'];
 export const DRAFTS_ENDPOINT = 'api/wallet/history.php';
 // 20 drafts por página en el servidor. Un draft vigente tiene menos de 7 días y el listado va del más reciente al más antiguo.
 export const MAX_DRAFT_PAGES = 50;

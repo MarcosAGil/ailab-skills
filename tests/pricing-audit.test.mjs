@@ -46,6 +46,7 @@ const SERVER_QUOTED = {
 const OVER_ALLOWED = [
   { id: 'seedream-v5-pro', when: (a) => a.mode === 'layers', reason: 'Descomposición en capas: el número de capas lo decide el modelo. El servidor reserva 8 o 15 cr y la CLI autoriza hasta 300 cr como tope del cargo final.' },
   { id: 'grok-imagine-video-1-5', when: () => true, max: 3, reason: 'El proveedor cobra una tarifa de imagen que no desglosa antes de generar (lo dice la nota de la web): la CLI suma 2 cr por imagen y el servidor no la reserva.' },
+  { id: 'gpt-image-2-6', when: (a) => a.version !== 'economy', reason: 'Flare y Sunburst facturan por tokens: la CLI autoriza la reserva máxima por imagen del catálogo (GIF y 20.000 caracteres incluidos) y el servidor reserva según el prompt real; se cobra el consumo real de Kie x 1,02, nunca más de lo autorizado.' },
   { id: 'kling-o3', when: (a) => a.mode === 'transform', reason: 'Transformar: el servidor reserva los segundos medidos del vídeo y la CLI autoriza la cota de 16 s, igual que la web.' },
 ];
 // Diferencias entre la tarifa de la web y la de la CLI (más de 1 cr). La web publica una tabla genérica; la CLI y el servidor
@@ -62,6 +63,7 @@ const WEB_DIFFERENCES = {
   'kling-v3': 'La web es conservadora (redondea a 23 y 34 cr/s y Pro presupone audio); el servidor reserva 22,4 cr/s y 33,6 con audio.',
   'crystal-upscaler': 'El servidor reserva 61 cr aunque la salida sea menor; la web muestra el coste por megapíxel.',
   'seedvr2-image-upscaler': 'El servidor reserva 6 cr aunque la salida sea menor; la web muestra el coste por megapíxel.',
+  'gpt-image-2-6': 'Flare y Sunburst: la web muestra la reserva según el prompt; la CLI autoriza la reserva máxima por imagen del catálogo.',
   'seed-audio': 'El servidor reserva siempre 100 cr (la duración la decide el modelo); la web muestra el coste de un audio medio.',
 };
 
@@ -158,7 +160,7 @@ test('la tarifa de la web coincide con la de la CLI salvo las diferencias docume
 
 test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un motivo documentado', { skip }, () => {
   const ids = Object.keys(catalog.models);
-  assert.equal(ids.length, 71);
+  assert.equal(ids.length, 74);
   const compared = new Set(results.filter((r) => reference(r) !== null && r.cli !== null).map((r) => r.id));
   const withoutFfmpeg = withFfmpeg ? [] : ['topaz-astra-precise-2-6', 'topaz-astra-creative-2', 'seedvr-video-upscaler'];
   const missing = ids.filter((id) => !compared.has(id) && !NO_SERVER_ESTIMATE[id] && !SERVER_QUOTED[id] && id !== 'krea-3' && !withoutFfmpeg.includes(id));
@@ -170,7 +172,7 @@ test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un mo
   for (const id of ['remove-background', 'eleven-speech-to-text', 'suno']) for (const r of results.filter((x) => x.id === id)) assert.equal(r.web.credits, r.cli, describe(r));
 });
 
-test('la skill lista los 71 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
+test('la skill lista los 74 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
   for (const [id, model] of Object.entries(catalog.models)) {
     assert.equal(model.enabled, true, id);
     assert.equal(model.status, 'active', id);
@@ -180,6 +182,7 @@ test('la skill lista los 71 modelos activos: solo un interruptor de servidor doc
     TOPAZ_ENABLED: ['topaz-bloom-2', 'topaz-wonder-3-5', 'topaz-astra-precise-2-6', 'topaz-astra-creative-2'],
     RESEMBLE_ENABLED: ['resemble-audio-enhancement'],
     SEEDANCE_25_PROVIDER: ['seedance-2-5-lite'],
+    VIDEOROUTER_MODE: ['gemini-omni-flash-1-2', 'seedream-5-5'],
     SEEDANCE_25_DRAFT_ENABLED: ['seedance-2-5-draft-1080p'],
     HIGGSFIELD_FEATURE_FLAGS: ['higgsfield-marketing-studio-image'],
     GENJUTSU_LIGHT_ENABLED: ['higgsfield-genjutsu-light'],
@@ -192,6 +195,7 @@ test('la skill lista los 71 modelos activos: solo un interruptor de servidor doc
   assert.equal(config.TOPAZ_ENABLED, false, 'valor del repositorio: Topaz cerrado hasta que Marcos lo abra');
   assert.equal(config.RESEMBLE_ENABLED, false);
   assert.equal(config.SEEDANCE_25_PROVIDER, 'kie');
+  assert.equal(config.VIDEOROUTER_MODE, 'off', 'valor del repositorio: VideoRouter se abre en videorouter.local.php del servidor');
   assert.equal(config.SEEDANCE_25_DRAFT_ENABLED, true, 'modo draft abierto en la web y, desde 2.3.16, en la skill');
   assert.equal(config.HIGGSFIELD_FEATURE_FLAGS['higgsfield-marketing-studio-image'], false);
   assert.equal(config.GENJUTSU_LIGHT_ENABLED, true, 'Genjutsu Light abierto a todos (28/10/2026) con su propio interruptor');

@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.29.0",
+  "catalog_version": "1.31.0",
   "min_cli_version": "2.3.7",
   "models": {
     "krea-3": {
@@ -312,6 +312,174 @@
         },
         "approximate": true,
         "note": "Tarifa provisional comprobada el 09/09/2026: igual para Flare y Sunburst, con o sin referencias. Se liquida según el consumo real al terminar."
+      }
+    },
+    "gpt-image-2-6": {
+      "id": "gpt-image-2-6",
+      "label": "GPT Image 2.6",
+      "description": "Genera y edita imágenes con Flare, Sunburst o Economy, de 1K a 4K y hasta 16 referencias. Fondo transparente y GIF animado con fotogramas en texto a imagen.",
+      "section": "image",
+      "vendor": "OpenAI",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.1.0",
+      "aliases": [
+        "gpt image 2.6",
+        "gpt image 2 6",
+        "gpt 2.6 flare",
+        "gpt 2.6 sunburst",
+        "gpt 2.6 economy"
+      ],
+      "modes": [
+        "t2i",
+        "i2i"
+      ],
+      "params": {
+        "version": {
+          "type": "enum",
+          "values": [
+            "flare",
+            "sunburst",
+            "economy"
+          ],
+          "default": "flare",
+          "help": "Flare es la versión rápida; Sunburst, la de más calidad y coherencia en ediciones; Economy, la más barata: solo 1K, ocho ratios y PNG o GIF (en imagen a imagen, solo PNG)."
+        },
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 16,
+          "required_when": {
+            "mode": "i2i"
+          },
+          "help": "Solo en imagen a imagen: de 1 a 16 imágenes JPEG, PNG o WebP, hasta 30 MB cada una. Cítalas en el prompt por su orden."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "5:4",
+            "4:5",
+            "16:9",
+            "9:16",
+            "2:1",
+            "1:2",
+            "21:9",
+            "9:21",
+            "3:1",
+            "1:3"
+          ],
+          "default": "auto",
+          "help": "Economy admite auto, 1:1, 16:9, 9:16, 3:2, 2:3, 21:9 y 4:3."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "default": "1K",
+          "help": "Economy solo genera a 1K."
+        },
+        "background": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "transparent",
+            "opaque"
+          ],
+          "default": "auto",
+          "help": "Solo a 1K. Transparente funciona con PNG, WebP o GIF."
+        },
+        "output_format": {
+          "type": "enum",
+          "values": [
+            "png",
+            "jpeg",
+            "webp",
+            "gif"
+          ],
+          "default": "png",
+          "help": "GIF animado solo en texto a imagen. Economy: PNG o GIF; en imagen a imagen, solo PNG."
+        },
+        "frame_count": {
+          "type": "int",
+          "min": 2,
+          "max": 64,
+          "help": "Solo con GIF: número de fotogramas. Flare y Sunburst admiten de 2 a 16; Economy, 4, 9, 16, 25, 36 o 64. Vacío: automático, lo decide el modelo."
+        },
+        "frame_duration_ms": {
+          "type": "int",
+          "min": 20,
+          "max": 2000,
+          "step": 10,
+          "help": "Solo con GIF: milisegundos por fotograma, de 20 a 2.000 en múltiplos de 10. Vacío: automático."
+        }
+      },
+      "estimate": {
+        "kind": "per_second_matrix",
+        "row_param": "version",
+        "column_param": "resolution",
+        "auto_duration_param": "prompt",
+        "auto_duration_seconds": 1,
+        "credits_matrix": {
+          "flare": {
+            "1K": 22.65,
+            "2K": 22.65,
+            "4K": 33.87
+          },
+          "sunburst": {
+            "1K": 22.65,
+            "2K": 22.65,
+            "4K": 33.87
+          },
+          "economy": {
+            "1K": 6
+          }
+        },
+        "video_param": "image_urls",
+        "credits_with_video_matrix": {
+          "flare": {
+            "1K": 14.49,
+            "2K": 22.65,
+            "4K": 33.87
+          },
+          "sunburst": {
+            "1K": 14.49,
+            "2K": 22.65,
+            "4K": 33.87
+          },
+          "economy": {
+            "1K": 3.44
+          }
+        },
+        "files_param": "image_urls",
+        "credits_per_file": 2.55,
+        "approximate": true,
+        "note": "Reserva máxima por imagen. La regla reutiliza la fórmula por segundo con una sola unidad por imagen: no hay cobro por segundo. Cubre el GIF animado y prompts de hasta 20.000 caracteres; cada referencia suma 2,55 cr. Flare y Sunburst facturan por tokens: el servidor reserva según el prompt real y al terminar cobra el consumo real de Kie más el 2 % (medido el 05/11/2026 a 1:1: 1K 8 cr, 2K 17, 4K 27, GIF 17 y unos 3 más por referencia), nunca por encima de lo autorizado. Economy cobra 6 cr fijos."
       }
     },
     "avatar-photo-video": {
@@ -986,7 +1154,8 @@
         },
         "voice_id": {
           "max_len": 40,
-          "type": "string"
+          "type": "string",
+          "help": "ID de una voz de ElevenLabs. Puedes copiarlo con el botón Copiar ID de la biblioteca de voces de la web; una voz de la comunidad ya incorporada se traduce sola a su copia en la cuenta."
         },
         "private_voice_id": {
           "type": "string",
@@ -1373,6 +1542,149 @@
       "status": "active",
       "tier": "hub",
       "vendor": "Google"
+    },
+    "gemini-omni-flash-1-2": {
+      "id": "gemini-omni-flash-1-2",
+      "label": "Gemini Omni Flash 1.2",
+      "description": "Vídeo con audio de 3 a 15 segundos desde texto o desde un primer y último frame, de 360p a 4K. Sin referencias multimodales, Voice ID, Character ID ni semilla.",
+      "section": "video",
+      "vendor": "Google · VideoRouter",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.17",
+      "aliases": [
+        "gemini omni 1.2",
+        "gemini omni flash 1.2",
+        "gemini-omni-1.2-flash"
+      ],
+      "modes": [
+        "t2v",
+        "frames"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2v",
+            "frames"
+          ],
+          "default": "t2v"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000
+        },
+        "first_frame_url": {
+          "type": "file",
+          "accept": "image",
+          "required_when": {
+            "mode": "frames"
+          }
+        },
+        "last_frame_url": {
+          "type": "file",
+          "accept": "image",
+          "help": "Exige primer frame. Con él, 10 s como máximo."
+        },
+        "duration": {
+          "type": "int",
+          "min": 3,
+          "max": 15,
+          "default": 8
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16"
+          ],
+          "default": "16:9"
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "360p",
+            "720p",
+            "1080p",
+            "4k"
+          ],
+          "default": "720p"
+        }
+      },
+      "estimate": {
+        "kind": "matrix_table",
+        "row_param": "resolution",
+        "column_param": "duration",
+        "approximate": false,
+        "note": "Tarifa de VideoRouter con el servicio de AILAB, por segundo de vídeo. Es el máximo que se reserva: al terminar se cobra el coste real del proveedor x1,02, que puede ser algo menor y nunca mayor.",
+        "credits_matrix": {
+          "360p": {
+            "3": 17,
+            "4": 22,
+            "5": 28,
+            "6": 33,
+            "7": 38,
+            "8": 44,
+            "9": 49,
+            "10": 55,
+            "11": 60,
+            "12": 65,
+            "13": 71,
+            "14": 76,
+            "15": 82
+          },
+          "720p": {
+            "3": 38,
+            "4": 51,
+            "5": 64,
+            "6": 76,
+            "7": 89,
+            "8": 101,
+            "9": 114,
+            "10": 127,
+            "11": 139,
+            "12": 152,
+            "13": 164,
+            "14": 177,
+            "15": 190
+          },
+          "1080p": {
+            "3": 56,
+            "4": 74,
+            "5": 93,
+            "6": 111,
+            "7": 130,
+            "8": 148,
+            "9": 167,
+            "10": 185,
+            "11": 204,
+            "12": 222,
+            "13": 241,
+            "14": 259,
+            "15": 278
+          },
+          "4k": {
+            "3": 109,
+            "4": 145,
+            "5": 181,
+            "6": 217,
+            "7": 253,
+            "8": 289,
+            "9": 325,
+            "10": 361,
+            "11": 397,
+            "12": 434,
+            "13": 470,
+            "14": 506,
+            "15": 542
+          }
+        }
+      }
     },
     "gemini-omni-video": {
       "aliases": [
@@ -4490,6 +4802,91 @@
       "tier": "hub",
       "vendor": "ByteDance"
     },
+    "seedream-5-5": {
+      "id": "seedream-5-5",
+      "label": "Seedream 5.5",
+      "description": "Texto a imagen o edición con hasta 10 referencias, a 1K o 2K y en ocho proporciones.",
+      "section": "image",
+      "vendor": "ByteDance · VideoRouter",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.17",
+      "aliases": [
+        "seedream 5.5",
+        "seedream-5.5",
+        "seedream 5.5 edit"
+      ],
+      "modes": [
+        "t2i",
+        "i2i"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i"
+          ],
+          "default": "t2i"
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 5000
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "3:2",
+            "2:3",
+            "21:9"
+          ],
+          "default": "1:1"
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "1K",
+            "2K"
+          ],
+          "default": "2K"
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 10,
+          "required_when": {
+            "mode": "i2i"
+          }
+        }
+      },
+      "estimate": {
+        "kind": "matrix_table",
+        "row_param": "mode",
+        "column_param": "resolution",
+        "credits_matrix": {
+          "t2i": {
+            "1K": 4,
+            "2K": 6
+          },
+          "i2i": {
+            "1K": 5,
+            "2K": 8
+          }
+        },
+        "approximate": false,
+        "note": "Máximo por imagen. Al terminar se cobra el coste real del proveedor, que puede ser menor."
+      }
+    },
     "seedvr-video-upscaler": {
       "aliases": [
         "seedvr video"
@@ -5702,16 +6099,16 @@
     },
     "seedance-2-5-lite": {
       "label": "Seedance 2.5 Lite",
-      "description": "Seedance 2.5 en torno a un 27 % más barato, en prueba. Texto, primer y último fotograma o referencias (imágenes, hasta 10 vídeos y 10 audios), de 4 a 30 s. No edita vídeo: para editar usa Seedance 2.5 Normal.",
+      "description": "Versión económica de Seedance 2.5, servida por VideoRouter. Texto, primer y último fotograma o referencias (imágenes, hasta 10 vídeos y 10 audios), de 4 a 30 s. Sin draft ni edición de vídeo: para eso usa Seedance 2.5 Normal.",
       "section": "video",
-      "vendor": "ByteDance",
+      "vendor": "ByteDance · VideoRouter",
       "tier": "hub",
       "output": "video",
       "status": "active",
       "enabled": true,
       "expensive": true,
       "driver": "jobs-v1",
-      "min_cli_version": "2.3.16",
+      "min_cli_version": "2.3.18",
       "aliases": [
         "seedance 2.5 lite",
         "seedance2.5lite",
@@ -5762,10 +6159,6 @@
           ],
           "default": "720p"
         },
-        "draft": {
-          "type": "bool",
-          "help": "Con true genera un draft: solo 480p (sin --resolution se usa 480p) y duración fija de 4 a 30 s. No hay edición. Cuesta lo mismo que 480p y después se puede generar a 1080p con seedance-2-5-draft-1080p."
-        },
         "duration": {
           "type": "int",
           "min": 4,
@@ -5814,18 +6207,18 @@
         "by_param": "resolution",
         "seconds_param": "duration",
         "credits_per_second": {
-          "480p": 20.9712,
-          "720p": 47.1648,
-          "1080p": 115.9944
+          "480p": 19.482,
+          "720p": 41.922,
+          "1080p": 103.122
         },
         "credits_with_video": {
-          "480p": 12.546,
-          "720p": 28.2132,
-          "1080p": 69.4008
+          "480p": 11.8932,
+          "720p": 25.5612,
+          "1080p": 62.8932
         },
         "video_param": "reference_video_urls",
         "approximate": true,
-        "note": "Tarifa de Sume con el servicio de AILAB. Sin vídeo de referencia es exacto. Con vídeo se reserva, a la tarifa con vídeo, el mayor de (salida + entrada) y ceil(salida x 5 / 3); la entrada es la suma de los vídeos, cada uno medido y al segundo superior. Se cobra el coste real del proveedor, nunca más."
+        "note": "Tarifa de VideoRouter con el servicio de AILAB. Es el máximo que se reserva: sin vídeo se cobra la salida y, con vídeo de referencia, salida + entrada a la tarifa con vídeo, cada vídeo redondeado al segundo superior. Al terminar se cobra el coste real del proveedor x1,02, que puede ser menor y nunca mayor. Las imágenes y los audios no suman segundos."
       },
       "id": "seedance-2-5-lite"
     },
