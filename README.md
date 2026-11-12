@@ -74,6 +74,7 @@ la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza
 
 ## Cambios relevantes
 
+- 2.3.19: Gemini Omni Flash 1.2 pasa a Kie (tarifa de Kie x 1,02: 4,08 / 9,18 / 10,2 / 22,44 cr/s) con referencias, Character IDs, semilla y edición de vídeo (se cobra la duración del vídeo, medida en local); Extend (`gemini-omni-flash-1-2-extend` y el comando `omni12-videos`) y creación gratuita de Character IDs y Voice IDs (`gemini-omni-character`, `gemini-omni-audio`); catálogo 1.32.0.
 - 2.3.18: Seedance 2.5 Lite pasa a VideoRouter (tarifa de VideoRouter x 1,02: 19,482 / 41,922 / 103,122 cr/s; con vídeo, salida + entrada sin el mínimo de 5/3) y deja de tener draft; ayuda de `--voice_id` en el Voice Changer; catálogo 1.31.0 con GPT Image 2.6, Seedream 5.5 y Gemini Omni Flash 1.2.
 - 2.3.17: tarifas de Kling de Kie del 4 de noviembre de 2026 x 1,02 en Kling 3.0 (23,154 / 30,804 / 77,01 cr/s), Kling O3 y Kling 2.6 y 3.0 Motion Control; Kling 2.5 Turbo no cambia.
 - 2.3.16: modo draft de Seedance 2.5 Normal y Lite (`--draft true`), comando `drafts` y `seedance-2-5-draft-1080p` para generar un draft a 1080p al precio que fija el servidor.

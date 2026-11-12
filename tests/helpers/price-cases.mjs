@@ -123,6 +123,14 @@ export function priceCases(F) {
   grid('gemini-omni-flash-1-2', P, { resolution: ['360p', '720p', '1080p', '4k'], duration: ['3', '8', '15'] });
   add('gemini-omni-flash-1-2', { ...P, aspect_ratio: '9:16', resolution: '360p', duration: '3' });
   add('gemini-omni-flash-1-2', { ...P, mode: 'frames', first_frame_url: image(), last_frame_url: image(800, 600), resolution: '720p', duration: '10' });
+  // Gemini Omni Flash 1.2 por Kie (2.3.19): referencias, formato auto, semilla y edición, que cobra los segundos medidos del vídeo
+  // (cada vídeo al segundo superior, de 1 a 15).
+  add('gemini-omni-flash-1-2', { ...P, mode: 'frames', first_frame_url: image(), resolution: '1080p', duration: '15' }, 'primer frame solo, 15 s');
+  add('gemini-omni-flash-1-2', { ...P, mode: 'reference', image_urls: [image(), image(800, 600)], aspect_ratio: 'auto', seed: '54321', resolution: '720p', duration: '8' });
+  add('gemini-omni-flash-1-2', { ...P, mode: 'reference', image_urls: Array.from({ length: 6 }, () => image()), resolution: '4k', duration: '15' }, 'seis imágenes');
+  grid('gemini-omni-flash-1-2', { ...P, mode: 'edit', video_url: video(4.2) }, { resolution: ['360p', '720p', '1080p', '4k'] });
+  add('gemini-omni-flash-1-2', { ...P, mode: 'edit', video_url: video(15), image_urls: [image()], resolution: '720p' }, 'edición de 15 s con imagen');
+  add('gemini-omni-flash-1-2', { ...P, mode: 'edit', video_url: video(0.6), resolution: '360p' }, 'edición de menos de 1 s: mínimo 1 s');
   grid('gemini-omni-video', P, { resolution: ['720p', '1080p', '4k'], duration: ['4', '10'] });
   grid('gemini-omni-video', { ...P, video_url: video(8) }, { resolution: ['720p', '4k'] });
 

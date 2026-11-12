@@ -12,6 +12,7 @@ import { LIGHT_ID, lightEstimate, lightProblems } from './genjutsu-light.mjs';
 import { SEEDANCE_IDS, seedanceEstimate, seedanceProblems } from './seedance.mjs';
 import { MOTION_CONTROL_IDS, motionEstimate } from './motion-control.mjs';
 import { DRAFT_MODEL_IDS, DRAFT_UPGRADE_ID, draftProblems } from './seedance-draft.mjs';
+import { OMNI12_ID, OMNI12_EXTEND_ID, OMNI_RESOURCE_IDS, omni12Estimate, omni12Problems, omni12ExtendProblems, omniResourceProblems } from './omni12.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1', 'higgsfield-v1'];
 
@@ -237,6 +238,7 @@ export function requiresServerQuote(model, params = {}) {
   return !!(model && ((model.id === 'eleven-tts' && params.version === 'v4')
     || model.id === 'krea-3'
     || model.id === DRAFT_UPGRADE_ID
+    || model.id === OMNI12_EXTEND_ID
     || (model.estimate && model.estimate.kind === 'higgsfield_quote')));
 }
 
@@ -434,6 +436,20 @@ export function validateParams(model, given) {
     params.draft_task_id = params.draft_task_id.trim();
     if (!params.draft_task_id) errors.push('--draft_task_id no puede estar vacío.');
   }
+  if (model.id === OMNI12_ID) {
+    // Gemini Omni Flash 1.2: una modalidad por petición, con las reglas del servidor, y el vídeo a editar medido en
+    // local (se cobra su duración). Al editar no se elige duración: la salida dura lo que el vídeo de entrada.
+    if (params.mode === 'edit') {
+      if (given.duration !== undefined && given.duration !== '') errors.push('Al editar no se elige la duración: la salida dura lo mismo que el vídeo de entrada. Quita --duration.');
+      delete params.duration;
+    }
+    errors.push(...omni12Problems(params, fileParams));
+  }
+  if (model.id === OMNI12_EXTEND_ID) {
+    params.task_id = String(params.task_id ?? '').trim();
+    errors.push(...omni12ExtendProblems(params, fileParams));
+  }
+  if (OMNI_RESOURCE_IDS.includes(model.id)) errors.push(...omniResourceProblems(model, params, fileParams));
   if (model.id === LITE_ID) {
     // Seedance 2.5 Lite: modalidades excluyentes y vídeo de referencia medido en local.
     errors.push(...liteProblems(params, fileParams));
@@ -524,7 +540,7 @@ export function estimateCredits(model, params, now = Date.now()) {
   // Higgsfield no tiene tarifa local: el servidor cotiza midiendo el video y
   // las referencias. Devolver un precio inventado aqui autorizaria de menos. El paso a 1080p de un draft tampoco: el precio
   // sale de la fila del servidor (`credits` del listado), y `estimate.credits` del catalogo es solo la cota para los parsers.
-  if (model.id === 'krea-3' || model.id === DRAFT_UPGRADE_ID || e.kind === 'higgsfield_quote') {
+  if (model.id === 'krea-3' || model.id === DRAFT_UPGRADE_ID || model.id === OMNI12_EXTEND_ID || e.kind === 'higgsfield_quote') {
     return {
       credits: null,
       approximate: true,
@@ -535,6 +551,7 @@ export function estimateCredits(model, params, now = Date.now()) {
   if (model.id === WAN3_ID) return wan3Estimate(model, params);
   if (model.id === KLING4_ID) return kling4Estimate(model, params);
   if (model.id === LITE_ID) return liteEstimate(model, params);
+  if (model.id === OMNI12_ID) return omni12Estimate(model, params);
   if (SEEDANCE_IDS.includes(model.id)) return seedanceEstimate(model, params, (hasVideo) => seedanceRate(e, params, hasVideo, now));
   if (MOTION_CONTROL_IDS.includes(model.id)) return motionEstimate(model, params);
   if (e.kind === 'topaz_image') {

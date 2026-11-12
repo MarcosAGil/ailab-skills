@@ -84,6 +84,8 @@ Para **Kling 4.0** (`kling-4-0`), lee [su contrato](references/kling-4-0.md): `-
 
 Para **Genjutsu Light** (`higgsfield-genjutsu-light`), lee [su contrato](references/genjutsu.md): hasta 15 s de vídeo y 1080p. `prepare` muestra la cotización del servidor; «pendiente de activación» no cobra y no se reintenta.
 
+Para **Gemini Omni Flash 1.2** (`gemini-omni-flash-1-2`), lee [su contrato](references/gemini-omni-12.md): `t2v`, `frames`, `reference` (imágenes y Character IDs) o `edit` (vídeo de hasta 15 s, se cobra su duración). Para alargar un vídeo, `omni12-videos` y `gemini-omni-flash-1-2-extend`; los Character ID y Voice ID se crean gratis con `gemini-omni-character` y `gemini-omni-audio`.
+
 Para un **draft de Seedance 2.5**, lee [su flujo](references/seedance-draft.md): `--draft true` en `seedance-2-5` (480p, mismo precio; Lite no tiene draft), `drafts` lista los de la cuenta y `seedance-2-5-draft-1080p --draft_task_id <id>` lo genera a 1080p al precio que fija el servidor. La palabra es draft.
 
 Primero consulta el contrato del modelo. Pasa los archivos mediante el nombre exacto

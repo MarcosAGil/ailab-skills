@@ -1,5 +1,5 @@
 {
-  "catalog_version": "1.31.0",
+  "catalog_version": "1.32.0",
   "min_cli_version": "2.3.7",
   "models": {
     "krea-3": {
@@ -1546,64 +1546,95 @@
     "gemini-omni-flash-1-2": {
       "id": "gemini-omni-flash-1-2",
       "label": "Gemini Omni Flash 1.2",
-      "description": "Vídeo con audio de 3 a 15 segundos desde texto o desde un primer y último frame, de 360p a 4K. Sin referencias multimodales, Voice ID, Character ID ni semilla.",
+      "description": "Vídeo con audio de 3 a 15 s desde texto, un primer y último frame, hasta 6 imágenes y 2 Character IDs, o editando un vídeo de hasta 15 s. De 360p a 4K. La voz propia va dentro de un Character ID (gemini-omni-character); para alargar un vídeo, gemini-omni-flash-1-2-extend.",
       "section": "video",
-      "vendor": "Google · VideoRouter",
+      "vendor": "Google · KIE",
       "tier": "hub",
       "output": "video",
       "status": "active",
       "enabled": true,
       "expensive": true,
       "driver": "jobs-v1",
-      "min_cli_version": "2.3.17",
+      "min_cli_version": "2.3.19",
       "aliases": [
         "gemini omni 1.2",
         "gemini omni flash 1.2",
-        "gemini-omni-1.2-flash"
+        "gemini-omni-1.2-flash",
+        "google/gemini-omni-flash-1-2"
       ],
       "modes": [
         "t2v",
-        "frames"
+        "frames",
+        "reference",
+        "edit"
       ],
       "params": {
         "mode": {
           "type": "enum",
           "values": [
             "t2v",
-            "frames"
+            "frames",
+            "reference",
+            "edit"
           ],
-          "default": "t2v"
+          "default": "t2v",
+          "help": "t2v solo texto · frames primer y último frame · reference imágenes o Character IDs · edit editar un vídeo. Una modalidad por petición."
         },
         "prompt": {
           "type": "string",
           "required": true,
-          "max_len": 20000
+          "max_len": 20000,
+          "help": "Escena, acción, cámara y audio, y cómo usar cada referencia. Hasta 20.000 caracteres."
         },
         "first_frame_url": {
           "type": "file",
           "accept": "image",
           "required_when": {
             "mode": "frames"
-          }
+          },
+          "help": "Primer frame obligatorio en frames. No se mezcla con imágenes, vídeo ni Character IDs."
         },
         "last_frame_url": {
           "type": "file",
           "accept": "image",
-          "help": "Exige primer frame. Con él, 10 s como máximo."
+          "help": "Último frame opcional; exige primer frame. Con él, 10 s como máximo."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 6,
+          "help": "En reference, hasta 6 imágenes JPG, PNG o WebP; en edit, hasta 5."
+        },
+        "video_url": {
+          "type": "file",
+          "accept": "video",
+          "required_when": {
+            "mode": "edit"
+          },
+          "help": "Vídeo a editar, MP4 o MOV de hasta 15 s. Se cobra su duración y la salida dura lo mismo."
+        },
+        "character_ids": {
+          "type": "string[]",
+          "max": 2,
+          "max_len": 200,
+          "help": "Hasta 2 Character IDs creados con tu cuenta (gemini-omni-character), en reference o edit. No cuentan en el límite de imágenes."
         },
         "duration": {
           "type": "int",
           "min": 3,
           "max": 15,
-          "default": 8
+          "default": 8,
+          "help": "De 3 a 15 s; con último frame, hasta 10. En edit no se elige."
         },
         "aspect_ratio": {
           "type": "enum",
           "values": [
             "16:9",
-            "9:16"
+            "9:16",
+            "auto"
           ],
-          "default": "16:9"
+          "default": "16:9",
+          "help": "auto sigue la imagen de referencia; sin imagen equivale a 16:9."
         },
         "resolution": {
           "type": "enum",
@@ -1614,76 +1645,275 @@
             "4k"
           ],
           "default": "720p"
+        },
+        "seed": {
+          "type": "int",
+          "min": 10000,
+          "max": 99999,
+          "help": "Opcional, de 10000 a 99999. Sin ella, aleatoria."
         }
       },
       "estimate": {
         "kind": "matrix_table",
         "row_param": "resolution",
         "column_param": "duration",
-        "approximate": false,
-        "note": "Tarifa de VideoRouter con el servicio de AILAB, por segundo de vídeo. Es el máximo que se reserva: al terminar se cobra el coste real del proveedor x1,02, que puede ser algo menor y nunca mayor.",
+        "approximate": true,
+        "note": "Tarifa de Kie x 1,02 por segundo de vídeo, redondeada al crédito superior. Al editar se cobra la duración del vídeo de entrada (la fila con vídeo es el máximo de 15 s). Es el máximo que se reserva: se cobra el consumo real, nunca más.",
         "credits_matrix": {
           "360p": {
-            "3": 17,
-            "4": 22,
-            "5": 28,
-            "6": 33,
-            "7": 38,
-            "8": 44,
-            "9": 49,
-            "10": 55,
-            "11": 60,
-            "12": 65,
-            "13": 71,
-            "14": 76,
-            "15": 82
+            "3": 13,
+            "4": 17,
+            "5": 21,
+            "6": 25,
+            "7": 29,
+            "8": 33,
+            "9": 37,
+            "10": 41,
+            "11": 45,
+            "12": 49,
+            "13": 54,
+            "14": 58,
+            "15": 62
           },
           "720p": {
-            "3": 38,
-            "4": 51,
-            "5": 64,
-            "6": 76,
-            "7": 89,
-            "8": 101,
-            "9": 114,
-            "10": 127,
-            "11": 139,
-            "12": 152,
-            "13": 164,
-            "14": 177,
-            "15": 190
+            "3": 28,
+            "4": 37,
+            "5": 46,
+            "6": 56,
+            "7": 65,
+            "8": 74,
+            "9": 83,
+            "10": 92,
+            "11": 101,
+            "12": 111,
+            "13": 120,
+            "14": 129,
+            "15": 138
           },
           "1080p": {
-            "3": 56,
-            "4": 74,
-            "5": 93,
-            "6": 111,
-            "7": 130,
-            "8": 148,
-            "9": 167,
-            "10": 185,
-            "11": 204,
-            "12": 222,
-            "13": 241,
-            "14": 259,
-            "15": 278
+            "3": 31,
+            "4": 41,
+            "5": 51,
+            "6": 62,
+            "7": 72,
+            "8": 82,
+            "9": 92,
+            "10": 102,
+            "11": 113,
+            "12": 123,
+            "13": 133,
+            "14": 143,
+            "15": 153
           },
           "4k": {
-            "3": 109,
-            "4": 145,
-            "5": 181,
-            "6": 217,
-            "7": 253,
-            "8": 289,
-            "9": 325,
-            "10": 361,
-            "11": 397,
-            "12": 434,
-            "13": 470,
-            "14": 506,
-            "15": 542
+            "3": 68,
+            "4": 90,
+            "5": 113,
+            "6": 135,
+            "7": 158,
+            "8": 180,
+            "9": 202,
+            "10": 225,
+            "11": 247,
+            "12": 270,
+            "13": 292,
+            "14": 315,
+            "15": 337
           }
+        },
+        "video_param": "video_url",
+        "credits_with_video": {
+          "360p": 62,
+          "720p": 138,
+          "1080p": 153,
+          "4k": 337
         }
+      }
+    },
+    "gemini-omni-flash-1-2-extend": {
+      "id": "gemini-omni-flash-1-2-extend",
+      "label": "Gemini Omni Flash 1.2 Extend",
+      "description": "Alarga de 3 a 10 s un vídeo de Gemini Omni Flash 1.2 de tu cuenta (360p o 720p y de 15 s o menos). El comando omni12-videos lista los que se pueden extender con su precio; se cobran solo los segundos añadidos.",
+      "section": "video",
+      "vendor": "Google · KIE",
+      "tier": "hub",
+      "output": "video",
+      "status": "active",
+      "enabled": true,
+      "expensive": true,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.19",
+      "aliases": [
+        "gemini omni 1.2 extend",
+        "gemini omni flash 1.2 extend",
+        "google/gemini-omni-flash-1-2-extend"
+      ],
+      "params": {
+        "task_id": {
+          "type": "string",
+          "required": true,
+          "max_len": 255,
+          "help": "task_id del vídeo, tal como lo muestra el comando omni12-videos."
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000,
+          "help": "Cómo continúa el vídeo: acción, cámara y audio."
+        },
+        "duration": {
+          "type": "int",
+          "min": 3,
+          "max": 10,
+          "default": 8,
+          "help": "Segundos que se añaden, de 3 a 10."
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 3,
+          "help": "Hasta 3 imágenes de referencia opcionales."
+        }
+      },
+      "estimate": {
+        "kind": "flat_credits",
+        "credits": 92,
+        "approximate": true,
+        "note": "Máximo posible. El precio real depende de la resolución del vídeo de origen: omni12-videos lo muestra y prepare autoriza esa cifra exacta."
+      }
+    },
+    "gemini-omni-character": {
+      "id": "gemini-omni-character",
+      "label": "Gemini Omni Character",
+      "description": "Crea gratis un Character ID a partir de un retrato y una imagen de cuerpo opcional, con voz propia opcional (un Voice ID de gemini-omni-audio). Se usa en Gemini Omni Flash 1.2 y 1.1.",
+      "section": "other",
+      "vendor": "Google · KIE",
+      "tier": "hub",
+      "output": "text",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.19",
+      "aliases": [
+        "omni character",
+        "gemini omni character"
+      ],
+      "params": {
+        "portrait_url": {
+          "type": "file",
+          "accept": "image",
+          "required": true,
+          "help": "Retrato frontal nítido con el rostro visible. JPG, PNG o WebP de hasta 20 MB."
+        },
+        "body_url": {
+          "type": "file",
+          "accept": "image",
+          "help": "Imagen de cuerpo opcional para fijar proporciones y vestuario. Hasta 20 MB."
+        },
+        "descriptions": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000,
+          "help": "Identidad, rasgos, vestuario y lo que debe mantenerse igual."
+        },
+        "character_name": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Nombre interno para reconocer el personaje."
+        },
+        "audio_ids": {
+          "type": "string[]",
+          "max": 1,
+          "max_len": 200,
+          "help": "Voice ID opcional creado con tu cuenta en gemini-omni-audio. En 1.2 es la forma de dar voz propia."
+        }
+      },
+      "estimate": {
+        "kind": "flat_credits",
+        "credits": 0,
+        "approximate": false,
+        "note": "Gratis: no consume créditos."
+      }
+    },
+    "gemini-omni-audio": {
+      "id": "gemini-omni-audio",
+      "label": "Gemini Omni Audio",
+      "description": "Crea gratis un Voice ID de Gemini a partir de una voz base y una descripción. En 1.2 la voz se usa dentro de un Character ID (gemini-omni-character); en 1.1, directamente con --audio_ids.",
+      "section": "voice",
+      "vendor": "Google · KIE",
+      "tier": "hub",
+      "output": "text",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.3.19",
+      "aliases": [
+        "omni audio",
+        "gemini omni audio",
+        "gemini omni voice id"
+      ],
+      "params": {
+        "audio_id": {
+          "type": "enum",
+          "values": [
+            "Achernar",
+            "Achird",
+            "Algenib",
+            "Algieba",
+            "Alnilam",
+            "Aoede",
+            "Autonoe",
+            "Callirrhoe",
+            "Charon",
+            "Despina",
+            "Enceladus",
+            "Erinome",
+            "Fenrir",
+            "Gacrux",
+            "Iapetus",
+            "Kore",
+            "Laomedeia",
+            "Leda",
+            "Orus",
+            "Puck",
+            "Pulcherrima",
+            "Rasalgethi",
+            "Sadachbia",
+            "Sadaltager",
+            "Schedar",
+            "Sulafat",
+            "Umbriel",
+            "Vindemiatrix",
+            "Zephyr",
+            "Zubenelgenubi"
+          ],
+          "default": "Puck",
+          "help": "Voz base sobre la que Gemini construye el Voice ID."
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "max_len": 210,
+          "help": "Nombre interno para identificar la voz."
+        },
+        "voice_description": {
+          "type": "string",
+          "max_len": 20000,
+          "help": "Timbre, edad, acento, ritmo y emoción."
+        },
+        "example_dialogue": {
+          "type": "string",
+          "max_len": 120,
+          "help": "Una frase breve con la intención deseada."
+        }
+      },
+      "estimate": {
+        "kind": "flat_credits",
+        "credits": 0,
+        "approximate": false,
+        "note": "Gratis: no consume créditos."
       }
     },
     "gemini-omni-video": {
