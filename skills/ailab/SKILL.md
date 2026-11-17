@@ -44,7 +44,8 @@ proyecto del usuario. Los resultados se guardan por defecto en
    CLI y el catálogo validado.
 9. Para dar un precio al usuario usa el presupuesto de la CLI (`prepare`, o la
    estimación que `info <modelo>` ya calcula para hoy). Nunca leas ni cites tablas de
-   tarifas a mano: cambian y las promociones caducan.
+   tarifas a mano: cambian y las promociones caducan. Las cifras fijas de esta guía y
+   sus referencias son precio de miembro; el de cada cuenta lo da `prepare`.
 
 ## Guía actualizada
 
@@ -66,11 +67,12 @@ node <skill-dir>/scripts/ailab.mjs doctor
 token se comparte con la skill anterior del Playground durante la convivencia, pero
 el resto del estado de AILAB permanece separado.
 
-Una **cuenta de cliente** (token creado por su gestor) solo puede usar sus flujos de
-producción: `login` y `doctor` la reconocen y muestran su saldo y su mes. Para ella usa
-solo los comandos `flow` (`flow status`, `flow open`, `flow prepare`, `flow submit`,
-`flow job` y `flow close`), con [su guía](references/flujos.md). `flow prepare` no gasta;
-`flow submit --confirmed` sí, una sola vez aunque se repita.
+Una **cuenta de cliente** (`login --cliente`) usa los comandos `flow` ([su
+guía](references/flujos.md)) y, si AILAB le activa el plugin, el Playground.
+
+`--proyecto <id>` (por ejemplo `06_super-cremita`) agrupa una generación en los
+`prepare`; algunas cuentas lo exigen. `proyectos`, `proyecto <id>` y `cerrar-proyecto
+<id> [--duracion-final S]` no gastan. Detalle en `guide`.
 
 ## Generar con el Playground
 

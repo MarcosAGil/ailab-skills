@@ -1,5 +1,7 @@
 # Genjutsu y Genjutsu Light (Higgsfield)
 
+> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+
 Dos modelos con el mismo flujo y los mismos dos modos. Los sirve `api/skill/higgsfield.php`: la CLI sube el vídeo y las
 imágenes, el servidor los mide, cotiza (`prepare`) y reserva lo cotizado (`submit`). El servidor repite todas las reglas
 y es siempre la autoridad.

@@ -1,5 +1,7 @@
 # Voz individual con v4
 
+> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+
 El runtime 2.3.8 incorpora biblioteca y voces privadas propias a v4. La disponibilidad depende del catálogo
 activo y de las puertas del servidor. No fuerces `--version v4` si `info eleven-tts`
 no la ofrece. El servidor puede desactivar la generación si cambia el contrato o la tarifa.

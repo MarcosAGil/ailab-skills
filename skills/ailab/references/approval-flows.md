@@ -1,5 +1,7 @@
 # Autorización del encargo, no de cada manifiesto
 
+> Cifras: precio de miembro; el de tu cuenta lo da `prepare`.
+
 Consulta contratos, archivos y saldo sin coste. Antes del primer envío de pago,
 informa brevemente de objetivo, modelos/asistentes, modalidad, referencias,
 parámetros, número de resultados y coste estimado. Distingue gasto estimado de
