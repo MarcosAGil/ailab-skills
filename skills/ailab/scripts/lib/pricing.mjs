@@ -4,6 +4,7 @@
 import { estimateCredits, requiresServerQuote } from './catalog.mjs';
 import { LIGHT_ID, lightCredits } from './genjutsu-light.mjs';
 import { DRAFT_UPGRADE_ID } from './seedance-draft.mjs';
+import { priced } from './account-pricing.mjs';
 
 const PRICE_PARAMS = ['by_param', 'row_param', 'column_param', 'rate_param', 'mode_param', 'quality_param', 'audio_param'];
 
@@ -98,14 +99,15 @@ function baseParams(model) {
 // Estimaciones ya calculadas con la regla de la CLI: valores por defecto y cada valor de los parámetros que fijan el precio.
 const EXAMPLE_KINDS = new Set(['per_second_table', 'per_second_matrix', 'param_table', 'matrix_table', 'mixed_mode', 'hybrid_seedream']);
 
-export function priceExamples(model, now = Date.now()) {
+// `factor`: precio de la cuenta (1 = miembro). Cada ejemplo es priced(estimación), el mismo redondeo que prepare.
+export function priceExamples(model, now = Date.now(), factor = 1) {
   const base = baseParams(model);
   const estimate = model.estimate || {};
   if (!EXAMPLE_KINDS.has(estimate.kind)) return [];
   const asText = (params) => {
     try {
       const result = estimateCredits(model, params, now);
-      return Number.isFinite(result.credits) && result.credits > 0 ? result.credits : null;
+      return Number.isFinite(result.credits) && result.credits > 0 ? priced(result.credits, factor) : null;
     } catch { return null; }
   };
   const lines = [];
@@ -127,7 +129,38 @@ export function priceExamples(model, now = Date.now()) {
 }
 
 // Texto de precio de `info`. Nunca imprime la tabla caducada de una promoción terminada.
-export function pricingLines(model, now = Date.now()) {
+// `account`: undefined (uso interno, precio de miembro sin rótulo), null (sin sesión o sin dato de la cuenta:
+// precio de miembro rotulado)
+// o el precio de la cuenta de `me.pricing`. Con factor 1,0 el texto es el de siempre.
+export function pricingLines(model, now = Date.now(), account = undefined) {
+  if (account && account.factor !== 1) return accountPricingLines(model, now, account.factor);
+  const lines = memberPricingLines(model, now);
+  if (account === null) lines.push('  Estos importes son precio de miembro: el precio exacto de tu cuenta lo da `prepare`.');
+  return lines;
+}
+
+// Cuenta con un precio distinto del de miembro: un solo importe por generación, sin tablas de miembro.
+function accountPricingLines(model, now, factor) {
+  if (model.id === LIGHT_ID) {
+    const rates = (model.estimate && model.estimate.credits_per_second) || {};
+    const examples = Object.keys(rates).map((resolution) => [resolution, priced(lightCredits(model.estimate, resolution, 10), factor)]).filter(([, credits]) => credits !== null);
+    const lines = ['Precio: lo cotiza el servidor al ejecutar `prepare` con el precio de tu cuenta; da al usuario esa cotización.'];
+    if (examples.length) lines.push('  Ejemplo con 10 s de vídeo: ' + examples.map(([resolution, credits]) => resolution + ' ' + credits + ' cr').join(' · '));
+    return lines;
+  }
+  if (model.id === DRAFT_UPGRADE_ID || requiresServerQuote(model, {}) || model.estimate?.kind === 'higgsfield_quote') return memberPricingLines(model, now);
+  const { estimate, promo } = currentEstimate(model.estimate, now);
+  const view = { ...model, estimate };
+  const lines = ['Precio de tu cuenta a ' + day(now) + ' (UTC)' + (promo ? ' · PROMOCIÓN ACTIVA hasta ' + promo.until + ' (' + promo.label + ')' : '') + ':'];
+  const examples = priceExamples(view, now, factor);
+  for (const line of examples) lines.push('  ' + line);
+  if (!examples.length) lines.push('  Depende de los parámetros y de los archivos: `validate` y `prepare` lo calculan.');
+  if (model.id === 'eleven-tts') lines.push('  V4: el servidor cotiza por voz en `prepare`.');
+  lines.push('  Para dar un precio al usuario usa el presupuesto de la CLI (`prepare`); es el importe exacto de tu cuenta.');
+  return lines;
+}
+
+function memberPricingLines(model, now) {
   const lines = [];
   if (model.id === LIGHT_ID) {
     // Light: el servidor cotiza, y la tarifa por segundo de vídeo (salida + vídeo de entrada) es la misma en local.

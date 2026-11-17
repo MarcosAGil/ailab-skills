@@ -44,14 +44,14 @@ export function buildPayload(model, params, uploadedByParam) {
 
 // Extend de Gemini Omni Flash 1.2: la cotización es la cifra que el servidor da para ese vídeo y esa duración en el
 // listado de vídeos extensibles (`credits_by_duration`), la misma que reserva al enviar.
-async function omni12ExtendQuoteFor(payload) {
+async function omni12ExtendQuoteFor(payload, factor = 1) {
   let cursor = null;
   for (let page = 0; page < OMNI12_MAX_PAGES; page++) {
     const n = await servicePost(OMNI12_VIDEOS_ENDPOINT, omni12VideosRequest(cursor));
     if (!n.ok) return { ok: false, normalized: n };
     const videos = Array.isArray(n.data?.videos) ? n.data.videos : [];
     const found = videos.find((video) => video.task_id === payload.input.task_id);
-    if (found) return omni12ExtendQuote(found, payload.input.duration);
+    if (found) return omni12ExtendQuote(found, payload.input.duration, Date.now(), factor);
     if (!n.data?.has_more || !n.data?.next_cursor) break;
     cursor = n.data.next_cursor;
   }
@@ -60,8 +60,9 @@ async function omni12ExtendQuoteFor(payload) {
 
 // Paso a 1080p de un draft: la cotización es el `credits` que el servidor da para ese draft en el listado. No hay endpoint de
 // cotización: la puerta del gateway solo admite model, input, client_request_id y max_credits_authorized.
-export async function quote(model, payload) {
-  if (model.id === OMNI12_EXTEND_ID) return omni12ExtendQuoteFor(payload);
+// El listado del servidor ya da el precio de la cuenta; el factor solo sirve para comparar con la tarifa local.
+export async function quote(model, payload, intent = {}, context = {}) {
+  if (model.id === OMNI12_EXTEND_ID) return omni12ExtendQuoteFor(payload, context.priceFactor ?? 1);
   let cursor = null;
   for (let page = 0; page < MAX_DRAFT_PAGES; page++) {
     const n = await servicePost(DRAFTS_ENDPOINT, draftsRequest(cursor));
