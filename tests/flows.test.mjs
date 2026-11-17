@@ -112,6 +112,10 @@ test('flow valida en local sin red ni gasto', async (t) => {
   assert.match(noRequest.stderr, /no encontrada/);
   const badUsed = await cli(env, ['flow', 'close', '--code', 'NOV26-01', '--final-seconds', '20', '--used', 'uno']);
   assert.match(badUsed.stderr, /toma:versión/);
+  const badDuration = await cli(env, ['flow', 'prepare', 'toma', '--code', 'NOV26-01', '--take', '1', '--text', TEXT, '--duration', '7']);
+  assert.match(badDuration.stderr, /4, 6, 8 o 10/);
+  const emptyPrompt = await cli(env, ['flow', 'prepare', 'toma', '--code', 'NOV26-01', '--take', '1', '--text', TEXT, '--prompt', ' ']);
+  assert.match(emptyPrompt.stderr, /--prompt no puede estar vacío/);
 });
 
 test('recorrido completo de una cuenta de cliente: login, doctor, abrir, guion, toma, separar, aislar, voz y cerrar', parity, async (t) => {
@@ -179,6 +183,15 @@ test('recorrido completo de una cuenta de cliente: login, doctor, abrir, guion, 
   assert.equal(b.seen.kie.length, 1);
   assert.equal(b.seen.kie[0].input.prompt, PROMPT_MARK + ' Luismi dice a cámara: ' + TEXT);
 
+  // Prompt propio y duración por toma: AILAB los usa tal cual y cobra por la duración.
+  const promptFile = path.join(temp, 'prompt-toma-2.txt');
+  const ownPrompt = 'Vertical talking-head shot. @Image1 is the presenter. He says: "' + TEXT + '"';
+  fs.writeFileSync(promptFile, ownPrompt);
+  const own = await run(['flow', 'prepare', 'toma', '--code', code, '--take', '2', '--text', TEXT, '--prompt-file', promptFile, '--duration', '6', '--json'], null);
+  assert.equal(lastJson(own.stdout).credits, 86);
+  await run(['flow', 'submit', lastJson(own.stdout).quote_id, '--confirmed', '--output', out, '--json'], 'toma');
+  assert.deepEqual([b.seen.kie[1].input.prompt, b.seen.kie[1].input.duration], [ownPrompt, '6']);
+
   // El audio local sube por api/skill/upload.php con el token de cliente y el flujo lo usa por su dirección.
   const audio = path.join(temp, 'toma-1.wav');
   fs.writeFileSync(audio, wav(10));
@@ -210,11 +223,12 @@ test('recorrido completo de una cuenta de cliente: login, doctor, abrir, guion, 
   const job = await run(['flow', 'job', lastJson(retakeDone.stdout).job_id, '--output', path.join(temp, 'otra'), '--json'], null);
   assert.equal(lastJson(job.stdout).files[0].name, code + '_toma-1_v2.mp4');
 
+  // Tres tomas generadas (la 1 dos veces y la 2 de 6 s); solo se usa la v2 de la 1.
   const closed = await run(['flow', 'close', '--code', code, '--final-seconds', '9.5', '--used', '1:v2', '--json'], null);
   const video = lastJson(closed.stdout).video;
-  assert.deepEqual([video.code, video.status, video.final_seconds, video.takes_generated, video.takes_needed, video.extra_takes], [code, 'entregado', 9.5, 2, 1, 1]);
+  assert.deepEqual([video.code, video.status, video.final_seconds, video.takes_generated, video.takes_needed, video.extra_takes], [code, 'entregado', 9.5, 3, 1, 2]);
   assert.equal(video.real_cr, undefined, 'el coste real interno no se imprime');
-  assert.deepEqual(b.q('SELECT take, version, state FROM ailab_flow_takes ORDER BY version').map((r) => [r.take, r.version, r.state]), [[1, 1, 'descartada'], [1, 2, 'usada']]);
+  assert.deepEqual(b.q('SELECT take, version, state FROM ailab_flow_takes ORDER BY take, version').map((r) => [r.take, r.version, r.state]), [[1, 1, 'descartada'], [1, 2, 'usada'], [2, 1, 'descartada']]);
   assertQuiet(b, assertNeutral, temp, ...results);
   // Las solicitudes locales tampoco guardan nada interno.
   for (const name of fs.readdirSync(path.join(temp, 'config', 'flows'))) assertNeutral(fs.readFileSync(path.join(temp, 'config', 'flows', name), 'utf8'), b);

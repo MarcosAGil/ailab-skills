@@ -338,10 +338,11 @@ async function cmdOpen(io, opts) {
     const hint = transient(r) ? ' Repite con --request-id ' + requestId + ' para no gastar otro número.' : '';
     io.die(flowsErrorText(r) + hint, { request_id: requestId });
   }
-  const view = pick(r.raw, ['code', 'case', 'status', 'opened_at']);
+  const view = pick(r.raw, ['code', 'case', 'status', 'opened_at', 'references']);
   if (!CODE_RE.test(String(view.code || ''))) io.die('AILAB no ha devuelto un código de vídeo válido.');
   io.say('Vídeo abierto: ' + view.code + ' · caso ' + view.case);
   io.say('Código: ' + view.code);
+  if (typeof view.references === 'number') io.say('Fotos de referencia del caso: ' + view.references);
   io.done({ ...view, request_id: requestId });
 }
 
@@ -372,6 +373,17 @@ async function cmdPrepare(io, pos, opts, cliCommand) {
     const text = textOpt(io, opts, 'text') ?? textOpt(io, opts, 'texto');
     if (!String(text || '').trim()) io.die('Indica --text con el texto exacto de la toma.');
     body.input.text = text;
+    // Prompt propio y duración de la toma (4, 6, 8 o 10 s). Sin ellos, AILAB usa los del perfil.
+    const prompt = textOpt(io, opts, 'prompt');
+    if (prompt !== undefined) {
+      if (!String(prompt).trim()) io.die('--prompt no puede estar vacío.');
+      body.input.prompt = prompt;
+    }
+    const duration = one(io, opts, 'duration');
+    if (duration !== undefined) {
+      if (!['4', '6', '8', '10'].includes(duration)) io.die('--duration debe ser 4, 6, 8 o 10 (segundos).');
+      body.input.duration = Number(duration);
+    }
   } else {
     const audio = one(io, opts, 'audio');
     if (!audio) io.die('Indica --audio con la ruta del audio de la toma.');
@@ -514,4 +526,4 @@ export async function runFlowCommand(pos, opts, deps) {
   io.die('Subcomando de flow no válido. Usa: status · open · prepare · submit · job · close.');
 }
 
-export const FLOW_HELP = 'Flujos de cliente: flow status · flow open --case <caso> · flow prepare <guion|toma|separar|aislar|voz> --code <código> [--take N] [--text|--idea|--texto|--audio|--version|--attempt|--dato clave=valor] · flow submit <cotización> --confirmed [--output dir] · flow job <trabajo> [--wait] [--output dir] · flow close --code <código> --final-seconds S --used toma:versión… (todos admiten --json)';
+export const FLOW_HELP = 'Flujos de cliente: flow status · flow open --case <caso> · flow prepare <guion|toma|separar|aislar|voz> --code <código> [--take N] [--text|--prompt|--duration|--idea|--texto|--audio|--version|--attempt|--dato clave=valor] · flow submit <cotización> --confirmed [--output dir] · flow job <trabajo> [--wait] [--output dir] · flow close --code <código> --final-seconds S --used toma:versión… (todos admiten --json)';

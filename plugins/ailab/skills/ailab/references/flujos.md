@@ -22,8 +22,10 @@ Todos admiten `--json` (una línea JSON al final, con `ok`).
 
 - `guion`: `--idea` o `--texto` (o `--idea-file`, `--texto-file`) y, para segunda mano,
   `--dato modelo=…` repetible. Devuelve un Markdown con `## Toma N` y `> broll:`.
-- `toma`: `--take N --text "texto exacto"`. Cada confirmación sobre el mismo número crea
-  una versión nueva (v1, v2…). Devuelve el MP4 y su duración.
+- `toma`: `--take N --text "texto exacto"` y, si hace falta, `--prompt` (o `--prompt-file`)
+  con un prompt propio y `--duration 4|6|8|10` en segundos; sin ellos, AILAB usa los del
+  perfil. Cada confirmación sobre el mismo número crea una versión nueva (v1, v2…).
+  Devuelve el MP4 y su duración.
 - `separar`: `--take N --audio <ruta> [--version V] [--attempt N]`. Devuelve voz y
   ambiente, si quedan intentos y los umbrales del control de calidad.
 - `aislar`: `--take N --audio <ruta> [--version V]`. Devuelve la voz.
