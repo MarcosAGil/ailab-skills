@@ -112,11 +112,16 @@ async function requireSession() {
   return me.raw;
 }
 
-async function cmdLogin() {
+async function cmdLogin(opts = {}) {
   out('Autorizacion de AILAB con token de dispositivo.');
-  const url = openDevicePage();
-  out('1. Crea un token en: ' + url);
-  out('2. Copialo y pegalo aqui. No se mostrara en pantalla ni se guardara en el historial del shell.');
+  if (opts.cliente) {
+    // Cuenta de cliente: el token lo entrega AILAB; la página de dispositivos de los miembros no le sirve.
+    out('Pega el token de cliente que te ha entregado AILAB. No se mostrara en pantalla ni se guardara en el historial del shell.');
+  } else {
+    const url = openDevicePage();
+    out('1. Crea un token en: ' + url + ' (si eres cliente, usa ' + cliCommand('login --cliente') + ').');
+    out('2. Copialo y pegalo aqui. No se mostrara en pantalla ni se guardara en el historial del shell.');
+  }
   const token = await promptHidden('Token: ');
   try { saveToken(token); } catch (e) { fail(e.message); }
   const me = await apiPost({ action: 'me' });
@@ -1119,7 +1124,7 @@ async function main() {
     out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · drafts [--cursor valor] · omni12-videos [--cursor valor] · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
-  if (cmd === 'login') return cmdLogin();
+  if (cmd === 'login') return cmdLogin(opts);
   if (cmd === 'guide') return cmdGuide();
   // Los flujos de cliente no usan el catálogo: no se descarga ni se valida para ellos.
   if (cmd === 'flow') return runFlowCommand(pos.slice(1), opts, { out, fail, cliCommand });
