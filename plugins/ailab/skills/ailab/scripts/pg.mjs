@@ -4,7 +4,9 @@
 // Sin keys maestras ni contrasenas guardadas; usa tokens de dispositivo revocables.
 import { CLI_VERSION, BASE_URL, CUENTA_URL } from './lib/config.mjs';
 import { login, promptVisible, promptHidden, readCookie, readToken, saveToken, clearToken, clearCookie, openDevicePage, cookieAuthEnabled } from './lib/auth.mjs';
-import { apiPost, servicePost, assistantPost, taskLookup, explain, isFlowsOnly } from './lib/http.mjs';
+import { apiPost, servicePost, assistantPost, taskLookup, explain, isFlowsOnly, setRequestProject } from './lib/http.mjs';
+import { accountPricing, priced, takeProject, projectProblem, frozenFactor, PRICE_CHANGED_TEXT, savePricingCache, loadPricingCache, clearPricingCache } from './lib/account-pricing.mjs';
+import { runProjectCommand, PROJECT_COMMANDS, PROJECTS_HELP } from './lib/projects.mjs';
 import { runFlowCommand, fetchFlowsStatus, statusLines, FLOW_HELP } from './lib/flows.mjs';
 import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, estimateCredits, modelContractHash, requiresServerQuote, stableStringify } from './lib/catalog.mjs';
 import { refreshAssistantsCatalog, resolveAssistant, resolveAssistantModel, assistantContractHash } from './lib/assistants.mjs';
@@ -109,7 +111,45 @@ async function requireSession() {
   const me = await apiPost({ action: 'me' });
   if (isFlowsOnly(me)) fail('Esta es una cuenta de cliente: solo puede usar sus flujos. Usa ' + cliCommand('flow status') + ' y los comandos flow.');
   if (!me.ok) fail(explain(me));
+  rememberPricing(me.raw);
   return me.raw;
+}
+
+// Guarda el precio de la cuenta para mostrarlo sin red en info, models y validate.
+function rememberPricing(meRaw) {
+  const result = accountPricing(meRaw);
+  if (result.ok) savePricingCache(result.pricing); else clearPricingCache();
+}
+
+// Precio de la cuenta de `me.pricing` (miembro ×1,0 si el servidor no lo manda). Un valor incoherente detiene el comando.
+function pricingOf(me) {
+  const result = accountPricing(me);
+  if (!result.ok) fail(result.error);
+  return result.pricing;
+}
+
+// `--proyecto` sale de las opciones antes de validar parámetros: viaja en la cabecera X-AILAB-Proyecto.
+function projectOption(opts) {
+  const taken = takeProject(opts);
+  if (!taken.ok) fail(taken.error);
+  return taken;
+}
+
+// Precio de la cuenta para mostrar (info, models, validate, assistants) SIN red: con sesión, el último que dio
+// `me` en esta instalación; sin sesión o sin ese dato, null, y el texto lo rotula como precio de miembro.
+function displayPricing() {
+  if (!readToken() && !readCookie()) return null;
+  return loadPricingCache();
+}
+
+// Un 402 al enviar puede deberse a que el factor de la cuenta cambió desde prepare: se comprueba con `me`.
+async function chargeRejection(response, factor) {
+  if (response && response.kind === 'insufficient_balance') {
+    const again = await apiPost({ action: 'me' });
+    const now = again.ok ? accountPricing(again.raw) : null;
+    if (now && now.ok && now.pricing.factor !== factor) return PRICE_CHANGED_TEXT;
+  }
+  return explain(response);
 }
 
 async function cmdLogin(opts = {}) {
@@ -134,6 +174,7 @@ async function cmdLogin(opts = {}) {
     return;
   }
   if (!me.ok) { clearToken(); fail('Token rechazado: ' + explain(me)); }
+  rememberPricing(me.raw);
   const user = me.raw.user || {};
   out('Dispositivo autorizado para ' + (user.email || 'tu cuenta') + ' · saldo ' + me.raw.balance + ' cr.');
 }
@@ -150,7 +191,7 @@ async function cmdLoginCookie() {
 }
 
 function cmdLogout() {
-  clearToken(); clearCookie();
+  clearToken(); clearCookie(); clearPricingCache();
   out('Credenciales locales eliminadas. Revoca tambien el dispositivo desde tu cuenta si ya no vas a usarlo.');
 }
 
@@ -248,10 +289,13 @@ function readAssistantMessage(opts) {
 
 async function cmdAssistants() {
   const catalog = await refreshAssistantsCatalog({ maxAgeMs: 10 * 60 * 1000, requireNetwork: false });
-  out('Asistentes disponibles · cobro por consumo real:');
+  const account = displayPricing();
+  const factor = account ? account.factor : 1;
+  out('Asistentes disponibles · cobro por consumo real' + (account ? '' : ' · precio de miembro') + ':');
   for (const [id, item] of Object.entries(catalog.assistants)) {
-    out('  ' + id + ' · ' + item.label + ' · ~' + item.estimated_credits + ' cr orientativos · ' + item.description);
+    out('  ' + id + ' · ' + item.label + ' · ~' + priced(item.estimated_credits, factor) + ' cr orientativos · ' + item.description);
   }
+  if (!account) out('Son precios de miembro: assistant-prepare da el de tu cuenta.');
   const model = catalog.models[catalog.default_model];
   out('Modelo fijo: ' + model.label + ' · ' + model.vendor + ' · imagen, audio y video.');
 }
@@ -298,9 +342,16 @@ async function cmdAssistantPrepare(name, opts) {
   // --model se acepta por compatibilidad con agentes que aprendieron el
   // contrato anterior, pero ya no decide el proveedor ni el modelo.
   singleOpt(opts, 'model');
+  const { project, rest } = projectOption(opts);
+  opts = rest;
   const modelHit = resolveAssistantModel(catalog, catalog.default_model);
   const message = readAssistantMessage(opts);
   const me = await requireSession();
+  const pricing = pricingOf(me);
+  const missing = projectProblem(pricing, project);
+  if (missing) fail(missing);
+  setRequestProject(project);
+  const factor = pricing.factor;
   const files = assistantFiles(opts, modelHit.model, await currentAssistantLimits());
 
   let session = null;
@@ -328,8 +379,10 @@ async function cmdAssistantPrepare(name, opts) {
     attachment_urls: [],
     catalog_version: catalog.catalog_version,
     contract_hash: assistantContractHash(catalog, hit.id, modelHit.id),
-    estimated_credits: hit.assistant.estimated_credits,
-    max_credits_authorized: hit.assistant.max_authorized_credits,
+    // Precio de la cuenta. El servidor reserva priced(máximo) y cobra el consumo real con el mismo factor.
+    estimated_credits: priced(hit.assistant.estimated_credits, factor),
+    max_credits_authorized: priced(hit.assistant.max_authorized_credits, factor),
+    ...(factor !== 1 || project ? { price_factor: factor, project } : {}),
   });
   out('── PLAN DE ASISTENTE (sin gasto todavia) ──');
   out('Asistente: ' + hit.assistant.label + ' (' + hit.id + ')');
@@ -339,8 +392,9 @@ async function cmdAssistantPrepare(name, opts) {
   const counts = { image: 0, audio: 0, video: 0 };
   for (const file of files) counts[file.kind] += 1;
   out('Adjuntos: ' + counts.image + ' imagen(es) · ' + counts.audio + ' audio(s) · ' + counts.video + ' video(s)');
-  out('Estimacion: ~' + hit.assistant.estimated_credits + ' cr · se cobra el consumo real.');
-  out('Maximo autorizado temporalmente: ' + hit.assistant.max_authorized_credits + ' cr · saldo actual: ' + me.balance + ' cr.');
+  out('Estimacion: ~' + request.estimated_credits + ' cr · se cobra el consumo real.');
+  out('Maximo autorizado temporalmente: ' + request.max_credits_authorized + ' cr · saldo actual: ' + me.balance + ' cr.');
+  if (project) out('Proyecto: ' + project);
   if (session) out('Sesion: ' + session.session_id);
   out('Peticion: ' + request.request_id + ' (caduca en 15 min)');
   out('Para enviar dentro de la autorizacion del encargo: ' + cliCommand('assistant-submit ' + request.request_id + ' --confirmed'));
@@ -360,7 +414,13 @@ async function cmdAssistantSubmit(requestId, opts) {
   if (!catalog.assistants[request.assistant_id] || !catalog.models[request.model_id]) fail('El asistente o el modelo ya no esta disponible. Vuelve a preparar.');
   const currentHash = assistantContractHash(catalog, request.assistant_id, request.model_id);
   if (currentHash !== request.contract_hash) fail('El contrato o el precio del asistente cambio. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
-  await requireSession();
+  const factor = frozenFactor(request);
+  if (factor === null) fail('La peticion tiene un precio de cuenta no valido. Vuelve a preparar; no se ha enviado nada.');
+  setRequestProject(request.project || null);
+  const current = pricingOf(await requireSession());
+  if (current.factor !== factor) fail(PRICE_CHANGED_TEXT);
+  const missing = projectProblem(current, request.project || null);
+  if (missing) fail(missing);
   validateAssistantBatch(request.files || [], await currentAssistantLimits());
 
   let attachmentUrls = Array.isArray(request.attachment_urls) ? request.attachment_urls.slice() : [];
@@ -419,8 +479,9 @@ async function cmdAssistantSubmit(requestId, opts) {
       updateAssistantRequest(request, { state: 'ambiguous', last_error: explain(response) });
       fail(explain(response) + ' Consulta: assistant-status ' + request.request_id + '. No prepares otra petición.');
     }
-    updateAssistantRequest(request, { state: 'failed', last_error: explain(response) });
-    fail(explain(response));
+    const reason = await chargeRejection(response, factor);
+    updateAssistantRequest(request, { state: 'failed', last_error: reason });
+    fail(reason);
   }
   const raw = response.raw || {};
   const answer = raw.message && typeof raw.message.content === 'string' ? raw.message.content : '';
@@ -456,16 +517,22 @@ async function cmdAssistantStatus(requestId) {
   if (typeof status.charged_credits === 'number') out('Consumo verificado: ' + status.charged_credits + ' cr.');
 }
 
-function cmdModels(cat) {
+// `account`: precio de la cuenta con sesión, o null (sin sesión: precio de miembro rotulado como tal).
+function cmdModels(cat, account) {
   out('Modelos disponibles (' + Object.keys(cat.models).length + '):');
   for (const [id, m] of Object.entries(cat.models)) {
     const usable = modelUsable(m);
     out('  ' + id + ' · ' + m.label + ' [' + m.section + ']' + (m.expensive ? ' · CARO' : '') + (usable.ok ? '' : ' · NO DISPONIBLE: ' + usable.reason));
   }
+  if (account && account.factor !== 1) {
+    out('Precios: `info <modelo>` muestra el precio de tu cuenta. Para dar un precio al usuario usa el presupuesto de `prepare`; no leas tablas a mano.');
+    return;
+  }
   out('Precios: `info <modelo>` muestra la tarifa vigente de hoy. Para dar un precio al usuario usa el presupuesto de `prepare`; no leas tablas a mano.');
+  if (!account) out('Son precios de miembro: el precio exacto de tu cuenta lo da `prepare`.');
 }
 
-function cmdInfo(cat, name) {
+function cmdInfo(cat, name, account) {
   const hit = resolveModel(cat, name);
   if (!hit) fail('Modelo no encontrado: ' + name);
   const m = hit.model;
@@ -481,7 +548,7 @@ function cmdInfo(cat, name) {
     if (s.default !== undefined) bits.push('def ' + s.default);
     out('  --' + k + ' (' + bits.join(', ') + (s.required ? ', OBLIGATORIO' : '') + ')' + (s.help ? ' · ' + s.help : ''));
   }
-  for (const line of pricingLines(m)) out(line);
+  for (const line of pricingLines(m, Date.now(), account)) out(line);
 }
 
 function deriveInternalParams(model, given) {
@@ -549,10 +616,10 @@ function deriveInternalParams(model, given) {
   return derived;
 }
 
-function cmdValidate(cat, name, opts) {
+function cmdValidate(cat, name, opts, account) {
   const hit = resolveModel(cat, name);
   if (!hit) fail('Modelo no encontrado: ' + name);
-  let given = { ...opts }; delete given.output; delete given.confirmed; delete given['max-credits'];
+  let given = projectOption(opts).rest; delete given.output; delete given.confirmed; delete given['max-credits'];
   given = deriveInternalParams(hit.model, given);
   const v = validateParams(hit.model, given);
   if (!v.ok) fail('Parametros no validos:\n  - ' + v.errors.join('\n  - '));
@@ -561,11 +628,13 @@ function cmdValidate(cat, name, opts) {
     for (const p of paths) { const inspected = inspectFile(p, accept); if (!inspected.ok) fail(inspected.error); }
   }
   const est = estimateCredits(hit.model, { ...v.params, ...v.fileParams });
+  const credits = priced(est.credits, account ? account.factor : 1);
+  const member = !account && Number.isFinite(credits) ? ' · precio de miembro (el de tu cuenta lo da prepare)' : '';
   out('OK ' + hit.model.label + ': parametros validos · '
     + (est.server_quote
-      ? (Number.isFinite(est.credits) ? 'estimacion local ~' + est.credits + ' cr (el servidor la cotiza en prepare)' : 'el coste lo cotiza el servidor en prepare')
-      : 'estimacion ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr'))
-    + ' · sin gasto.');
+      ? (Number.isFinite(credits) ? 'estimacion local ~' + credits + ' cr (el servidor la cotiza en prepare)' : 'el coste lo cotiza el servidor en prepare')
+      : 'estimacion ' + (credits === null ? 'no disponible' : '~' + credits + ' cr'))
+    + member + ' · sin gasto.');
 }
 
 async function cmdDoctor(cat) {
@@ -576,6 +645,7 @@ async function cmdDoctor(cat) {
   const hasSession = Boolean(readToken() || readCookie());
   const me = hasSession ? await apiPost({ action: 'me' }) : { ok: false };
   if (isFlowsOnly(me)) return doctorClient(add, checks);
+  if (me.ok) rememberPricing(me.raw);
   add(me.ok, 'Autenticacion', me.ok ? (me.raw.user.email + ' · saldo ' + me.raw.balance + ' cr')
     : hasSession ? explain(me) : 'no hay sesión. Pide al usuario que ejecute en su terminal: ' + cliCommand('login') + ' (no se ha gastado nada)');
   try { const dir = resolveOutputDir(); add(true, 'Salida', dir); } catch (e) { add(false, 'Salida', describeEnvironmentError(e) || e.message); }
@@ -615,6 +685,9 @@ async function doctorClient(add, checks) {
   for (const notice of environmentNotices({ info })) out('AVISO · ' + notice.text);
   if (checks.some((ok) => !ok)) process.exitCode = 1;
 }
+
+// Modelos con tarifa exacta en local: sin tarifa válida no se prepara y --max-credits se comprueba siempre.
+const EXACT_TARIFF_IDS = ['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control', 'gemini-omni-flash-1-2'];
 
 // Techo de creditos fijado por el usuario con --max-credits (opcional).
 function creditCeiling(opts) {
@@ -673,7 +746,8 @@ async function cmdPrepare(cat, name, opts) {
   const usable = modelUsable(m);
   if (!usable.ok) fail(usable.reason);
 
-  let given = { ...opts };
+  const { project, rest } = projectOption(opts);
+  let given = rest;
   delete given.output; delete given.confirmed; delete given['max-credits'];
   given = deriveInternalParams(m, given);
   const v = validateParams(m, given);
@@ -700,7 +774,7 @@ async function cmdPrepare(cat, name, opts) {
   const ceiling = creditCeiling(opts);
   const serverQuote = requiresServerQuote(m, v.params);
   const est = estimateCredits(m, { ...v.params, ...v.fileParams });
-  if (['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control', 'gemini-omni-flash-1-2'].includes(m.id)) {
+  if (EXACT_TARIFF_IDS.includes(m.id)) {
     if (!Number.isFinite(est.credits) || est.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Actualiza AILAB o consulta el catálogo; no se ha enviado nada.');
     if (ceiling !== null && est.credits > ceiling) fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
   }
@@ -709,6 +783,17 @@ async function cmdPrepare(cat, name, opts) {
     fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
   }
   const me = await requireSession();
+  // Precio de la cuenta: la estimación local es precio de miembro; el final es priced(base). Los topes locales
+  // (--max-credits, saldo, topes de Higgsfield) se comprueban con el final. Con factor 1,0 no cambia nada.
+  const pricing = pricingOf(me);
+  const missingProject = projectProblem(pricing, project);
+  if (missingProject) fail(missingProject);
+  setRequestProject(project);
+  const factor = pricing.factor;
+  const finalLocal = priced(est.credits, factor);
+  if (factor !== 1 && EXACT_TARIFF_IDS.includes(m.id) && ceiling !== null && finalLocal > ceiling) {
+    fail('El coste (' + finalLocal + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+  }
 
   // Higgsfield: los archivos suben ANTES de cotizar porque el servidor mide el
   // video y las referencias para fijar el coste. Subir no gasta creditos.
@@ -719,10 +804,11 @@ async function cmdPrepare(cat, name, opts) {
     const adapter = ADAPTERS[m.driver];
     const payload = adapter.buildPayload(m, v.params, uploads.uploadedByParam);
     const clientRequestId = crypto.randomUUID();
+    // La cotización del servidor ya es el precio de la cuenta: no se multiplica otra vez.
     const asked = await adapter.quote(m, payload, {
       client_request_id: clientRequestId,
       max_credits_authorized: ceiling === null ? undefined : ceiling,
-    });
+    }, { priceFactor: factor });
     if (!asked.ok) fail('La cotizacion del servidor no se pudo obtener: ' + explain(asked.normalized) + ' (no se ha gastado nada)');
     quote = { ...asked.quote, client_request_id: clientRequestId };
     // quote.estimated_credits es el coste real cotizado (lo que se aprueba);
@@ -754,7 +840,12 @@ async function cmdPrepare(cat, name, opts) {
     files,
     estimate: serverQuote
       ? { credits: Number(quote.estimated_credits), note: est.note, expensive: m.expensive }
-      : { ...est, expensive: m.expensive },
+      : { ...est, credits: finalLocal, expensive: m.expensive },
+    pricing: {
+      base_credits: Number.isFinite(est.credits) ? est.credits : null,
+      price_factor: factor,
+      project,
+    },
   });
   if (serverQuote) {
     // La cotizacion queda congelada en el manifiesto: submit no puede enviar
@@ -775,18 +866,21 @@ async function cmdPrepare(cat, name, opts) {
   }
 
   // Genjutsu Light: la cifra local es la misma que cotiza el servidor. Si difieren, manda el servidor y se avisa.
-  const localLight = m.id === LIGHT_ID && serverQuote && Number.isFinite(est.credits) && est.credits > 0 ? est.credits : null;
+  const localLight = m.id === LIGHT_ID && serverQuote && Number.isFinite(est.credits) && est.credits > 0 ? finalLocal : null;
+  // Un solo importe por generación: con un precio de cuenta no se muestran notas con tarifas de miembro.
+  const estNote = factor === 1 ? est.note : 'precio de tu cuenta';
   out('── PLAN DE GENERACION (sin gasto todavia) ──');
   out('Modelo: ' + m.label + ' (' + hit.id + ')' + (m.expensive ? ' · MODELO CARO' : ''));
   for (const [k, val] of Object.entries(v.params)) out('  ' + k + ': ' + JSON.stringify(val));
   for (const f of files) out('  archivo (' + f.param + '): ' + f.path + ' · ' + f.mime + ' · ' + Math.round(f.size / 1024) + 'KB');
-  const requiredBalance = serverQuote ? Number(quote.estimated_credits) : est.credits;
+  if (project) out('  proyecto: ' + project);
+  const requiredBalance = serverQuote ? Number(quote.estimated_credits) : finalLocal;
   if (serverQuote) {
     out('Cotizacion del servidor: ' + quote.quote_id + ' · coste cotizado '
       + (quote.estimated_credits === null ? 'pendiente' : quote.estimated_credits + ' cr')
       + ' (importe que se aprueba) · techo de seguridad del servidor ' + quote.max_credits_authorized + ' cr');
     if (localLight !== null) {
-      out('Estimacion local de la skill: ~' + localLight + ' cr (' + est.note + ')');
+      out('Estimacion local de la skill: ~' + localLight + ' cr (' + estNote + ')');
       if (localLight !== Number(quote.estimated_credits)) {
         out('AVISO: la estimacion local (' + localLight + ' cr) no coincide con la cotizacion del servidor (' + quote.estimated_credits + ' cr). Manda el servidor; actualiza la skill con `update --confirmed` por si cambio la tarifa.');
       }
@@ -794,8 +888,8 @@ async function cmdPrepare(cat, name, opts) {
     if (quote.note) out(quote.note);
     out('La cotizacion caduca: ' + quote.expires_at + '. Pasada esa hora hay que volver a preparar.');
   } else {
-    out('Estimacion: ' + (est.credits === null ? 'no disponible' : '~' + est.credits + ' cr') + (est.note ? ' (' + est.note + ')' : ''));
-    if (m.expensive && est.credits !== null) out('Maximo autorizado por este manifiesto: ' + est.credits + ' cr.');
+    out('Estimacion: ' + (finalLocal === null ? 'no disponible' : '~' + finalLocal + ' cr') + (estNote ? ' (' + estNote + ')' : ''));
+    if (m.expensive && finalLocal !== null) out('Maximo autorizado por este manifiesto: ' + finalLocal + ' cr.');
   }
   out('Saldo actual: ' + me.balance + ' cr.');
   if (Number.isFinite(requiredBalance) && requiredBalance > 0 && me.balance < requiredBalance) {
@@ -810,6 +904,15 @@ async function cmdSubmit(cat, manifestId, opts) {
     const m0 = loadManifest(manifestId);
   if (!m0) fail('Manifiesto no encontrado: ' + manifestId);
   if (m0.submitted_task) fail('Ese manifiesto ya se ejecutó. Consulta: ' + cliCommand('status ' + m0.submitted_task) + '. No vuelvas a generar para recuperarlo.');
+  // Precio y proyecto congelados en prepare: el factor actual de la cuenta nunca recalcula un manifiesto.
+  const factor = frozenFactor(m0);
+  if (factor === null) fail('El manifiesto tiene un precio de cuenta no valido. Vuelve a preparar; no se ha enviado nada.');
+  const project = typeof m0.project === 'string' && m0.project ? m0.project : null;
+  if (opts.proyecto !== undefined) {
+    const given = projectOption(opts).project;
+    if (given !== project) fail('El proyecto se fija en prepare (' + (project || 'sin proyecto') + '). Vuelve a preparar con --proyecto; no se ha enviado nada.');
+  }
+  setRequestProject(project);
   // Consulta antes de comprobar caducidad o precio: una petición enviada no
   // se convierte en otra generación al expirar el manifiesto o la promoción.
   if (m0.model === 'eleven-tts' && m0.params?.version === 'v4' && m0.confirmed_at && m0.client_request_id) {
@@ -856,6 +959,8 @@ async function cmdSubmit(cat, manifestId, opts) {
     fail('El manifiesto ya no supera la validacion del modelo. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   }
   const estimateAgain = estimateCredits(model, { ...validatedAgain.params, ...validatedAgain.fileParams });
+  // Precio base recalculado en local con el factor CONGELADO del manifiesto.
+  const finalAgain = priced(estimateAgain.credits, factor);
   const serverQuote = requiresServerQuote(model, m0.params);
   if (serverQuote) {
     // El manifiesto congela una cotizacion del servidor: sin ella, caducada o
@@ -876,13 +981,14 @@ async function cmdSubmit(cat, manifestId, opts) {
     if (quotedCost > quoteCeiling) fail('La cotizacion (' + quotedCost + ' cr) supera el techo de seguridad de la cotizacion (' + quoteCeiling + ' cr). Vuelve a preparar; no se ha enviado nada.');
     const ceiling = creditCeiling(opts);
     if (ceiling !== null && quoteApproved > ceiling) fail('La cotizacion del servidor (' + quoteApproved + ' cr) supera el maximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
-  } else if (estimateAgain.credits !== m0.estimated_credits || estimateAgain.credits !== m0.max_credits_authorized) {
+  } else if (finalAgain !== m0.estimated_credits || finalAgain !== m0.max_credits_authorized
+    || (m0.base_credits !== undefined && m0.base_credits !== null && estimateAgain.credits !== m0.base_credits)) {
     fail('La estimacion o el maximo autorizado del manifiesto no coincide con el plan confirmado. Vuelve a preparar.');
   }
-  if (['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control', 'gemini-omni-flash-1-2'].includes(model.id)) {
+  if (EXACT_TARIFF_IDS.includes(model.id)) {
     const ceiling = creditCeiling(opts);
     if (!Number.isFinite(estimateAgain.credits) || estimateAgain.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Vuelve a preparar; no se ha enviado nada.');
-    if (ceiling !== null && estimateAgain.credits > ceiling) fail('El coste (' + estimateAgain.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+    if (ceiling !== null && finalAgain > ceiling) fail('El coste (' + finalAgain + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
   }
 
   for (const f of frozenFiles) {
@@ -890,6 +996,11 @@ async function cmdSubmit(cat, manifestId, opts) {
   }
 
   const me = await requireSession();
+  // Si el factor de la cuenta cambió desde prepare, el servidor rechazaría con 402: se avisa antes de enviar.
+  const current = pricingOf(me);
+  if (current.factor !== factor) fail(PRICE_CHANGED_TEXT);
+  const missingProject = projectProblem(current, project);
+  if (missingProject) fail(missingProject);
   // El importe que se exige en saldo es el coste cotizado aprobado, no el techo
   // de seguridad del servidor.
   const requiredBalance = serverQuote ? Number(m0.quote_max_credits) : m0.estimated_credits;
@@ -917,7 +1028,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   out('Enviando a ' + model.label + '…');
   const intent = {
     client_request_id: clientRequestId,
-    max_credits_authorized: serverQuote ? Number(m0.max_credits_authorized) : estimateAgain.credits,
+    max_credits_authorized: serverQuote ? Number(m0.max_credits_authorized) : finalAgain,
   };
   if (serverQuote) {
     // El adapter reenvia la cotizacion aprobada; si algo no cuadra rechaza en
@@ -926,8 +1037,8 @@ async function cmdSubmit(cat, manifestId, opts) {
     intent.quote_max_credits = Number(m0.quote_max_credits);
     intent.quote_expires_at = String(m0.quote_expires_at);
   }
-  const sub = await adapter.submit(model, payload, intent);
-  if (!sub.ok) fail(explain(sub.normalized));
+  const sub = await adapter.submit(model, payload, intent, { priceFactor: factor });
+  if (!sub.ok) fail(await chargeRejection(sub.normalized, factor));
   markSubmitted(manifestState, { submitted_task: sub.taskRef.serverTaskId, submitted_at: new Date().toISOString() });
   saveTaskReceipt(hit.id, sub.taskRef);
   out('Tarea encolada: ' + sub.taskRef.serverTaskId);
@@ -1121,7 +1232,8 @@ async function main() {
     out('ElevenLabs: voices eleven [--language es --search texto --page 0] · voice-list · voice-options · voice-select <id> --owner <owner> --confirmed · voice-prepare <design|clone|create|renew|delete|resume> [opciones] · voice-submit <id> --confirmed · voice-status <id> · voice-samples <id> [--output dir]');
     out('Guia actualizada de uso y reglas criticas: guide');
     out(FLOW_HELP);
-    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · drafts [--cursor valor] · omni12-videos [--cursor valor] · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
+    out(PROJECTS_HELP);
+    out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] [--proyecto id] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · drafts [--cursor valor] · omni12-videos [--cursor valor] · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
   if (cmd === 'login') return cmdLogin(opts);
@@ -1146,7 +1258,12 @@ async function main() {
   if (cmd === 'logout') return cmdLogout();
   if (cmd === 'balance') return cmdBalance();
   if (cmd === 'voices') return cmdVoices(pos[1] || 'eleven', opts);
-  if (cmd.startsWith('voice-')) { await requireSession(); return runVoiceCommand(cmd, pos.slice(1), opts, out); }
+  if (cmd.startsWith('voice-')) {
+    const me = await requireSession();
+    const { project, rest } = projectOption(opts);
+    return runVoiceCommand(cmd, pos.slice(1), rest, out, { pricing: pricingOf(me), project });
+  }
+  if (PROJECT_COMMANDS.includes(cmd)) { await requireSession(); return runProjectCommand(cmd, pos.slice(1), opts, { out, fail }); }
   if (cmd === 'drafts') return cmdDrafts(opts);
   if (cmd === 'omni12-videos') return cmdOmni12Videos(opts);
   if (cmd === 'assistants') return cmdAssistants();
@@ -1158,9 +1275,9 @@ async function main() {
     : await refreshCatalog({ maxAgeMs: 60 * 60 * 1000, requireNetwork: false });
   const compat = catalogCompatible(cat);
   if (!compat.ok) fail(compat.reason);
-  if (cmd === 'models') return cmdModels(cat);
-  if (cmd === 'info') return cmdInfo(cat, pos[1]);
-  if (cmd === 'validate') return cmdValidate(cat, pos[1], opts);
+  if (cmd === 'models') return cmdModels(cat, displayPricing());
+  if (cmd === 'info') return cmdInfo(cat, pos[1], displayPricing());
+  if (cmd === 'validate') return cmdValidate(cat, pos[1], opts, displayPricing());
   if (cmd === 'prepare') return cmdPrepare(cat, pos[1], opts);
   if (cmd === 'submit') return cmdSubmit(cat, pos[1], opts);
   if (cmd === 'doctor') return cmdDoctor(cat);

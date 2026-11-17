@@ -1,5 +1,7 @@
 # Nano Banana 2.1
 
+> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+
 ID: `nano-banana-2-1`. Runtime mínimo: 2.3.9.
 
 `--mode t2i`: sin referencias. `--mode edit`: 1 a 14 referencias ordenadas,

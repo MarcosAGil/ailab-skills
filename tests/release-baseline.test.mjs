@@ -139,8 +139,8 @@ test('los nuevos contratos públicos no contienen costes o endpoints privados', 
   }
 });
 
-test('una instalación 2.3.19 no retrocede al runtime estable anterior', async () => {
-  assert.equal(BUNDLED_RUNTIME_VERSION, '2.3.19');
+test('una instalación 2.4.0 no retrocede al runtime estable anterior', async () => {
+  assert.equal(BUNDLED_RUNTIME_VERSION, '2.4.0');
   let installations = 0;
   const checked = await checkAndMaybeUpdate({
     force: true,
@@ -148,7 +148,7 @@ test('una instalación 2.3.19 no retrocede al runtime estable anterior', async (
     releaseInstaller: async () => { installations++; throw new Error('No debe instalar una versión anterior'); },
   });
   assert.equal(checked.ok, true);
-  assert.equal(checked.current, '2.3.19');
+  assert.equal(checked.current, '2.4.0');
   assert.equal(checked.update, null);
   assert.equal(installations, 0);
 });

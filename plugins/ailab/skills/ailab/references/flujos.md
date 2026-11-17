@@ -1,7 +1,8 @@
-# Flujos de cliente (skill 2.3.17)
+# Flujos de cliente (skill 2.4.0)
 
-Una cuenta de cliente de AILAB no usa el Playground: solo sus flujos de producción y la
-subida de archivos. El gestor crea el token; el usuario lo pega en `login --cliente`, en su propia
+Una cuenta de cliente de AILAB usa sus flujos de producción y la subida de archivos; solo
+usa el Playground si AILAB le activa el plugin, y entonces con su precio de cuenta y, si su
+cuenta lo exige, `--proyecto` en cada generación. El gestor crea el token; el usuario lo pega en `login --cliente`, en su propia
 terminal. El servidor decide modelo, perfil y precio de cada paso; la CLI nunca los
 muestra.
 
