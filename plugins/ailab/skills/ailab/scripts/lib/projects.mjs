@@ -20,7 +20,7 @@ function keyOf(item) {
 function nameOf(item) {
   const key = keyOf(item);
   if (key === GENERAL) return 'Uso general';
-  return String(first(item.display, item.name, key) || key);
+  return String(first(item.label, item.display, item.project, item.name, key) || key);
 }
 
 function stateOf(item) {
@@ -132,7 +132,7 @@ export async function runProjectCommand(cmd, pos, opts, io) {
     const seconds = single(io, opts, 'duracion-final');
     if (seconds !== undefined) {
       const n = Number(String(seconds).replace(',', '.'));
-      if (seconds === true || !Number.isFinite(n) || n <= 0 || n > MAX_FINAL_SECONDS) io.fail('--duracion-final debe ser la duración final en segundos (por ejemplo 32 o 32,5).');
+      if (seconds === true || !Number.isFinite(n) || n < 0 || n > MAX_FINAL_SECONDS) io.fail('--duracion-final debe ser la duración final en segundos (por ejemplo 32 o 32,5).');
       body.final_seconds = Math.round(n * 100) / 100;
     }
     const note = single(io, opts, 'nota');

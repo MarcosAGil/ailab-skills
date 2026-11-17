@@ -197,9 +197,10 @@ async function harness(t, initial = {}) {
           return json(res, { ok: true, user: { email: 'cuenta@example.test', tier: 'hub' }, balance: state.balance, ...(pricing === undefined ? {} : { pricing }) });
         }
         if (body.action === 'task_costs') return json(res, { ok: true, costs: {} });
-        if (body.action === 'projects') return json(res, { ok: true, projects: [{ project_key: '06', display: '06_super-cremita', status: 'abierto', generations: 3, credits_charged: 360, first_at: '2026-11-17 10:00', last_at: '2026-11-17 12:00' }], sin_proyecto: { generations: 1, credits_charged: 12 } });
-        if (body.action === 'project') return json(res, { ok: true, project: { project_key: body.project, display: body.project, status: 'abierto' }, generations: [{ task_id: 't-1', model_label: 'Nano Banana 2', created_at: '2026-11-17 10:00', state: 'success', params_summary: '{"resolution":"2K","aspect_ratio":"9:16"}', credits_charged: 12 }, { task_id: 't-2', model_label: 'Kling 4.0', created_at: '2026-11-17 11:00', state: 'failed', params_summary: { duration: 5 }, credits_charged: 0 }] });
-        if (body.action === 'project_close') return json(res, { ok: true, project: { project_key: body.project, status: 'cerrado', final_seconds: body.final_seconds ?? null } });
+        // Forma real de app/api/wallet/projects.php (wallet_projects_list / wallet_project_detail).
+        if (body.action === 'projects') return json(res, { ok: true, projects: [{ key: '06', project: '06_super-cremita', label: '06_super-cremita', status: 'abierto', generations: 3, credits: 360, first_at: '2026-11-17 10:00', last_at: '2026-11-17 12:00', final_seconds: null, note: null }, { key: 'sin_proyecto', project: null, label: 'Uso general', status: null, generations: 1, credits: 12, first_at: null, last_at: null, final_seconds: null, note: null }], total_credits: 372 });
+        if (body.action === 'project') return json(res, { ok: true, project: { key: body.project, project: body.project, label: body.project, status: 'abierto', final_seconds: null, credits: 12, generations: 2 }, items: [{ task_id: 't-1', model: 'nano-banana-2', label: 'Nano Banana 2', created_at: '2026-11-17 10:00', state: 'success', params_summary: { resolution: '2K', aspect_ratio: '9:16' }, credits: 12 }, { task_id: 't-2', model: 'kling-4-0', label: 'Kling 4.0', created_at: '2026-11-17 11:00', state: 'failed', params_summary: { duration: 5 }, credits: 0 }] });
+        if (body.action === 'project_close') return json(res, { ok: true, project: { key: body.project, project: body.project, label: body.project, status: 'cerrado', final_seconds: body.final_seconds ?? null }, items: [] });
         return json(res, { ok: false, error: 'acción desconocida' }, 400);
       }
       if (url.pathname === '/api/wallet/gateway.php') {
@@ -538,7 +539,7 @@ test('comandos de proyectos: lista, detalle y cierre con duración final', async
   assert.match(detail.stdout, /t-1 · Nano Banana 2 · 2026-11-17 10:00 · success · resolution=2K, aspect_ratio=9:16 · 12 cr/);
   assert.match(detail.stdout, /t-2 · Kling 4\.0 .* failed · duration=5 · 0 cr/);
   const json = await h.run(['proyecto', '06', '--json']);
-  assert.equal(JSON.parse(json.stdout).generations.length, 2);
+  assert.equal(JSON.parse(json.stdout).items.length, 2);
   const closed = await h.run(['cerrar-proyecto', '06', '--duracion-final', '32,5', '--nota', 'Entregado']);
   assert.equal(closed.code, 0, closed.stderr);
   assert.match(closed.stdout, /Proyecto 06 cerrado · duración final 32,5 s/);
