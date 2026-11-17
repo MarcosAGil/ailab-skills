@@ -50,7 +50,7 @@ test('la skill mide el audio local y calcula los bloques exactos', (t) => {
   ], {
     cwd: ROOT,
     encoding: 'utf8',
-    env: { ...process.env, AILAB_SKIP_UPDATE: '1', AILAB_CATALOG_PATH: CATALOG }
+    env: { ...process.env, AILAB_SKIP_UPDATE: '1', AILAB_CATALOG_PATH: CATALOG, AILAB_CONFIG_DIR: path.join(dir, 'config'), AILAB_CREDENTIALS_DIR: path.join(dir, 'credentials'), AILAB_BASE_URL: 'http://127.0.0.1:9/' }
   });
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /estimacion ~21 cr/);
