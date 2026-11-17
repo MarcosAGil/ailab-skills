@@ -183,7 +183,7 @@ export async function refreshCatalog({ maxAgeMs, requireNetwork }) {
   try { meta = JSON.parse(fs.readFileSync(metaFile, 'utf8')); } catch {}
   const age = meta.fetched_at ? Date.now() - Date.parse(meta.fetched_at) : Infinity;
   if (fs.existsSync(cacheFile) && age <= maxAgeMs) return loadCatalog();
-  const headers = {};
+  const headers = { 'X-AILAB-Client': 'ailab-cli/' + CLI_VERSION };
   if (meta.etag) headers['If-None-Match'] = meta.etag;
   try {
     const controller = new AbortController();

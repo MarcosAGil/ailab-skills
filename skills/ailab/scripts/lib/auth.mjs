@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { spawn } from 'node:child_process';
-import { BASE_URL, CONFIG_DIR, CREDENTIALS_DIR, ensureConfigDir, warnWindowsPerms } from './config.mjs';
+import { BASE_URL, CLI_VERSION, CONFIG_DIR, CREDENTIALS_DIR, ensureConfigDir, warnWindowsPerms } from './config.mjs';
 
 const COOKIE_FILE = () => path.join(CONFIG_DIR, 'cookie.json');
 const TOKEN_FILE = () => path.join(CREDENTIALS_DIR, 'token');
@@ -119,7 +119,7 @@ export async function login(email, password) {
   try {
     res = await fetch(BASE_URL + 'api/wallet/api.php', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-AILAB-Client': 'ailab-cli/' + CLI_VERSION },
       body: JSON.stringify({ action: 'login', email, password }),
     });
   } catch (e) {

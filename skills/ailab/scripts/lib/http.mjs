@@ -1,7 +1,7 @@
 // Capa HTTP normalizada (plan v2.1 §12): HTTP 200 JAMAS implica exito por si solo.
 // Todas las respuestas de la plataforma pasan por normalize() y devuelven
 // { ok, kind, httpStatus, businessCode, message, data, raw }.
-import { GENERATION_BASE_URL, CUENTA_URL, ASSISTANT_ENDPOINT, TASK_ENDPOINT } from './config.mjs';
+import { GENERATION_BASE_URL, CUENTA_URL, ASSISTANT_ENDPOINT, TASK_ENDPOINT, CLI_VERSION } from './config.mjs';
 import { readCookie, readToken } from './auth.mjs';
 import { cliCommand, networkAdvice } from './environment.mjs';
 import fs from 'node:fs';
@@ -133,7 +133,7 @@ async function doFetch(url, init) {
     }
     return { ok: false, kind: 'invalid_response', httpStatus: res.status, businessCode: null, message: 'El servidor no devolvio JSON valido (HTTP ' + res.status + ').', data: null, raw: text.slice(0, 300) };
   }
-  const normalized = normalize(res.status, body, contentType);
+  const normalized = accountRejection(normalize(res.status, body, contentType));
   if (normalized.kind === 'rate_limited') {
     const headerValue = Number(res.headers.get('retry-after') || 0);
     const bodyValue = Number(body.retry_after || body.retry_after_seconds || 0);
@@ -151,11 +151,46 @@ async function doFetch(url, init) {
   return normalized;
 }
 
+// Versión del cliente en TODAS las peticiones a AILAB: el servidor exige 2.4.0 o posterior a las cuentas con
+// un precio distinto del de miembro (HTTP 426). El proyecto del comando en curso viaja en su propia cabecera,
+// así llega a cotizaciones, subidas y envíos de cualquier adaptador sin tocar sus cuerpos.
+export const CLIENT_HEADER = 'ailab-cli/' + CLI_VERSION;
+let requestProject = null;
+
+export function setRequestProject(project) {
+  requestProject = project ? String(project) : null;
+}
+
+export function clientHeaders() {
+  return { 'X-AILAB-Client': CLIENT_HEADER, ...(requestProject ? { 'X-AILAB-Proyecto': requestProject } : {}) };
+}
+
 function authHeaders() {
   const token = readToken();
-  if (token) return tokenHeaderMode === 'custom' ? { 'X-Ailendra-Token': token } : { Authorization: 'Bearer ' + token };
+  if (token) return { ...clientHeaders(), ...(tokenHeaderMode === 'custom' ? { 'X-Ailendra-Token': token } : { Authorization: 'Bearer ' + token }) };
   const cookie = readCookie();
-  return cookie ? { Cookie: cookie } : {};
+  return { ...clientHeaders(), ...(cookie ? { Cookie: cookie } : {}) };
+}
+
+// Rechazos de cuenta del contrato de precio por cuenta: se reconocen por su código (o por el 426) y nunca se
+// confunden con un envío ambiguo (409) ni con una petición mal formada. Ninguno reserva ni cobra.
+const ACCOUNT_CODES = ['client_update_required', 'project_required', 'invalid_project'];
+
+export function errorCode(n) {
+  const raw = n && n.raw && typeof n.raw === 'object' ? n.raw : {};
+  const data = raw.data && typeof raw.data === 'object' ? raw.data : {};
+  for (const value of [raw.code, raw.error_code, data.code, data.error_code]) {
+    if (typeof value === 'string' && value) return value;
+  }
+  return null;
+}
+
+function accountRejection(n) {
+  if (n.ok) return n;
+  const code = errorCode(n);
+  if (ACCOUNT_CODES.includes(code)) return { ...n, kind: code };
+  if (n.httpStatus === 426) return { ...n, kind: 'client_update_required' };
+  return n;
 }
 
 export async function apiPost(body) {
@@ -336,6 +371,9 @@ export function explain(n) {
       const seconds = Number.isFinite(n.retryAfterSeconds) ? Math.max(1, Math.ceil(n.retryAfterSeconds)) : 60;
       return 'AILAB ha limitado temporalmente las peticiones. Espera ' + seconds + ' s y haz un unico reintento; no inicies un bucle.';
     }
+    case 'client_update_required': return n.message || ('Esta cuenta necesita AILAB 2.4.0 o posterior. Ejecuta ' + cliCommand('update --confirmed') + '. No se ha cobrado nada.');
+    case 'project_required': return n.message || 'Esta cuenta exige --proyecto en cada generación. No se ha cobrado nada.';
+    case 'invalid_project': return n.message || '--proyecto no es válido: de 1 a 64 caracteres entre letras sin tilde, números, punto, guion y guion bajo. No se ha cobrado nada.';
     case 'ambiguous_submit': return (n.message || 'El estado del envio es ambiguo.') + ' No se reintentara con otra UUID. Revisa el historial o usa AILAB doctor.';
     case 'network': return n.message + (/^Sin conexion/.test(n.message) ? '\n' + networkAdvice() : '');
     case 'timeout': return n.message;
