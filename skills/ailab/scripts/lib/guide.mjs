@@ -46,7 +46,7 @@ export function guideText({ version, run, catalog = null }) {
     '- `voice-prepare <design|clone|create|renew|delete|resume>` prepara, `voice-submit <manifest_id> --confirmed` ejecuta, `voice-status <referencia>` recupera y `voice-samples <referencia> [--output carpeta]` descarga muestras. Clona solo grabaciones que el usuario esté autorizado a usar.',
     '',
     'PRECIO DE LA CUENTA Y PROYECTOS (skill 2.4.0)',
-    '- `prepare`, `assistant-prepare` y `voice-prepare` dan el precio de la cuenta (miembro o cliente) y el manifiesto lo congela. `--proyecto <id>` (letras, números, `._-`, hasta 64) agrupa la generación; si la cuenta lo exige y falta, no se envía nada.',
+    '- `prepare`, `assistant-prepare` y `voice-prepare` dan el precio de la cuenta (miembro o cliente) y el manifiesto lo congela. `--proyecto <id>` (letras, números, `._-`, hasta 64) agrupa la generación; si la cuenta lo exige y falta, no se envía nada. Las voces no lo admiten: van a Uso general.',
     '- `proyectos`, `proyecto <id>` y `cerrar-proyecto <id> [--duracion-final S]` no gastan. Si la CLI pide `update --confirmed` o dice que el precio de la cuenta cambió, no se ha cobrado nada: actualiza o vuelve a preparar.',
     '',
     'FLUJOS DE CLIENTE (skill 2.4.0, cuentas de cliente)',

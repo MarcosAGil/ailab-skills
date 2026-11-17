@@ -70,8 +70,8 @@ el resto del estado de AILAB permanece separado.
 Una **cuenta de cliente** (`login --cliente`) usa los comandos `flow` ([su
 guía](references/flujos.md)) y, si AILAB le activa el plugin, el Playground.
 
-`--proyecto <id>` (por ejemplo `06_super-cremita`) agrupa una generación en los
-`prepare`; algunas cuentas lo exigen. `proyectos`, `proyecto <id>` y `cerrar-proyecto
+`--proyecto <id>` (por ejemplo `06_super-cremita`) agrupa una generación en
+`prepare` y `assistant-prepare`; algunas cuentas lo exigen. Las voces van a Uso general. `proyectos`, `proyecto <id>` y `cerrar-proyecto
 <id> [--duracion-final S]` no gastan. Detalle en `guide`.
 
 ## Generar con el Playground

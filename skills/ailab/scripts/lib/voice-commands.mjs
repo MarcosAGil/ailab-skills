@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { servicePost, serviceGet, privateVoiceMultipart, privateVoiceSample, explain, setRequestProject } from './http.mjs';
-import { priced, projectProblem, frozenFactor, PRICE_CHANGED_TEXT } from './account-pricing.mjs';
+import { priced, frozenFactor, PRICE_CHANGED_TEXT } from './account-pricing.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './manifest.mjs';
 import { stableStringify } from './catalog.mjs';
 import { inspectPricingMetadata, rehashMatches } from './files.mjs';
@@ -43,16 +43,31 @@ export async function listElevenVoices(opts={},out=console.log) {
     hint:'Busca en la biblioteca con voices eleven --language es --search nombre. Usa voice-select para incorporar una voz utilizable.'});
 }
 
-// `context`: { pricing, project } del comando. Las cotizaciones del servidor (muestras y conservación) ya son el
-// precio de la cuenta; los importes fijos se convierten con priced(). Con factor 1,0 son los de siempre.
+// Las voces no llevan proyecto: sus cargos van a «Uso general» y el servidor no lee la cabecera.
+export const VOICE_PROJECT_TEXT='Las voces no llevan proyecto: sus cargos van a Uso general. Quita --proyecto; no se ha enviado nada.';
+
+// Precio de reanudar una voz. AILAB lo da por voz en `renewal_credits` (precio de la cuenta con el factor
+// congelado al crearla). Un servidor anterior no lo manda: 15 cr con factor 1,0 y, si no, priced(15) con aviso.
+async function resumePrice(id,factor){
+  const voice=unwrap(await serviceGet(PV,{action:'status',id}));
+  const listed=voice&&typeof voice==='object'?voice.renewal_credits:undefined;
+  if(listed!==undefined&&listed!==null){
+    if(!Number.isSafeInteger(listed)||listed<RESUME_CREDITS)throw new Error('AILAB ha devuelto un precio de reanudación no válido para esta voz. No se ha enviado nada.');
+    return {credits:listed,base:null,source:'voice',warning:null};
+  }
+  const credits=priced(RESUME_CREDITS,factor);
+  return {credits,base:RESUME_CREDITS,source:'account',warning:factor===1?null:'AILAB no indica el precio de esta voz: se usa el de tu cuenta ('+credits+' cr). Si la voz se creó con otro precio, AILAB rechazará la reanudación sin cobrar nada.'};
+}
+
+// `context`: { pricing } del comando. Las cotizaciones del servidor (muestras, conservación y reanudación por voz)
+// ya son el precio de la cuenta; los importes fijos se convierten con priced(). Con factor 1,0 son los de siempre.
 export async function prepareVoice(mode,opts,out=console.log,context={}) {
-  const factor=context.pricing?context.pricing.factor:1,project=context.project||null;
+  const factor=context.pricing?context.pricing.factor:1;
   const allowed={design:['description','description-file','text','text-file','max-credits'],clone:['name','audio','evidence','rights-confirmed','max-credits'],
     create:['name','sample','request','slot','max-credits'],renew:['id','until','max-credits'],delete:['id'],resume:['id','max-credits']};
   if(!allowed[mode])throw new Error('Modo: design, clone, create, renew, delete o resume.');optsOnly(opts,allowed[mode]);
-  const missing=mode==='delete'?null:projectProblem(context.pricing,project);if(missing)throw new Error(missing);
-  setRequestProject(project);
-  let params={},files=[],credits=0,base=null;
+  setRequestProject(null);
+  let params={},files=[],credits=0,base=null,resume=null;
   if(['design','clone','create'].includes(mode)){
     const options=unwrap(await serviceGet(PV,{action:'options'}));
     if(!options.can_create)throw new Error(options.message||'No puedes crear otra voz ahora. Consulta voice-list o Mis voces.');
@@ -77,16 +92,19 @@ export async function prepareVoice(mode,opts,out=console.log,context={}) {
     params={action:'renewal',id:ref(opts.id),enabled:!!opts.until,confirmed:true,price:15};
     if(opts.until){const q=unwrap(await serviceGet(PV,{action:'retention_quote',id:params.id,until:opts.until}));credits=q.credits;
       if(!Number.isSafeInteger(credits)||credits<0)throw new Error('Cotización de conservación no válida.');params.until_date=opts.until;}
-  } else {params={action:mode==='resume'?'resume':'delete',id:ref(opts.id),confirmed:true};base=mode==='resume'?RESUME_CREDITS:0;credits=priced(base,factor);}
+  } else if(mode==='resume') {
+    params={action:'resume',id:ref(opts.id),confirmed:true};resume=await resumePrice(params.id,factor);base=resume.base;credits=resume.credits;
+  } else {params={action:'delete',id:ref(opts.id),confirmed:true};base=0;credits=0;}
   ceiling(opts,credits);
   if(['clone','design'].includes(mode)){
     const slot=unwrap(await servicePost(PV+'?action=reserve',{action:'reserve'}));params.slot_id=ref(slot.id);
   }
   params.max_credits_authorized=credits;
   const m=createManifest({modelId:'private-voice:'+mode,catalogVersion:'private-voices-1',modelContractHash:'private-voices-1',params,files,estimate:{credits,note:'Reglas AILAB de la web'},
-    pricing:{base_credits:base,price_factor:factor,project}});
-  markSubmitted(m,{voice_operation:true,client_request_id:m.manifest_id});
+    pricing:{base_credits:base,price_factor:factor,project:null}});
+  markSubmitted(m,{voice_operation:true,client_request_id:m.manifest_id,...(resume?{voice_price:resume.source}:{})});
   print(out,{manifest_id:m.manifest_id,mode,credits,params,files:files.map(f=>({path:f.path,mime:f.mime,size:f.size})),
+    ...(resume&&resume.warning?{warning:resume.warning}:{}),
     note:mode==='design'?'Lote de hasta tres muestras. Alta de '+priced(CREATE_CREDITS,factor)+' cr aparte.':mode==='delete'?'Borrado permanente. Conserva los audios ya generados.':'Alta: 48 horas incluidas. Conservación solo si la solicitas con fecha y presupuesto.',
     submit:'voice-submit '+m.manifest_id+' --confirmed'});return m;
 }
@@ -105,18 +123,18 @@ export async function voiceStatus(id,out=console.log) {
 export async function submitVoice(id,opts,out=console.log,context={}) {
   optsOnly(opts,['confirmed','max-credits']);
   let m=loadManifest(id);if(!m?.voice_operation)throw new Error('Manifiesto de voces no encontrado.');
-  // Precio y proyecto congelados en voice-prepare: el factor actual nunca recalcula un plan ya aprobado.
+  // Precio congelado en voice-prepare: el factor actual nunca recalcula un plan ya aprobado.
   const factor=frozenFactor(m);if(factor===null)throw new Error('El plan tiene un precio de cuenta no válido. Vuelve a preparar.');
-  setRequestProject(m.project||null);
+  setRequestProject(null);
   if(m.attempted_at){out('Consulta del mismo intento; no se repite el envío.');return voiceStatus(id,out);}
   if(opts.confirmed!==true)throw new Error('Necesitas autorización del usuario y --confirmed.');
   if(manifestExpired(m))throw new Error('Plan caducado. Vuelve a preparar; todavía no se ha enviado.');
   const hash=crypto.createHash('sha256').update(stableStringify(m.params)).digest('hex');
   if(hash!==m.params_hash||m.max_credits_authorized!==m.params.max_credits_authorized)throw new Error('El plan ha cambiado. Vuelve a preparar.');
   ceiling(opts,m.max_credits_authorized);
-  if(context.pricing&&context.pricing.factor!==factor)throw new Error(PRICE_CHANGED_TEXT);
+  // La reanudación con precio de la voz no depende del factor actual de la cuenta: lo fija la voz.
+  if(m.voice_price!=='voice'&&context.pricing&&context.pricing.factor!==factor)throw new Error(PRICE_CHANGED_TEXT);
   if(m.base_credits!==undefined&&m.base_credits!==null&&priced(m.base_credits,factor)!==m.max_credits_authorized)throw new Error('El plan ha cambiado. Vuelve a preparar.');
-  const missing=m.params?.action==='delete'?null:projectProblem(context.pricing,m.project||null);if(missing)throw new Error(missing);
   for(const file of m.files)if(!rehashMatches(file))throw new Error('Archivo cambiado: '+file.path+'. Vuelve a preparar.');
   const body={...m.params,client_request_id:m.client_request_id};
   if(m.params.mode==='clone') {
@@ -134,7 +152,7 @@ export async function submitVoice(id,opts,out=console.log,context={}) {
 
 export async function runVoiceCommand(cmd,pos,opts,out=console.log,context={}) {
   if(pos.length>1)throw new Error('Demasiados argumentos.');
-  if(context.project&&!['voice-prepare'].includes(cmd))throw new Error(cmd==='voice-submit'?'El proyecto se fija en voice-prepare. No se ha enviado nada.':'--proyecto solo se usa en voice-prepare.');
+  if(context.project)throw new Error(VOICE_PROJECT_TEXT);
   if(cmd==='voice-prepare')return prepareVoice(pos[0],opts,out,context);
   if(cmd==='voice-submit')return submitVoice(pos[0],opts,out,context);
   if(cmd==='voice-status'){optsOnly(opts,[]);return voiceStatus(pos[0],out);}
