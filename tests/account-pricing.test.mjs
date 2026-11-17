@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile, spawnSync } from 'node:child_process';
+import { execFile, spawn, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -91,11 +91,12 @@ test('topes de Higgsfield: con factor 1,0 son los de siempre y con factor 1,2 el
 });
 
 test('Extend de Omni 1.2: la cifra del servidor ya es de la cuenta; la local se compara con el mismo factor y no enseña la tarifa', () => {
-  const video = { task_id: 'omni-1', resolution: '360p', output_seconds: 11, credits_by_duration: { 10: 41 } };
+  // `rate` es la tarifa de miembro que manda el listado: solo se enseña con factor 1,0.
+  const video = { task_id: 'omni-1', resolution: '360p', output_seconds: 11, rate: omni.omni12Rate('360p'), credits_by_duration: { 10: 41 } };
   const member = omni.omni12ExtendQuote(video, 10, Date.parse('2026-11-17T10:00:00Z'));
   assert.equal(member.quote.estimated_credits, 41);
   assert.doesNotMatch(member.quote.note, /AVISO/);
-  assert.match(member.quote.note, /cr\/s/);
+  assert.match(member.quote.note, new RegExp(' a ' + String(omni.omni12Rate('360p')).replace('.', ',') + ' cr/s'));
   const client = omni.omni12ExtendQuote({ ...video, credits_by_duration: { 10: priced(41, 1.2) } }, 10, Date.parse('2026-11-17T10:00:00Z'), 1.2);
   assert.equal(client.quote.estimated_credits, 50, 'no se multiplica otra vez');
   assert.doesNotMatch(client.quote.note, /AVISO/);
@@ -192,6 +193,7 @@ async function harness(t, initial = {}) {
         return json(res, { ok: true, message: { role: 'assistant', content: 'Prompt mejorado.' }, charged_credits: 13, balance: 999 });
       }
       if (url.pathname === '/api/wallet/api.php') {
+        if (body.action === 'me' && state.flowsOnly) return json(res, { ok: false, error: 'Esta cuenta solo puede usar sus flujos.', msg: 'Esta cuenta solo puede usar sus flujos.' }, 403);
         if (body.action === 'me') {
           const pricing = state.meSequence && state.meSequence.length ? state.meSequence.shift() : state.pricing;
           return json(res, { ok: true, user: { email: 'cuenta@example.test', tier: 'hub' }, balance: state.balance, ...(pricing === undefined ? {} : { pricing }) });
@@ -217,11 +219,14 @@ async function harness(t, initial = {}) {
         if (action === 'create') return json(res, { ok: true, code: 200, msg: 'ok', data: { taskId: 'hf-1' } });
         if (action === 'status') return json(res, { ok: true, code: 200, msg: 'ok', data: { status: 'COMPLETED', urls: [base + 'assets/out.png'] } });
       }
+      if (url.pathname === '/api/v1/flows/index.php' && body.action === 'status') return json(res, { ok: true, month: '2026-11', balance_cr: 5000, limit_cr: 0, spent_month_cr: 0, remaining_month_cr: 0, videos_month: 0, paused: false });
       if (url.pathname === '/api/wallet/private-voices.php') {
         const action = url.searchParams.get('action');
         if (action === 'options') return json(res, { ok: true, data: { can_create: true, design_enabled: true } });
         if (action === 'reserve') return json(res, { ok: true, data: { id: 'a'.repeat(32) } });
         if (action === 'resume') return json(res, { ok: true, data: { id: body.id, state: 'active' } });
+        // renewal_credits: precio de reanudar ESA voz (factor congelado al crearla). Sin él, servidor anterior.
+        if (action === 'status') return json(res, { ok: true, data: { id: url.searchParams.get('id'), state: 'paused', renewal_enabled: false, ...(state.renewalCredits === undefined ? {} : { renewal_credits: state.renewalCredits }) } });
       }
       json(res, { error: 'unexpected request ' + req.url }, 404);
     } catch (error) { json(res, { error: error.message }, 500); }
@@ -426,6 +431,17 @@ test('el factor de la cuenta cambia entre prepare y submit: aviso en local o tra
   h.state.createFailure = { status: 402, body: { code: 402, msg: 'Saldo insuficiente.' } };
   const poor = await h.run(['submit', third.id, '--confirmed']);
   assert.match(poor.stderr, /Saldo insuficiente\. Recarga en/);
+
+  // Con el código `price_changed` del servidor el aviso es directo: sin releer `me` y sin «Recarga en».
+  const fourth = h.manifestOf((await h.run(NB2)).stdout);
+  h.state.createFailure = { status: 402, body: { code: 402, error_code: 'price_changed', msg: 'El precio de tu cuenta cambió. Vuelve a preparar; no se ha cobrado nada.' } };
+  const meBefore = h.requests.filter((r) => r.body.action === 'me').length;
+  const coded = await h.run(['submit', fourth.id, '--confirmed']);
+  assert.notEqual(coded.code, 0);
+  assert.match(coded.stderr, /El precio de tu cuenta cambió; vuelve a preparar\. No se ha cobrado nada\./);
+  assert.doesNotMatch(coded.stderr, /Recarga en/);
+  assert.equal(h.requests.filter((r) => r.body.action === 'me').length - meBefore, 1, 'solo el `me` de la sesión');
+  h.state.createFailure = null;
 });
 
 test('cabeceras: X-AILAB-Client en todas las peticiones y X-AILAB-Proyecto en las del comando con --proyecto, nunca en el cuerpo', async (t) => {
@@ -581,44 +597,95 @@ test('info, models y validate: precio de la cuenta con sesión (sin red) y preci
   assert.equal(fs.existsSync(path.join(h.config, 'account-pricing.json')), false, 'logout borra el precio guardado');
 });
 
-test('voces: alta y reanudación con priced(100) y priced(15); el proyecto se congela y se exige si la cuenta lo pide', async (t) => {
+test('balance consulta `me` una sola vez; los logins de cliente y por cookie borran el precio guardado', async (t) => {
+  const h = await harness(t, { pricing: CLIENT });
+  const meCalls = () => h.requests.filter((r) => r.body.action === 'me').length;
+  const before = meCalls();
+  const balance = await h.run(['balance']);
+  assert.equal(balance.code, 0, balance.stderr);
+  assert.match(balance.stdout, /saldo 100000 cr/);
+  assert.equal(meCalls() - before, 1, 'una sola consulta de `me`, como en la 2.3.19');
+  const cache = path.join(h.config, 'account-pricing.json');
+  assert.equal(fs.existsSync(cache), true);
+
+  const withInput = (env, args, input) => new Promise((resolve) => {
+    const child = spawn(process.execPath, [CLI, ...args], { env, timeout: 60000 });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', (d) => { stdout += d; });
+    child.stderr.on('data', (d) => { stderr += d; });
+    child.on('close', (code) => resolve({ code, stdout, stderr }));
+    child.stdin.end(input);
+  });
+  h.state.flowsOnly = true;
+  const client = await withInput(h.env, ['login'], 'ailp_' + 'C'.repeat(48) + '\n');
+  assert.equal(client.code, 0, client.stderr + client.stdout);
+  assert.match(client.stdout, /cuenta de cliente · saldo 5000 cr/);
+  assert.equal(fs.existsSync(cache), false, 'la cuenta de cliente solo de flujos no conserva el precio de otra sesión');
+
+  h.state.flowsOnly = false;
+  await h.run(['balance']);
+  assert.equal(fs.existsSync(cache), true);
+  await withInput({ ...h.env, AILAB_ALLOW_COOKIE_AUTH: '1' }, ['login-cookie'], 'cuenta@example.test\n');
+  assert.equal(fs.existsSync(cache), false, 'login por cookie borra el precio guardado');
+});
+
+test('voces: alta con priced(100); la reanudación usa el precio de la voz y nunca llevan proyecto', async (t) => {
   const h = await harness(t, { pricing: CLIENT });
   const slot = 'b'.repeat(32), sample = 'c'.repeat(32), voice = 'd'.repeat(32);
-  const created = await h.run(['voice-prepare', 'create', '--name', 'Luismi', '--slot', slot, '--sample', sample, '--proyecto', '06']);
+  const created = await h.run(['voice-prepare', 'create', '--name', 'Luismi', '--slot', slot, '--sample', sample]);
   assert.equal(created.code, 0, created.stderr);
   const plan = JSON.parse(created.stdout);
   assert.equal(plan.credits, 120);
   assert.equal(plan.params.max_credits_authorized, 120);
-  assert.equal(plan.params.proyecto, undefined);
-  const resumed = await h.run(['voice-prepare', 'resume', '--id', voice]);
-  const resumePlan = JSON.parse(resumed.stdout);
-  assert.equal(resumePlan.credits, 18);
-  const submitted = await h.run(['voice-submit', resumePlan.manifest_id, '--confirmed']);
-  assert.equal(submitted.code, 0, submitted.stderr);
-  const sent = h.requests.find((r) => r.pathname === '/api/wallet/private-voices.php' && r.search.includes('action=resume'));
-  assert.equal(sent.body.max_credits_authorized, 18);
 
+  // Voz creada con factor 1,0 en una cuenta que ahora está a 1,2: manda el precio de la voz (15).
+  h.state.renewalCredits = 15;
+  const resumed = await h.run(['voice-prepare', 'resume', '--id', voice]);
+  assert.equal(resumed.code, 0, resumed.stderr);
+  const resumePlan = JSON.parse(resumed.stdout);
+  assert.equal(resumePlan.credits, 15);
+  assert.equal(resumePlan.warning, undefined);
+  h.state.pricing = { ...CLIENT, factor: 1.5 };
+  const submitted = await h.run(['voice-submit', resumePlan.manifest_id, '--confirmed']);
+  assert.equal(submitted.code, 0, 'el factor de la cuenta no cambia el precio de la voz: ' + submitted.stderr);
+  const sent = h.requests.filter((r) => r.pathname === '/api/wallet/private-voices.php' && r.search.includes('action=resume')).at(-1);
+  assert.equal(sent.body.max_credits_authorized, 15);
+  assert.equal(sent.headers['x-ailab-proyecto'], undefined);
+  h.state.pricing = CLIENT;
+  h.state.renewalCredits = 18;
+  assert.equal(JSON.parse((await h.run(['voice-prepare', 'resume', '--id', voice])).stdout).credits, 18, 'voz creada a 1,2');
+  h.state.renewalCredits = 'quince';
+  const invalid = await h.run(['voice-prepare', 'resume', '--id', voice]);
+  assert.notEqual(invalid.code, 0);
+  assert.match(invalid.stderr, /precio de reanudación no válido/);
+
+  // Servidor anterior sin renewal_credits: 15 con factor 1,0; con 1,2, priced(15) y un aviso claro.
+  h.state.renewalCredits = undefined;
+  const fallback = JSON.parse((await h.run(['voice-prepare', 'resume', '--id', voice])).stdout);
+  assert.equal(fallback.credits, 18);
+  assert.match(fallback.warning, /AILAB no indica el precio de esta voz/);
+  h.state.pricing = { ...CLIENT, factor: 1.5 };
+  const priceChanged = await h.run(['voice-submit', fallback.manifest_id, '--confirmed']);
+  assert.match(priceChanged.stderr, /El precio de tu cuenta cambió/);
   h.state.pricing = MEMBER;
   const member = JSON.parse((await h.run(['voice-prepare', 'resume', '--id', voice])).stdout);
   assert.equal(member.credits, 15, 'los miembros siguen con 15 cr');
+  assert.equal(member.warning, undefined);
   const memberCreate = JSON.parse((await h.run(['voice-prepare', 'create', '--name', 'Luismi', '--slot', slot, '--sample', sample])).stdout);
   assert.equal(memberCreate.credits, 100);
 
+  // Las voces van a Uso general: --proyecto se rechaza sin red, y una cuenta que exige proyecto no lo pide aquí.
+  const before = h.requests.length;
+  for (const args of [['voice-prepare', 'resume', '--id', voice, '--proyecto', '06'], ['voice-submit', fallback.manifest_id, '--confirmed', '--proyecto', '06'], ['voice-status', voice, '--proyecto', '06']]) {
+    const rejected = await h.run(args);
+    assert.notEqual(rejected.code, 0, args.join(' '));
+    assert.match(rejected.stderr, /Las voces no llevan proyecto: sus cargos van a Uso general/);
+  }
+  assert.equal(h.requests.length, before, 'el rechazo es local');
   h.state.pricing = { ...CLIENT, require_project: true };
-  const missing = await h.run(['voice-prepare', 'resume', '--id', voice]);
-  assert.notEqual(missing.code, 0);
-  assert.match(missing.stderr, /exige --proyecto/);
-  const plan2 = JSON.parse((await h.run(['voice-prepare', 'resume', '--id', voice, '--proyecto', '06'])).stdout);
-  h.state.pricing = CLIENT;
-  const changed = await h.run(['voice-submit', plan2.manifest_id, '--confirmed']);
-  assert.equal(changed.code, 0, changed.stderr);
-  const lastResume = h.requests.filter((r) => r.search.includes('action=resume')).at(-1);
-  assert.equal(lastResume.headers['x-ailab-proyecto'], '06');
-  h.state.pricing = { ...CLIENT, factor: 1.5 };
-  const plan3 = JSON.parse((await h.run(['voice-prepare', 'resume', '--id', voice])).stdout);
-  h.state.pricing = CLIENT;
-  const priceChanged = await h.run(['voice-submit', plan3.manifest_id, '--confirmed']);
-  assert.match(priceChanged.stderr, /El precio de tu cuenta cambió/);
+  h.state.renewalCredits = 18;
+  const required = await h.run(['voice-prepare', 'resume', '--id', voice]);
+  assert.equal(required.code, 0, required.stderr);
 });
 
 test('asistentes: estimación y máximo con priced(), proyecto en la cabecera y aviso si el factor cambia', async (t) => {
