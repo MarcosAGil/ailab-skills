@@ -218,6 +218,7 @@ export function omni12ExtendQuote(video, duration, now = Date.now(), factor = 1)
   }
   const listed = Number(video.credits_by_duration && video.credits_by_duration[String(seconds)]);
   // La cifra del listado es el precio de la cuenta: la tarifa local (de miembro) se compara con el mismo factor.
+  // La tarifa por segundo es de miembro: solo se enseña a una cuenta con factor 1,0.
   const memberLocal = omni12Credits(video.resolution, seconds);
   const local = memberLocal === null ? null : priced(memberLocal, factor);
   if (!Number.isSafeInteger(listed) || listed <= 0 || local === null) return refuse('El servidor no devolvió un coste válido para alargar ese vídeo.' + NOTHING_CHARGED);
@@ -230,7 +231,7 @@ export function omni12ExtendQuote(video, duration, now = Date.now(), factor = 1)
       expires_at: new Date(now + QUOTE_TTL_MS).toISOString(),
       verified_duration_seconds: seconds,
       note: 'Extend de un vídeo ' + video.resolution + (video.output_seconds ? ' de ' + video.output_seconds + ' s' : '') + ': +' + seconds
-        + ' s' + (video.rate != null || factor === 1 ? ' a ' + secondsText(video.rate ?? omni12Rate(video.resolution)) + ' cr/s' : '') + '. Es el máximo reservado: se cobra el consumo real y nunca más.'
+        + ' s' + (factor === 1 ? ' a ' + secondsText(video.rate ?? omni12Rate(video.resolution)) + ' cr/s' : '') + '. Es el máximo reservado: se cobra el consumo real y nunca más.'
         + (local !== listed ? ' AVISO: la tarifa local da ' + local + ' cr; manda la del servidor.' : ''),
     },
   };

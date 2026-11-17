@@ -174,7 +174,7 @@ function authHeaders() {
 
 // Rechazos de cuenta del contrato de precio por cuenta: se reconocen por su código (o por el 426) y nunca se
 // confunden con un envío ambiguo (409) ni con una petición mal formada. Ninguno reserva ni cobra.
-const ACCOUNT_CODES = ['client_update_required', 'project_required', 'invalid_project'];
+const ACCOUNT_CODES = ['client_update_required', 'project_required', 'invalid_project', 'price_changed'];
 
 export function errorCode(n) {
   const raw = n && n.raw && typeof n.raw === 'object' ? n.raw : {};
@@ -371,6 +371,7 @@ export function explain(n) {
       const seconds = Number.isFinite(n.retryAfterSeconds) ? Math.max(1, Math.ceil(n.retryAfterSeconds)) : 60;
       return 'AILAB ha limitado temporalmente las peticiones. Espera ' + seconds + ' s y haz un unico reintento; no inicies un bucle.';
     }
+    case 'price_changed': return 'El precio de tu cuenta cambió; vuelve a preparar. No se ha cobrado nada.';
     case 'client_update_required': return n.message || ('Esta cuenta necesita AILAB 2.4.0 o posterior. Ejecuta ' + cliCommand('update --confirmed') + '. No se ha cobrado nada.');
     case 'project_required': return n.message || 'Esta cuenta exige --proyecto en cada generación. No se ha cobrado nada.';
     case 'invalid_project': return n.message || '--proyecto no es válido: de 1 a 64 caracteres entre letras sin tilde, números, punto, guion y guion bajo. No se ha cobrado nada.';
