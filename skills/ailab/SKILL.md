@@ -66,6 +66,12 @@ node <skill-dir>/scripts/ailab.mjs doctor
 token se comparte con la skill anterior del Playground durante la convivencia, pero
 el resto del estado de AILAB permanece separado.
 
+Una **cuenta de cliente** (token creado por su gestor) solo puede usar sus flujos de
+producción: `login` y `doctor` la reconocen y muestran su saldo y su mes. Para ella usa
+solo los comandos `flow` (`flow status`, `flow open`, `flow prepare`, `flow submit`,
+`flow job` y `flow close`), con [su guía](references/flujos.md). `flow prepare` no gasta;
+`flow submit --confirmed` sí, una sola vez aunque se repita.
+
 ## Generar con el Playground
 
 Para **Krea 3** (`krea-3`), consulta [su contrato](references/krea-3.md). Texto y edición tienen Berry o Jam; solo Berry admite prompt negativo. `prepare` sube las referencias y obtiene del servidor una cotización vinculada a sus dimensiones, modalidad y parámetros. El razonamiento Alto solo existe en edición y añade coste. No añadas semilla ni repitas un envío incierto.

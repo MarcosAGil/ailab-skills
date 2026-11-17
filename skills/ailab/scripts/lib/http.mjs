@@ -234,6 +234,29 @@ export async function serviceGet(relativePath, query) {
   });
 }
 
+// API de flujos de las cuentas de cliente (api/v1/flows/). Misma autenticación por token.
+export const FLOWS_ENDPOINT = 'api/v1/flows/index.php';
+
+export async function flowsPost(body) {
+  return doFetch(GENERATION_BASE_URL + FLOWS_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+}
+
+// Descarga de un archivo de flujos por su identificador opaco. Devuelve la respuesta sin leer:
+// el llamante la guarda en streaming. Sin redirecciones: el archivo lo sirve AILAB.
+export async function flowsFile(fileId, signal) {
+  if (!/^[a-f0-9]{32}$/.test(String(fileId))) throw new Error('Identificador de archivo no válido.');
+  return fetch(GENERATION_BASE_URL + FLOWS_ENDPOINT + '?action=file&id=' + fileId, { headers: authHeaders(), redirect: 'error', signal });
+}
+
+// Una cuenta de cliente solo puede usar sus flujos: el resto de AILAB responde 403 con este motivo.
+export function isFlowsOnly(response) {
+  return Boolean(response && !response.ok && response.httpStatus === 403 && /solo puede usar sus flujos/i.test(String(response.message || '')));
+}
+
 export async function assistantPost(body) {
   return doFetch(ASSISTANT_ENDPOINT, {
     method: 'POST',

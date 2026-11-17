@@ -4,7 +4,8 @@
 // Sin keys maestras ni contrasenas guardadas; usa tokens de dispositivo revocables.
 import { CLI_VERSION, BASE_URL, CUENTA_URL } from './lib/config.mjs';
 import { login, promptVisible, promptHidden, readCookie, readToken, saveToken, clearToken, clearCookie, openDevicePage, cookieAuthEnabled } from './lib/auth.mjs';
-import { apiPost, servicePost, assistantPost, taskLookup, explain } from './lib/http.mjs';
+import { apiPost, servicePost, assistantPost, taskLookup, explain, isFlowsOnly } from './lib/http.mjs';
+import { runFlowCommand, fetchFlowsStatus, statusLines, FLOW_HELP } from './lib/flows.mjs';
 import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, estimateCredits, modelContractHash, requiresServerQuote, stableStringify } from './lib/catalog.mjs';
 import { refreshAssistantsCatalog, resolveAssistant, resolveAssistantModel, assistantContractHash } from './lib/assistants.mjs';
 import { assistantLimits, validateAssistantBatch, LEGACY_ASSISTANT_LIMITS } from './lib/assistant-limits.mjs';
@@ -106,6 +107,7 @@ function parseArgs(argv) {
 async function requireSession() {
   if (!readToken() && !readCookie()) fail('No hay sesion. Pide al usuario que ejecute en su terminal: ' + cliCommand('login'));
   const me = await apiPost({ action: 'me' });
+  if (isFlowsOnly(me)) fail('Esta es una cuenta de cliente: solo puede usar sus flujos. Usa ' + cliCommand('flow status') + ' y los comandos flow.');
   if (!me.ok) fail(explain(me));
   return me.raw;
 }
@@ -118,6 +120,14 @@ async function cmdLogin() {
   const token = await promptHidden('Token: ');
   try { saveToken(token); } catch (e) { fail(e.message); }
   const me = await apiPost({ action: 'me' });
+  if (isFlowsOnly(me)) {
+    // Cuenta de cliente: `me` no le corresponde. Se valida con el estado de sus flujos y el token se guarda igual.
+    const status = await fetchFlowsStatus();
+    if (!status.ok) { clearToken(); fail('Token rechazado: ' + status.error); }
+    out('Dispositivo autorizado para una cuenta de cliente · saldo ' + status.view.balance_cr + ' cr.');
+    out('Esta cuenta solo usa flujos de producción: ' + cliCommand('flow status') + '.');
+    return;
+  }
   if (!me.ok) { clearToken(); fail('Token rechazado: ' + explain(me)); }
   const user = me.raw.user || {};
   out('Dispositivo autorizado para ' + (user.email || 'tu cuenta') + ' · saldo ' + me.raw.balance + ' cr.');
@@ -140,6 +150,15 @@ function cmdLogout() {
 }
 
 async function cmdBalance() {
+  if (readToken()) {
+    const probe = await apiPost({ action: 'me' });
+    if (isFlowsOnly(probe)) {
+      const status = await fetchFlowsStatus();
+      if (!status.ok) fail(status.error);
+      for (const line of statusLines(status.view)) out(line);
+      return;
+    }
+  }
   const me = await requireSession();
   out('Cuenta: ' + (me.user ? me.user.email : '¿?') + ' · tier ' + (me.user ? me.user.tier : '¿?') + ' · saldo ' + me.balance + ' cr.');
 }
@@ -551,6 +570,7 @@ async function cmdDoctor(cat) {
   const compat = catalogCompatible(cat); add(compat.ok, 'Contrato', compat.ok ? 'v' + cat.server_contract_version + ' · catalogo ' + cat.catalog_version : compat.reason);
   const hasSession = Boolean(readToken() || readCookie());
   const me = hasSession ? await apiPost({ action: 'me' }) : { ok: false };
+  if (isFlowsOnly(me)) return doctorClient(add, checks);
   add(me.ok, 'Autenticacion', me.ok ? (me.raw.user.email + ' · saldo ' + me.raw.balance + ' cr')
     : hasSession ? explain(me) : 'no hay sesión. Pide al usuario que ejecute en su terminal: ' + cliCommand('login') + ' (no se ha gastado nada)');
   try { const dir = resolveOutputDir(); add(true, 'Salida', dir); } catch (e) { add(false, 'Salida', describeEnvironmentError(e) || e.message); }
@@ -570,6 +590,23 @@ async function cmdDoctor(cat) {
   } catch { out('AVISO · ffprobe: opcional, no encontrado'); }
   const info = bootstrapInfo();
   out('INFO · Arranque: ' + (info.version || 'desconocido') + ' · ' + ({ plugin: 'plugin', 'manual-claude': 'skill manual de Claude Code', 'manual-codex': 'skill manual de Codex' }[info.kind] || 'otra ubicación') + (info.dir ? ' · ' + info.dir : ''));
+  for (const notice of environmentNotices({ info })) out('AVISO · ' + notice.text);
+  if (checks.some((ok) => !ok)) process.exitCode = 1;
+}
+
+// Cuenta de cliente: sin `me` ni intenciones de miembro. Saldo y mes salen del estado de sus flujos.
+async function doctorClient(add, checks) {
+  const status = await fetchFlowsStatus();
+  add(status.ok, 'Autenticacion', status.ok ? 'cuenta de cliente · saldo ' + status.view.balance_cr + ' cr' : status.error);
+  if (status.ok) {
+    const v = status.view;
+    add(true, 'Mes', v.month + ' · gastado ' + v.spent_month_cr + ' cr' + (Number(v.limit_cr) > 0 ? ' de ' + v.limit_cr + ' cr · quedan ' + v.remaining_month_cr + ' cr' : ' · sin límite mensual') + ' · ' + v.videos_month + ' vídeos');
+    add(!v.paused, 'Cuenta', v.paused ? 'en pausa: no se puede gastar. Habla con tu gestor.' : 'activa');
+  }
+  try { const dir = resolveOutputDir(); add(true, 'Salida', dir); } catch (e) { add(false, 'Salida', describeEnvironmentError(e) || e.message); }
+  out('OMITIDO · Intenciones: no aplican a una cuenta de cliente (usa ' + cliCommand('flow job <trabajo>') + ').');
+  const info = bootstrapInfo();
+  out('INFO · Arranque: ' + (info.version || 'desconocido') + (info.dir ? ' · ' + info.dir : ''));
   for (const notice of environmentNotices({ info })) out('AVISO · ' + notice.text);
   if (checks.some((ok) => !ok)) process.exitCode = 1;
 }
@@ -1078,11 +1115,14 @@ async function main() {
     out('Base: ' + BASE_URL);
     out('ElevenLabs: voices eleven [--language es --search texto --page 0] · voice-list · voice-options · voice-select <id> --owner <owner> --confirmed · voice-prepare <design|clone|create|renew|delete|resume> [opciones] · voice-submit <id> --confirmed · voice-status <id> · voice-samples <id> [--output dir]');
     out('Guia actualizada de uso y reglas criticas: guide');
+    out(FLOW_HELP);
     out('Comandos: login · logout · doctor · balance · voices [eleven|heygen] · models · info <modelo> · validate <modelo> [params] · prepare <modelo> [params] [--max-credits N] · submit <manifest_id> --confirmed [--output dir] · status <taskId> · drafts [--cursor valor] · omni12-videos [--cursor valor] · assistants · assistant-prepare <asistente> --message <texto> [--image|--audio|--video ruta] · assistant-submit <request_id> --confirmed');
     return;
   }
   if (cmd === 'login') return cmdLogin();
   if (cmd === 'guide') return cmdGuide();
+  // Los flujos de cliente no usan el catálogo: no se descarga ni se valida para ellos.
+  if (cmd === 'flow') return runFlowCommand(pos.slice(1), opts, { out, fail, cliCommand });
   if (cmd === 'self-test') {
     const local = loadCatalog();
     const compatibility = catalogCompatible(local);
