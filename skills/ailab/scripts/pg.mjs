@@ -4,7 +4,7 @@
 // Sin keys maestras ni contrasenas guardadas; usa tokens de dispositivo revocables.
 import { CLI_VERSION, BASE_URL, CUENTA_URL } from './lib/config.mjs';
 import { login, promptVisible, promptHidden, readCookie, readToken, saveToken, clearToken, clearCookie, openDevicePage, cookieAuthEnabled } from './lib/auth.mjs';
-import { apiPost, servicePost, assistantPost, taskLookup, explain, isFlowsOnly, setRequestProject } from './lib/http.mjs';
+import { apiPost, servicePost, assistantPost, taskLookup, explain, isFlowsOnly, setRequestProject, errorCode } from './lib/http.mjs';
 import { accountPricing, priced, takeProject, projectProblem, frozenFactor, PRICE_CHANGED_TEXT, savePricingCache, loadPricingCache, clearPricingCache } from './lib/account-pricing.mjs';
 import { runProjectCommand, PROJECT_COMMANDS, PROJECTS_HELP } from './lib/projects.mjs';
 import { runFlowCommand, fetchFlowsStatus, statusLines, FLOW_HELP } from './lib/flows.mjs';
@@ -26,7 +26,7 @@ import * as hybridSeedreamV1 from './adapters/hybrid-seedream-v1.mjs';
 import * as hybridGrokV1 from './adapters/hybrid-grok-v1.mjs';
 import * as veoV1 from './adapters/veo-v1.mjs';
 import * as elevenV1 from './adapters/eleven-v1.mjs';
-import { runVoiceCommand, listElevenVoices } from './lib/voice-commands.mjs';
+import { runVoiceCommand, listElevenVoices, VOICE_PROJECT_TEXT } from './lib/voice-commands.mjs';
 import { pricingLines } from './lib/pricing.mjs';
 import * as sunoV1 from './adapters/suno-v1.mjs';
 import * as heygenV1 from './adapters/heygen-v1.mjs';
@@ -144,6 +144,7 @@ function displayPricing() {
 
 // Un 402 al enviar puede deberse a que el factor de la cuenta cambió desde prepare: se comprueba con `me`.
 async function chargeRejection(response, factor) {
+  if (response && errorCode(response) === 'price_changed') return PRICE_CHANGED_TEXT;
   if (response && response.kind === 'insufficient_balance') {
     const again = await apiPost({ action: 'me' });
     const now = again.ok ? accountPricing(again.raw) : null;
@@ -156,11 +157,11 @@ async function cmdLogin(opts = {}) {
   out('Autorizacion de AILAB con token de dispositivo.');
   if (opts.cliente) {
     // Cuenta de cliente: el token lo entrega AILAB; la página de dispositivos de los miembros no le sirve.
-    out('Pega el token de cliente que te ha entregado AILAB. No se mostrara en pantalla ni se guardara en el historial del shell.');
+    out('Pega el token de cliente que te ha entregado AILAB. No se mostrará en pantalla ni se guardará en el historial del shell.');
   } else {
     const url = openDevicePage();
     out('1. Crea un token en: ' + url + ' (si eres cliente, usa ' + cliCommand('login --cliente') + ').');
-    out('2. Copialo y pegalo aqui. No se mostrara en pantalla ni se guardara en el historial del shell.');
+    out('2. Cópialo y pégalo aquí. No se mostrará en pantalla ni se guardará en el historial del shell.');
   }
   const token = await promptHidden('Token: ');
   try { saveToken(token); } catch (e) { fail(e.message); }
@@ -169,6 +170,7 @@ async function cmdLogin(opts = {}) {
     // Cuenta de cliente: `me` no le corresponde. Se valida con el estado de sus flujos y el token se guarda igual.
     const status = await fetchFlowsStatus();
     if (!status.ok) { clearToken(); fail('Token rechazado: ' + status.error); }
+    clearPricingCache();
     out('Dispositivo autorizado para una cuenta de cliente · saldo ' + status.view.balance_cr + ' cr.');
     out('Esta cuenta solo usa flujos de producción: ' + cliCommand('flow status') + '.');
     return;
@@ -181,6 +183,8 @@ async function cmdLogin(opts = {}) {
 
 async function cmdLoginCookie() {
   if (!cookieAuthEnabled()) fail('El login por contraseña está desactivado. Usa: ' + cliCommand('login'));
+  // La cookie es otra sesión: el precio guardado de un login anterior ya no vale para mostrar.
+  clearPricingCache();
   out('Login privado por cookie (compatibilidad temporal de desarrollo).');
   const email = await promptVisible('Email: ');
   const password = await promptHidden('Contrasena (oculta): ');
@@ -196,7 +200,9 @@ function cmdLogout() {
 }
 
 async function cmdBalance() {
+  let me;
   if (readToken()) {
+    // Una sola consulta de `me`: la misma respuesta decide si es cuenta de cliente y da el saldo.
     const probe = await apiPost({ action: 'me' });
     if (isFlowsOnly(probe)) {
       const status = await fetchFlowsStatus();
@@ -204,8 +210,10 @@ async function cmdBalance() {
       for (const line of statusLines(status.view)) out(line);
       return;
     }
-  }
-  const me = await requireSession();
+    if (!probe.ok) fail(explain(probe));
+    rememberPricing(probe.raw);
+    me = probe.raw;
+  } else me = await requireSession();
   out('Cuenta: ' + (me.user ? me.user.email : '¿?') + ' · tier ' + (me.user ? me.user.tier : '¿?') + ' · saldo ' + me.balance + ' cr.');
 }
 
@@ -415,7 +423,7 @@ async function cmdAssistantSubmit(requestId, opts) {
   const currentHash = assistantContractHash(catalog, request.assistant_id, request.model_id);
   if (currentHash !== request.contract_hash) fail('El contrato o el precio del asistente cambio. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   const factor = frozenFactor(request);
-  if (factor === null) fail('La peticion tiene un precio de cuenta no valido. Vuelve a preparar; no se ha enviado nada.');
+  if (factor === null) fail('La petición tiene un precio de cuenta no válido. Vuelve a preparar; no se ha enviado nada.');
   setRequestProject(request.project || null);
   const current = pricingOf(await requireSession());
   if (current.factor !== factor) fail(PRICE_CHANGED_TEXT);
@@ -791,7 +799,7 @@ async function cmdPrepare(cat, name, opts) {
   setRequestProject(project);
   const factor = pricing.factor;
   const finalLocal = priced(est.credits, factor);
-  if (factor !== 1 && EXACT_TARIFF_IDS.includes(m.id) && ceiling !== null && finalLocal > ceiling) {
+  if (factor !== 1 && (EXACT_TARIFF_IDS.includes(m.id) || m.id === LIGHT_ID) && Number.isFinite(finalLocal) && ceiling !== null && finalLocal > ceiling) {
     fail('El coste (' + finalLocal + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
   }
 
@@ -906,7 +914,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   if (m0.submitted_task) fail('Ese manifiesto ya se ejecutó. Consulta: ' + cliCommand('status ' + m0.submitted_task) + '. No vuelvas a generar para recuperarlo.');
   // Precio y proyecto congelados en prepare: el factor actual de la cuenta nunca recalcula un manifiesto.
   const factor = frozenFactor(m0);
-  if (factor === null) fail('El manifiesto tiene un precio de cuenta no valido. Vuelve a preparar; no se ha enviado nada.');
+  if (factor === null) fail('El manifiesto tiene un precio de cuenta no válido. Vuelve a preparar; no se ha enviado nada.');
   const project = typeof m0.project === 'string' && m0.project ? m0.project : null;
   if (opts.proyecto !== undefined) {
     const given = projectOption(opts).project;
@@ -1259,9 +1267,10 @@ async function main() {
   if (cmd === 'balance') return cmdBalance();
   if (cmd === 'voices') return cmdVoices(pos[1] || 'eleven', opts);
   if (cmd.startsWith('voice-')) {
+    // Las voces van siempre a Uso general: --proyecto se rechaza antes de abrir sesión.
+    if (opts.proyecto !== undefined) fail(VOICE_PROJECT_TEXT);
     const me = await requireSession();
-    const { project, rest } = projectOption(opts);
-    return runVoiceCommand(cmd, pos.slice(1), rest, out, { pricing: pricingOf(me), project });
+    return runVoiceCommand(cmd, pos.slice(1), opts, out, { pricing: pricingOf(me) });
   }
   if (PROJECT_COMMANDS.includes(cmd)) { await requireSession(); return runProjectCommand(cmd, pos.slice(1), opts, { out, fail }); }
   if (cmd === 'drafts') return cmdDrafts(opts);
