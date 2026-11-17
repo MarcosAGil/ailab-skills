@@ -1,5 +1,7 @@
 # Wan 3.0 Video y Wan 3.0 Video Prime
 
+> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+
 Usa `info wan-3-video` y el catálogo vigente. Un único modelo con dos versiones:
 `--version normal` (calidad de referencia) y `--version prime` (mismas capacidades,
 generación más rápida y tarifa por segundo mayor). Requiere la skill 2.3.12 o

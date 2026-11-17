@@ -1,5 +1,7 @@
 # Ideogram 4.5 en AILAB
 
+> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+
 El catálogo del servidor es la fuente de verdad de disponibilidad, modalidades, límites y precios. Consulta `models`, `info ideogram-v45` y `prepare` antes de enviar.
 
 La fuente local 2.3.7 requiere construir el paquete, publicarlo mediante el flujo firmado y verificar el catálogo servido. No equivale por sí sola a una release activa.

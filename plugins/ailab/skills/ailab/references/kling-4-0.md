@@ -1,5 +1,7 @@
 # Kling 4.0 (`kling-4-0`)
 
+> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+
 Vídeo de 3 a 30 s con audio nativo, 720p o 1080p. Contrato del servidor: `gateway_kling4_input` y
 `gateway_kling4_subjects` en AILAB. La CLI valida lo mismo en local antes de subir nada, pero el servidor
 repite todo, mide él mismo los vídeos y es la autoridad.

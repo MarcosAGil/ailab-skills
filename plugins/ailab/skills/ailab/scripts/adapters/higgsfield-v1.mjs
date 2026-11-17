@@ -20,6 +20,7 @@
 // acota lo que se autoriza a cotizar, no lo que se aprueba. La aprobacion real
 // es la estimacion que el manifiesto congela tras el quote.
 import { servicePost, serviceGet, apiPost } from '../lib/http.mjs';
+import { priced } from '../lib/account-pricing.mjs';
 
 const ENDPOINT = 'api/skill/higgsfield.php';
 
@@ -160,10 +161,17 @@ function payloadRejection(model, payload) {
   return null;
 }
 
+// Tope final de la cuenta: los topes de la tabla son precio de miembro y el servidor
+// compara con el precio de la cuenta, priced(tope). Con factor 1,0 es el mismo tope.
+export function accountCreditCap(model, factor = 1) {
+  const cap = hardCreditCap(model);
+  return cap === null ? null : priced(cap, factor);
+}
+
 // Maximo que se puede autorizar en la cotizacion: el tope configurado (o el
 // --max-credits del manifiesto, si es mas bajo). Es una cota, no una aprobacion.
-function quoteCeiling(model, intent) {
-  const cap = hardCreditCap(model);
+function quoteCeiling(model, intent, factor) {
+  const cap = accountCreditCap(model, factor);
   if (cap === null) return null;
   const requested = positiveNumber(intent && intent.max_credits_authorized);
   return requested === null ? cap : Math.min(requested, cap);
@@ -198,10 +206,11 @@ function requestBody(action, model, payload, extra) {
 // action=quote: el servidor mide el video y las referencias y devuelve la
 // cotizacion. Se pide con el mismo client_request_id del manifiesto para que el
 // servidor pueda hacerla idempotente.
-export async function quote(model, payload, intent = {}) {
+// `context.priceFactor` es el factor de la cuenta (1 para los miembros): el servidor ya devuelve el precio final.
+export async function quote(model, payload, intent = {}, context = {}) {
   const rejection = payloadRejection(model, payload);
   if (rejection) return localRejection(rejection);
-  const ceiling = quoteCeiling(model, intent);
+  const ceiling = quoteCeiling(model, intent, context.priceFactor ?? 1);
   if (ceiling === null) {
     return localRejection('Este modelo no tiene un tope de creditos configurado, asi que no se puede cotizar con seguridad. Actualiza AILAB; no se ha llamado al proveedor.');
   }
@@ -249,7 +258,7 @@ export async function quote(model, payload, intent = {}) {
 
 // action=create: envia la cotizacion congelada y el maximo aprobado. Nunca
 // inventa un maximo, nunca supera lo aprobado y nunca supera el tope.
-export async function submit(model, payload, intent = {}) {
+export async function submit(model, payload, intent = {}, context = {}) {
   const payloadIssue = payloadRejection(model, payload);
   if (payloadIssue) return localRejection(payloadIssue);
 
@@ -277,7 +286,7 @@ export async function submit(model, payload, intent = {}) {
   if (approved > ceiling) {
     return localRejection('El maximo autorizado (' + approved + ' cr) supera el maximo que cotizo el servidor (' + ceiling + ' cr). Vuelve a ejecutar prepare; no se ha llamado al proveedor.');
   }
-  const cap = hardCreditCap(model);
+  const cap = accountCreditCap(model, context.priceFactor ?? 1);
   if (cap === null) {
     return localRejection('Este modelo no tiene un tope de creditos configurado. Actualiza AILAB; no se ha llamado al proveedor.');
   }

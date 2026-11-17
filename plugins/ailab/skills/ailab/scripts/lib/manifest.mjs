@@ -24,7 +24,10 @@ function atomicWrite(file, value) {
   try { fs.chmodSync(file, 0o600); } catch {}
 }
 
-export function createManifest({ modelId, catalogVersion, modelContractHash, params, files, estimate }) {
+// Precio por cuenta: `estimate.credits` es SIEMPRE el precio final de la cuenta (estimado y máximo autorizado).
+// `pricing` congela el precio base de miembro, el factor y el proyecto: submit recalcula con ese factor, nunca con
+// el actual de la cuenta. Sin `pricing` (voces antiguas, pruebas) el manifiesto es de miembro: base = final, ×1.
+export function createManifest({ modelId, catalogVersion, modelContractHash, params, files, estimate, pricing = null }) {
   ensureConfigDir();
   const m = {
     manifest_id: crypto.randomUUID(),
@@ -36,6 +39,9 @@ export function createManifest({ modelId, catalogVersion, modelContractHash, par
     files: files.map((f) => ({ path: f.path, sha256: f.sha256, mime: f.mime, size: f.size, param: f.param })),
     estimated_credits: estimate.credits,
     max_credits_authorized: estimate.credits,
+    base_credits: pricing && pricing.base_credits !== undefined ? pricing.base_credits : estimate.credits,
+    price_factor: pricing && pricing.price_factor !== undefined ? pricing.price_factor : 1,
+    project: pricing && pricing.project ? pricing.project : null,
     estimate_note: estimate.note || '',
     expensive_ack_required: !!estimate.expensive,
     created_at: new Date().toISOString(),

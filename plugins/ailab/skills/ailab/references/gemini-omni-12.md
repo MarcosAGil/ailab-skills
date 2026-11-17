@@ -1,5 +1,7 @@
 # Gemini Omni Flash 1.2
 
+> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+
 Vídeo con audio de Google servido por Kie. Necesita la skill 2.3.19. El servidor de AILAB repite todas las comprobaciones
 y tiene la última palabra; si algo no cuadra, rechaza antes de cobrar.
 

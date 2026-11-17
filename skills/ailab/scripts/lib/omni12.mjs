@@ -17,6 +17,7 @@
 import { inspectPricingMetadata } from './files.mjs';
 import { phpRound } from './kling4.mjs';
 import { items } from './seedance.mjs';
+import { priced } from './account-pricing.mjs';
 
 export const OMNI12_ID = 'gemini-omni-flash-1-2';
 export const OMNI12_EXTEND_ID = 'gemini-omni-flash-1-2-extend';
@@ -209,14 +210,17 @@ export function omni12VideoNotFound() {
 }
 
 // Cotización local de `prepare`: congela en el manifiesto la cifra que el servidor reservará para alargar ese vídeo.
-export function omni12ExtendQuote(video, duration, now = Date.now()) {
+export function omni12ExtendQuote(video, duration, now = Date.now(), factor = 1) {
   const refuse = (message) => ({ ok: false, normalized: { kind: 'bad_request', message } });
   const seconds = Number(duration);
   if (!Number.isInteger(seconds) || seconds < EXTEND_MIN_SECONDS || seconds > EXTEND_MAX_SECONDS) {
     return refuse('Extend añade de 3 a 10 segundos: la duración debe ser un entero en ese rango.' + NOTHING_CHARGED);
   }
   const listed = Number(video.credits_by_duration && video.credits_by_duration[String(seconds)]);
-  const local = omni12Credits(video.resolution, seconds);
+  // La cifra del listado es el precio de la cuenta: la tarifa local (de miembro) se compara con el mismo factor.
+  // La tarifa por segundo es de miembro: solo se enseña a una cuenta con factor 1,0.
+  const memberLocal = omni12Credits(video.resolution, seconds);
+  const local = memberLocal === null ? null : priced(memberLocal, factor);
   if (!Number.isSafeInteger(listed) || listed <= 0 || local === null) return refuse('El servidor no devolvió un coste válido para alargar ese vídeo.' + NOTHING_CHARGED);
   return {
     ok: true,
@@ -227,7 +231,7 @@ export function omni12ExtendQuote(video, duration, now = Date.now()) {
       expires_at: new Date(now + QUOTE_TTL_MS).toISOString(),
       verified_duration_seconds: seconds,
       note: 'Extend de un vídeo ' + video.resolution + (video.output_seconds ? ' de ' + video.output_seconds + ' s' : '') + ': +' + seconds
-        + ' s a ' + secondsText(video.rate ?? omni12Rate(video.resolution)) + ' cr/s. Es el máximo reservado: se cobra el consumo real y nunca más.'
+        + ' s' + (factor === 1 ? ' a ' + secondsText(video.rate ?? omni12Rate(video.resolution)) + ' cr/s' : '') + '. Es el máximo reservado: se cobra el consumo real y nunca más.'
         + (local !== listed ? ' AVISO: la tarifa local da ' + local + ' cr; manda la del servidor.' : ''),
     },
   };

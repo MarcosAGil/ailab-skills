@@ -74,7 +74,7 @@ test('el contrato publicado: modelo nuevo, activo desde la skill 2.3.14, con cot
   assert.equal(model.estimate.max_credits, 612);
   assert.equal(requiresServerQuote(model), true);
   assert.equal(modelUsable(model).ok, true);
-  assert.equal(modelUsable({ ...model, min_cli_version: '2.3.20' }).ok, false);
+  assert.equal(modelUsable({ ...model, min_cli_version: '2.4.1' }).ok, false);
   assert.equal(resolveModel(catalog, 'genjutsu-light').id, ID);
   assert.equal(resolveModel(catalog, 'genjutsu light').id, ID);
   assert.equal(resolveModel(catalog, 'genjutsu').id, 'genjutsu', 'Genjutsu Normal sigue siendo `genjutsu`');
@@ -517,7 +517,7 @@ const FUTURE = () => new Date(Date.now() + 10 * 60 * 1000).toISOString();
 const json = (res, body, status = 200, headers = {}) => { res.writeHead(status, { 'Content-Type': 'application/json', ...headers }); res.end(JSON.stringify(body)); };
 
 // `statuses`: respuestas sucesivas de action=status (la última se repite). Cada una: { status, headers, body } o { data }.
-async function harness(t, { statuses = [], quoteCredits = 204, quoteFailure = null, balance = 5000, poll = '20' } = {}) {
+async function harness(t, { statuses = [], quoteCredits = 204, quoteFailure = null, balance = 5000, poll = '20', pricing = undefined } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-light-flow-'));
   const credentials = path.join(temp, 'credentials');
   const config = path.join(temp, 'config');
@@ -542,7 +542,7 @@ async function harness(t, { statuses = [], quoteCredits = 204, quoteFailure = nu
       }
       if (url.pathname === '/api/wallet/api.php') {
         if (body.action === 'task_costs') return json(res, { ok: true, costs: { ['higgsfield:' + TASK]: quoteCredits } });
-        return json(res, { ok: true, user: { email: 'light@example.test', tier: 'hub' }, balance });
+        return json(res, { ok: true, user: { email: 'light@example.test', tier: 'hub' }, balance, ...(pricing ? { pricing } : {}) });
       }
       if (url.pathname === '/api/skill/upload.php') {
         const name = base + 'uploads/' + requests.length + '.bin';
@@ -638,6 +638,14 @@ test('CLI real: más de 15 s se rechaza en local antes de subir nada; --max-cred
   assert.equal(h.requests.length, 0, 'se avisa antes de subir nada');
   const exact = await h.tryRun('prepare', ...lightArgs(h, { seconds: 10 }), '--max-credits', '204');
   assert.equal(exact.code, 0, exact.stderr);
+});
+
+test('CLI real: cuenta ×1,2: --max-credits entre la base y el precio final se rechaza tras la sesión y antes de subir nada', async (t) => {
+  const h = await harness(t, { pricing: { label: 'cliente', factor: 1.2, rounding: 'ceil', require_project: false, min_client: '2.4.0' } });
+  const capped = await h.tryRun('prepare', ...lightArgs(h, { seconds: 10 }), '--max-credits', '240');
+  assert.notEqual(capped.code, 0);
+  assert.match(capped.stderr, /El coste \(245 cr\) supera el máximo que autorizaste \(--max-credits 240\)\. No se ha enviado nada\./);
+  assert.deepEqual(h.requests.map((r) => r.pathname), ['/api/wallet/api.php'], 'solo la sesión: ni subida ni cotización');
 });
 
 test('CLI real: si el servidor cotiza otra cifra manda el servidor y la CLI avisa', async (t) => {

@@ -1,7 +1,8 @@
 // Usa exclusivamente los servicios AILAB y la misma lógica comercial de la web.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { servicePost, serviceGet, privateVoiceMultipart, privateVoiceSample, explain } from './http.mjs';
+import { servicePost, serviceGet, privateVoiceMultipart, privateVoiceSample, explain, setRequestProject } from './http.mjs';
+import { priced, frozenFactor, PRICE_CHANGED_TEXT } from './account-pricing.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './manifest.mjs';
 import { stableStringify } from './catalog.mjs';
 import { inspectPricingMetadata, rehashMatches } from './files.mjs';
@@ -28,6 +29,8 @@ function evidenceFile(value) {
   return {path:p,size:s.size,mime:mime||'text/plain',sha256:crypto.createHash('sha256').update(bytes).digest('hex'),param:'evidence'};
 }
 const print=(out,data)=>out(JSON.stringify(data,null,2));
+// Importes fijos de la web en precio de miembro: alta de una voz y reanudación de la conservación.
+const CREATE_CREDITS=100,RESUME_CREDITS=15;
 
 export async function listElevenVoices(opts={},out=console.log) {
   optsOnly(opts,['search','language','accent','tone','use_case','sort','page']);
@@ -40,11 +43,31 @@ export async function listElevenVoices(opts={},out=console.log) {
     hint:'Busca en la biblioteca con voices eleven --language es --search nombre. Usa voice-select para incorporar una voz utilizable.'});
 }
 
-export async function prepareVoice(mode,opts,out=console.log) {
+// Las voces no llevan proyecto: sus cargos van a «Uso general» y el servidor no lee la cabecera.
+export const VOICE_PROJECT_TEXT='Las voces no llevan proyecto: sus cargos van a Uso general. Quita --proyecto; no se ha enviado nada.';
+
+// Precio de reanudar una voz. AILAB lo da por voz en `renewal_credits` (precio de la cuenta con el factor
+// congelado al crearla). Un servidor anterior no lo manda: 15 cr con factor 1,0 y, si no, priced(15) con aviso.
+async function resumePrice(id,factor){
+  const voice=unwrap(await serviceGet(PV,{action:'status',id}));
+  const listed=voice&&typeof voice==='object'?voice.renewal_credits:undefined;
+  if(listed!==undefined&&listed!==null){
+    if(!Number.isSafeInteger(listed)||listed<RESUME_CREDITS)throw new Error('AILAB ha devuelto un precio de reanudación no válido para esta voz. No se ha enviado nada.');
+    return {credits:listed,base:null,source:'voice',warning:null};
+  }
+  const credits=priced(RESUME_CREDITS,factor);
+  return {credits,base:RESUME_CREDITS,source:'account',warning:factor===1?null:'AILAB no indica el precio de esta voz: se usa el de tu cuenta ('+credits+' cr). Si la voz se creó con otro precio, AILAB rechazará la reanudación sin cobrar nada.'};
+}
+
+// `context`: { pricing } del comando. Las cotizaciones del servidor (muestras, conservación y reanudación por voz)
+// ya son el precio de la cuenta; los importes fijos se convierten con priced(). Con factor 1,0 son los de siempre.
+export async function prepareVoice(mode,opts,out=console.log,context={}) {
+  const factor=context.pricing?context.pricing.factor:1;
   const allowed={design:['description','description-file','text','text-file','max-credits'],clone:['name','audio','evidence','rights-confirmed','max-credits'],
     create:['name','sample','request','slot','max-credits'],renew:['id','until','max-credits'],delete:['id'],resume:['id','max-credits']};
   if(!allowed[mode])throw new Error('Modo: design, clone, create, renew, delete o resume.');optsOnly(opts,allowed[mode]);
-  let params={},files=[],credits=0;
+  setRequestProject(null);
+  let params={},files=[],credits=0,base=null,resume=null;
   if(['design','clone','create'].includes(mode)){
     const options=unwrap(await serviceGet(PV,{action:'options'}));
     if(!options.can_create)throw new Error(options.message||'No puedes crear otra voz ahora. Consulta voice-list o Mis voces.');
@@ -58,10 +81,10 @@ export async function prepareVoice(mode,opts,out=console.log) {
   } else if(mode==='clone') {
     if(opts['rights-confirmed']!==true)throw new Error('Necesitas autorización del titular y --rights-confirmed, también para tu propia voz.');
     const audio=inspectPricingMetadata(opts.audio);if(!audio.ok||!['audio/mpeg','audio/wav'].includes(audio.mime)||audio.size>20971520||!(audio.duration>0&&audio.duration<=120))throw new Error('Grabación MP3/WAV de hasta 20 MB y 120 s, con duración legible.');
-    files=[{...audio,param:'audio'},evidenceFile(opts.evidence)];credits=100;
+    files=[{...audio,param:'audio'},evidenceFile(opts.evidence)];base=CREATE_CREDITS;credits=priced(base,factor);
     params={action:'create',mode:'clone',name:textOption(opts,'name',1,80),rights_confirmed:true,creation_confirmed:true,consent_evidence_hash:files[1].sha256};
   } else if(mode==='create') {
-    credits=100;params={action:'create',mode:'design',name:textOption(opts,'name',1,80),sample_id:ref(opts.sample),creation_confirmed:true};
+    base=CREATE_CREDITS;credits=priced(base,factor);params={action:'create',mode:'design',name:textOption(opts,'name',1,80),sample_id:ref(opts.sample),creation_confirmed:true};
     if(opts.request){if(!uuid.test(opts.request))throw new Error('Referencia de muestras no válida.');const d=unwrap(await serviceGet(PV,{action:'design_status',request_id:opts.request}));
       if(d.state!=='ready'||!d.samples.some(s=>s.id===params.sample_id&&s.expires_at>Date.now()/1000))throw new Error('La muestra no está disponible para el alta.');params.slot_id=d.slot_id;
     }else params.slot_id=ref(opts.slot);
@@ -69,16 +92,20 @@ export async function prepareVoice(mode,opts,out=console.log) {
     params={action:'renewal',id:ref(opts.id),enabled:!!opts.until,confirmed:true,price:15};
     if(opts.until){const q=unwrap(await serviceGet(PV,{action:'retention_quote',id:params.id,until:opts.until}));credits=q.credits;
       if(!Number.isSafeInteger(credits)||credits<0)throw new Error('Cotización de conservación no válida.');params.until_date=opts.until;}
-  } else {params={action:mode==='resume'?'resume':'delete',id:ref(opts.id),confirmed:true};credits=mode==='resume'?15:0;}
+  } else if(mode==='resume') {
+    params={action:'resume',id:ref(opts.id),confirmed:true};resume=await resumePrice(params.id,factor);base=resume.base;credits=resume.credits;
+  } else {params={action:'delete',id:ref(opts.id),confirmed:true};base=0;credits=0;}
   ceiling(opts,credits);
   if(['clone','design'].includes(mode)){
     const slot=unwrap(await servicePost(PV+'?action=reserve',{action:'reserve'}));params.slot_id=ref(slot.id);
   }
   params.max_credits_authorized=credits;
-  const m=createManifest({modelId:'private-voice:'+mode,catalogVersion:'private-voices-1',modelContractHash:'private-voices-1',params,files,estimate:{credits,note:'Reglas AILAB de la web'}});
-  markSubmitted(m,{voice_operation:true,client_request_id:m.manifest_id});
+  const m=createManifest({modelId:'private-voice:'+mode,catalogVersion:'private-voices-1',modelContractHash:'private-voices-1',params,files,estimate:{credits,note:'Reglas AILAB de la web'},
+    pricing:{base_credits:base,price_factor:factor,project:null}});
+  markSubmitted(m,{voice_operation:true,client_request_id:m.manifest_id,...(resume?{voice_price:resume.source}:{})});
   print(out,{manifest_id:m.manifest_id,mode,credits,params,files:files.map(f=>({path:f.path,mime:f.mime,size:f.size})),
-    note:mode==='design'?'Lote de hasta tres muestras. Alta de 100 cr aparte.':mode==='delete'?'Borrado permanente. Conserva los audios ya generados.':'Alta: 48 horas incluidas. Conservación solo si la solicitas con fecha y presupuesto.',
+    ...(resume&&resume.warning?{warning:resume.warning}:{}),
+    note:mode==='design'?'Lote de hasta tres muestras. Alta de '+priced(CREATE_CREDITS,factor)+' cr aparte.':mode==='delete'?'Borrado permanente. Conserva los audios ya generados.':'Alta: 48 horas incluidas. Conservación solo si la solicitas con fecha y presupuesto.',
     submit:'voice-submit '+m.manifest_id+' --confirmed'});return m;
 }
 
@@ -93,15 +120,21 @@ export async function voiceStatus(id,out=console.log) {
   print(out,d);return d;
 }
 
-export async function submitVoice(id,opts,out=console.log) {
+export async function submitVoice(id,opts,out=console.log,context={}) {
   optsOnly(opts,['confirmed','max-credits']);
   let m=loadManifest(id);if(!m?.voice_operation)throw new Error('Manifiesto de voces no encontrado.');
+  // Precio congelado en voice-prepare: el factor actual nunca recalcula un plan ya aprobado.
+  const factor=frozenFactor(m);if(factor===null)throw new Error('El plan tiene un precio de cuenta no válido. Vuelve a preparar.');
+  setRequestProject(null);
   if(m.attempted_at){out('Consulta del mismo intento; no se repite el envío.');return voiceStatus(id,out);}
   if(opts.confirmed!==true)throw new Error('Necesitas autorización del usuario y --confirmed.');
   if(manifestExpired(m))throw new Error('Plan caducado. Vuelve a preparar; todavía no se ha enviado.');
   const hash=crypto.createHash('sha256').update(stableStringify(m.params)).digest('hex');
   if(hash!==m.params_hash||m.max_credits_authorized!==m.params.max_credits_authorized)throw new Error('El plan ha cambiado. Vuelve a preparar.');
   ceiling(opts,m.max_credits_authorized);
+  // La reanudación con precio de la voz no depende del factor actual de la cuenta: lo fija la voz.
+  if(m.voice_price!=='voice'&&context.pricing&&context.pricing.factor!==factor)throw new Error(PRICE_CHANGED_TEXT);
+  if(m.base_credits!==undefined&&m.base_credits!==null&&priced(m.base_credits,factor)!==m.max_credits_authorized)throw new Error('El plan ha cambiado. Vuelve a preparar.');
   for(const file of m.files)if(!rehashMatches(file))throw new Error('Archivo cambiado: '+file.path+'. Vuelve a preparar.');
   const body={...m.params,client_request_id:m.client_request_id};
   if(m.params.mode==='clone') {
@@ -117,10 +150,11 @@ export async function submitVoice(id,opts,out=console.log) {
   const d=r.data;markSubmitted(m,{voice_result_id:d.id||null});print(out,d);return d;
 }
 
-export async function runVoiceCommand(cmd,pos,opts,out=console.log) {
+export async function runVoiceCommand(cmd,pos,opts,out=console.log,context={}) {
   if(pos.length>1)throw new Error('Demasiados argumentos.');
-  if(cmd==='voice-prepare')return prepareVoice(pos[0],opts,out);
-  if(cmd==='voice-submit')return submitVoice(pos[0],opts,out);
+  if(context.project)throw new Error(VOICE_PROJECT_TEXT);
+  if(cmd==='voice-prepare')return prepareVoice(pos[0],opts,out,context);
+  if(cmd==='voice-submit')return submitVoice(pos[0],opts,out,context);
   if(cmd==='voice-status'){optsOnly(opts,[]);return voiceStatus(pos[0],out);}
   if(cmd==='voice-list'||cmd==='voice-options'){optsOnly(opts,[]);if(pos.length)throw new Error('Este comando no admite referencias.');return print(out,unwrap(await serviceGet(PV,{action:cmd==='voice-list'?'list':'options'})));}
   if(cmd==='voice-select') {

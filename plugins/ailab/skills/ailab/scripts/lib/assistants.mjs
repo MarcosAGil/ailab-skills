@@ -91,7 +91,7 @@ export async function refreshAssistantsCatalog({ maxAgeMs = 10 * 60 * 1000, requ
     try { cached = readCached(); } catch { cached = null; }
   }
   if (cached && age <= maxAgeMs) return cached;
-  const headers = {};
+  const headers = { 'X-AILAB-Client': 'ailab-cli/' + CLI_VERSION };
   if (cached && meta.etag) headers['If-None-Match'] = meta.etag;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);

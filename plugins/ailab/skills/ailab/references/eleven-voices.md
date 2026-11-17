@@ -1,5 +1,7 @@
 # ElevenLabs: biblioteca y Mis voces
 
+> Cifras: precio de miembro; el de tu cuenta lo da `prepare`.
+
 Esta ampliación requiere el backend compatible y la release firmada 2.3.8.
 El catálogo activo decide su disponibilidad. No evites un rechazo de
 permisos utilizando cookies, el API del proveedor o un identificador privado ajeno.
