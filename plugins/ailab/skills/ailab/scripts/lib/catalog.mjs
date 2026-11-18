@@ -7,6 +7,7 @@ import { CATALOG_PATH, CATALOG_URL, CLI_VERSION, CONFIG_DIR, SERVER_CONTRACT_VER
 import { inspectPricingMetadata } from './files.mjs';
 import { WAN3_ID, wan3Problems } from './wan3.mjs';
 import { KLING4_ID, kling4Problems } from './kling4.mjs';
+import { KLING_IMAGE4_ID, klingImage4Problems } from './kling-image4.mjs';
 import { LITE_ID, liteProblems } from './seedance-lite.mjs';
 import { LIGHT_ID, lightProblems } from './genjutsu-light.mjs';
 import { SEEDANCE_IDS, seedanceProblems } from './seedance.mjs';
@@ -401,6 +402,11 @@ export function validateParams(model, given) {
     // en Fotogramas clave (el servidor los rechaza) y se retiran para que el manifiesto sea estable.
     errors.push(...kling4Problems(params, fileParams, given));
     if (params.mode === 'keyframe') { delete params.aspect_ratio; delete params.keep_original_sound; }
+  }
+  if (model.id === KLING_IMAGE4_ID) {
+    // Kling Image 4.0: número de imágenes por salida, referencias y personajes (JPG o PNG de hasta 20 MB) y
+    // menciones, con las reglas del servidor. Sin --count, el servidor pide 1 suelta o 2 en serie.
+    errors.push(...klingImage4Problems(params, fileParams));
   }
   if (DRAFT_MODEL_IDS.includes(model.id)) {
     // Modo draft: `--draft false` equivale a no pedirlo, porque el servidor solo admite `draft: true`. Sin --resolution, 480p.

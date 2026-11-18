@@ -60,7 +60,7 @@ const run = (given) => validateParams(model, given);
 test('el contrato publicado exige la skill 2.3.12, no añade campos privados y arranca sin semilla', () => {
   assert.equal(model.min_cli_version, '2.3.12');
   assert.equal(catalog.min_cli_version, '2.5.0', 'el catálogo sin tarifas solo lo lee la 2.5.0');
-  assert.equal(catalog.catalog_version, '1.32.0');
+  assert.equal(catalog.catalog_version, '1.33.0');
   assert.equal(model.params.seed.default, undefined);
   assert.equal(model.params.nsfw_checker, undefined);
   assert.deepEqual(model.params.duration, {type: 'int', min: 2, max: 30, default: 5, help: model.params.duration.help});

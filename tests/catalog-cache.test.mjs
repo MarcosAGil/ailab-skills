@@ -80,7 +80,7 @@ test('una release nueva no queda oculta por un catálogo cacheado anterior', (t)
   });
   assert.ifError(loaded.error);
   assert.equal(loaded.status, 0, loaded.stderr);
-  assert.equal(loaded.stdout, '1.32.0:77');
+  assert.equal(loaded.stdout, '1.33.0:78');
 });
 
 test('refreshCatalog usa v3 y reemplaza una caché anterior con su ETag', t => {
@@ -92,25 +92,25 @@ test('refreshCatalog usa v3 y reemplaza una caché anterior con su ETag', t => {
       assert.equal(url, v3URL);
       assert.equal(options.headers['If-None-Match'], '"catalog-1.18.0"');
       assert.equal(options.cache, 'no-store');
-      return Response.json(current, { headers: { etag: '"catalog-1.32.0"' } });
+      return Response.json(current, { headers: { etag: '"catalog-1.33.0"' } });
     };
     const refreshed = await refreshCatalog({ maxAgeMs: 600000, requireNetwork: true });
     assert.equal(requests, 1);
-    assert.equal(refreshed.catalog_version, '1.32.0');
-    assert.equal(Object.keys(refreshed.models).length, 77);
+    assert.equal(refreshed.catalog_version, '1.33.0');
+    assert.equal(Object.keys(refreshed.models).length, 78);
     assert.deepEqual(catalogCompatible(refreshed), { ok: true });
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3.json'), 'utf8')), current);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3-meta.json'), 'utf8')).etag, '"catalog-1.32.0"');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3-meta.json'), 'utf8')).etag, '"catalog-1.33.0"');
   `);
 });
 
-test('una caché legacy reciente no oculta el catálogo 1.32.0 incluido en 2.3.7', t => {
+test('una caché legacy reciente no oculta el catálogo 1.33.0 incluido en 2.3.7', t => {
   const config = cachedCatalog(t, legacy, new Date().toISOString());
   runCatalog(config, `
     globalThis.fetch = async () => { throw new Error('Una caché reciente no necesita red'); };
     const refreshed = await refreshCatalog({ maxAgeMs: 3600000, requireNetwork: true });
-    assert.equal(refreshed.catalog_version, '1.32.0');
-    assert.equal(Object.keys(refreshed.models).length, 77);
+    assert.equal(refreshed.catalog_version, '1.33.0');
+    assert.equal(Object.keys(refreshed.models).length, 78);
     assert.deepEqual(catalogCompatible(refreshed), { ok: true });
   `);
 });
@@ -120,12 +120,12 @@ test('un 304 de v3 mantiene el catálogo validado y actualiza la fecha de caché
   runCatalog(config, `
     globalThis.fetch = async (url, options) => {
       assert.equal(url, v3URL);
-      assert.equal(options.headers['If-None-Match'], '"catalog-1.32.0"');
+      assert.equal(options.headers['If-None-Match'], '"catalog-1.33.0"');
       return new Response(null, { status: 304 });
     };
     assert.deepEqual(await refreshCatalog({ maxAgeMs: 0, requireNetwork: true }), current);
     const meta = JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3-meta.json'), 'utf8'));
-    assert.equal(meta.etag, '"catalog-1.32.0"');
+    assert.equal(meta.etag, '"catalog-1.33.0"');
     assert.ok(Date.parse(meta.fetched_at) > Date.parse('2000-01-01T00:00:00Z'));
   `);
 });
@@ -154,13 +154,13 @@ test('la caché v2 de un runtime anterior (con tarifas) no se lee, no aporta su 
   const config = cachedCatalog(t, priced, new Date().toISOString(), { file: 'catalog.json', meta: 'catalog-meta.json' });
   runCatalog(config, `
     const before = fs.readFileSync(path.join(config, 'catalog.json'), 'utf8');
-    assert.equal(loadCatalog().catalog_version, '1.32.0');
+    assert.equal(loadCatalog().catalog_version, '1.33.0');
     let requests = 0;
     globalThis.fetch = async (url, options) => {
       requests++;
       assert.equal(url, v3URL);
       assert.equal(options.headers['If-None-Match'], undefined);
-      return Response.json(current, { headers: { etag: '"catalog-1.32.0"' } });
+      return Response.json(current, { headers: { etag: '"catalog-1.33.0"' } });
     };
     assert.deepEqual(await refreshCatalog({ maxAgeMs: 3600000, requireNetwork: true }), current);
     assert.equal(requests, 1);
@@ -173,7 +173,7 @@ test('un catálogo servido sin ningún dato de precio se acepta, y un bloque est
   runCatalog(config, `
     const served = structuredClone(current);
     served.models['nano-banana-2'].estimate = { kind: 'by_param', param: 'resolution', credits_by_value: { '1K': 5 } };
-    globalThis.fetch = async () => Response.json(served, { headers: { etag: '"catalog-1.32.0"' } });
+    globalThis.fetch = async () => Response.json(served, { headers: { etag: '"catalog-1.33.0"' } });
     const refreshed = await refreshCatalog({ maxAgeMs: 0, requireNetwork: true });
     for (const model of Object.values(refreshed.models)) assert.equal('estimate' in model, false);
     const cached = JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3.json'), 'utf8'));
@@ -205,7 +205,7 @@ test('el runtime publicado 2.3.5 y el nuevo conviven: cada uno con su caché', t
     let requests = 0;
     globalThis.fetch = async url => {
       requests++;
-      if (url === 'https://catalog.invalid/ailab/api/v1/skill/catalog-v3.json') return Response.json(current, { headers: { etag: '"catalog-1.32.0"' } });
+      if (url === 'https://catalog.invalid/ailab/api/v1/skill/catalog-v3.json') return Response.json(current, { headers: { etag: '"catalog-1.33.0"' } });
       assert.equal(url, 'https://catalog.invalid/ailab/api/v1/skill/catalog.json');
       return Response.json(published, { headers: { etag: '"catalog-1.18.0"' } });
     };

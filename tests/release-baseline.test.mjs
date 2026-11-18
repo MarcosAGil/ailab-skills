@@ -42,9 +42,9 @@ test('la 2.5.0 conserva cada contrato de la 2.4.0: solo desaparecen `estimate`, 
     }
     assert.equal(sha(restored), expected, 'El contrato de ' + id + ' solo puede perder su precio');
   }
-  // Los modelos nuevos de esta misma release (Kling Image 4.0) se añaden aquí al entrar.
-  assert.deepEqual(Object.keys(catalog.models).filter((id) => !baseline.model_sha256[id]).sort(), []);
-  assert.equal(catalog.catalog_version, '1.32.0');
+  // Modelos nuevos de esta release: Kling Image 4.0 (su contrato lo cubre tests/kling-image-4-0.test.mjs).
+  assert.deepEqual(Object.keys(catalog.models).filter((id) => !baseline.model_sha256[id]).sort(), ['kling-image-4-0']);
+  assert.equal(catalog.catalog_version, '1.33.0');
   // Igual que catalog-v3.json del servidor: solo la 2.5.0 lee un catálogo sin `estimate`.
   assert.equal(catalog.min_cli_version, '2.5.0');
   assert.equal(INTERMEDIARY.test(JSON.stringify(catalog)), false, 'el catálogo no nombra plataformas intermedias');

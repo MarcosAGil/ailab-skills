@@ -1,7 +1,394 @@
 {
-  "catalog_version": "1.32.0",
+  "catalog_version": "1.33.0",
   "min_cli_version": "2.5.0",
   "models": {
+    "kling-image-4-0": {
+      "id": "kling-image-4-0",
+      "label": "Kling Image 4.0",
+      "description": "Imágenes de 2K a 8K con texto legible, sueltas (hasta 9) o en series coherentes (hasta 10). Hasta 10 referencias o personajes con varias vistas. 8K sale en JPG.",
+      "section": "image",
+      "vendor": "Kuaishou",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.5.0",
+      "aliases": [
+        "kling image 4",
+        "kling image 4.0",
+        "kling imagen 4",
+        "kling 4 image"
+      ],
+      "modes": [
+        "t2i",
+        "i2i"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i"
+          ],
+          "default": "t2i",
+          "help": "t2i: solo texto. i2i: con referencias (--image_urls) o personajes (--subject_N_*); necesita al menos uno."
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000,
+          "help": "Hasta 20.000 caracteres. Menciona las referencias por su orden con @image_1, @image_2... y cada personaje con @nombre. Un @ sin material correspondiente se rechaza."
+        },
+        "output_mode": {
+          "type": "enum",
+          "values": [
+            "default",
+            "series"
+          ],
+          "default": "default",
+          "help": "default: imágenes sueltas e independientes (de 1 a 9). series: una serie coherente del mismo personaje, estilo y mundo (de 2 a 10)."
+        },
+        "count": {
+          "type": "int",
+          "min": 1,
+          "max": 10,
+          "help": "Número de imágenes: de 1 a 9 sueltas o de 2 a 10 en serie. Sin --count, 1 suelta o 2 en serie. Cada imagen se cobra por separado."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "2K",
+            "4K",
+            "8K"
+          ],
+          "default": "2K",
+          "help": "8K sale en JPG, tarda más y cada archivo pesa mucho: para revisar ideas, empieza en 2K."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "9:16",
+            "2:3",
+            "3:4",
+            "1:1",
+            "4:3",
+            "3:2",
+            "16:9",
+            "21:9"
+          ],
+          "default": "auto"
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 10,
+          "help": "Solo i2i. Hasta 10 imágenes JPG o PNG de hasta 20 MB (convierte las WebP a PNG). Referencias y personajes suman como máximo 10. Se mencionan @image_1, @image_2..."
+        },
+        "subject_1_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Solo i2i. Personaje, objeto o escenario (hasta 10, ranuras subject_1 a subject_10): nombre de 1 a 20 letras sin tildes, números o guion bajo, sin image_N ni object_N. Se menciona @nombre. Exige --subject_1_images."
+        },
+        "subject_1_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "De 2 a 4 imágenes del personaje (JPG o PNG de hasta 20 MB), mejor desde ángulos distintos; la primera es la vista principal. Cada vista se cobra como una referencia."
+        },
+        "subject_1_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje."
+        },
+        "subject_1_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje, hasta 100 caracteres."
+        },
+        "subject_2_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 2: igual que el personaje 1."
+        },
+        "subject_2_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 2."
+        },
+        "subject_2_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 2."
+        },
+        "subject_2_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 2."
+        },
+        "subject_3_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 3: igual que el personaje 1."
+        },
+        "subject_3_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 3."
+        },
+        "subject_3_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 3."
+        },
+        "subject_3_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 3."
+        },
+        "subject_4_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 4: igual que el personaje 1."
+        },
+        "subject_4_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 4."
+        },
+        "subject_4_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 4."
+        },
+        "subject_4_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 4."
+        },
+        "subject_5_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 5: igual que el personaje 1."
+        },
+        "subject_5_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 5."
+        },
+        "subject_5_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 5."
+        },
+        "subject_5_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 5."
+        },
+        "subject_6_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 6: igual que el personaje 1."
+        },
+        "subject_6_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 6."
+        },
+        "subject_6_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 6."
+        },
+        "subject_6_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 6."
+        },
+        "subject_7_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 7: igual que el personaje 1."
+        },
+        "subject_7_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 7."
+        },
+        "subject_7_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 7."
+        },
+        "subject_7_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 7."
+        },
+        "subject_8_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 8: igual que el personaje 1."
+        },
+        "subject_8_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 8."
+        },
+        "subject_8_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 8."
+        },
+        "subject_8_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 8."
+        },
+        "subject_9_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 9: igual que el personaje 1."
+        },
+        "subject_9_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 9."
+        },
+        "subject_9_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 9."
+        },
+        "subject_9_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 9."
+        },
+        "subject_10_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 10: igual que el personaje 1."
+        },
+        "subject_10_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 10."
+        },
+        "subject_10_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 10."
+        },
+        "subject_10_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 10."
+        }
+      }
+    },
     "krea-3": {
       "id": "krea-3",
       "label": "Krea 3",
