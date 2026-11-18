@@ -341,3 +341,102 @@ test('límite mensual y cuenta en pausa: la CLI explica el motivo sin gastar', p
   assert.equal(b.seen.kie.length, 0);
   assertQuiet(b, assertNeutral, temp, doctor, over, paused);
 });
+
+// `flow open` de la 2.5.0 contra un falso endpoint de flujos (contrato «precio-opaco-historial-2026-11-18», secciones 7
+// y 10): proyecto y título en video_open, opciones desconocidas rechazadas y el `code` del servidor en `--json`.
+async function fakeFlows(t, reply) {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-flujos-open-'));
+  fs.mkdirSync(path.join(temp, 'credentials'), { recursive: true });
+  fs.writeFileSync(path.join(temp, 'credentials', 'token'), 'ailp_' + 'K'.repeat(48) + '\n', { mode: 0o600 });
+  const bodies = [];
+  const server = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+    bodies.push({ path: new URL(req.url, 'http://x').pathname, body });
+    const [status, payload] = reply(body);
+    res.writeHead(status, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(payload));
+  });
+  t.after(async () => { server.closeAllConnections(); await new Promise((resolve) => server.close(resolve)); fs.rmSync(temp, { recursive: true, force: true }); });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return { env: cliEnv(temp, `http://127.0.0.1:${server.address().port}/`), bodies };
+}
+
+test('flow open: --proyecto y --titulo viajan en video_open y --json devuelve la respuesta con el proyecto', async (t) => {
+  const opened = { ok: true, code: 'NOV26-07', case: 'servicio-empresas', status: 'abierto', opened_at: '2026-11-18 10:30', references: 3, project: '06_super-cremita', project_key: '06_super-cremita', title: 'Super cremita', provider: 'no-sale' };
+  const f = await fakeFlows(t, () => [200, opened]);
+  const text = await cli(f.env, ['flow', 'open', '--case', 'servicio-empresas', '--proyecto', '06_super-cremita', '--titulo', '  Super   cremita ']);
+  assert.equal(text.status, 0, text.stderr);
+  assert.match(text.stdout, /Vídeo abierto: NOV26-07 · caso servicio-empresas · proyecto 06_super-cremita/);
+  assert.match(text.stdout, /Título: Super cremita/);
+  const sent = f.bodies.at(-1);
+  assert.equal(sent.path, '/api/v1/flows/index.php');
+  assert.equal(sent.body.action, 'video_open');
+  assert.equal(sent.body.case, 'servicio-empresas');
+  assert.equal(sent.body.project, '06_super-cremita');
+  assert.equal(sent.body.title, 'Super cremita');
+  assert.match(sent.body.client_request_id, /^[0-9a-f-]{36}$/);
+  const json = await cli(f.env, ['flow', 'open', '--case', 'servicio-empresas', '--proyecto', '06_super-cremita', '--json']);
+  const view = lastJson(json.stdout);
+  assert.equal(view.ok, true);
+  assert.equal(view.code, 'NOV26-07');
+  assert.equal(view.project, '06_super-cremita');
+  assert.equal(view.project_key, '06_super-cremita');
+  assert.equal(view.title, 'Super cremita');
+  assert.equal(view.references, 3);
+  assert.equal(view.provider, undefined, 'solo campos de la lista cerrada');
+  assert.equal(f.bodies.at(-1).body.title, undefined, 'sin --titulo no se manda título');
+  // Sin proyecto el cuerpo es el de la 2.4.0.
+  await cli(f.env, ['flow', 'open', '--case', 'servicio-empresas']);
+  assert.deepEqual(Object.keys(f.bodies.at(-1).body).sort(), ['action', 'case', 'client_request_id']);
+});
+
+test('flow open: opciones desconocidas, proyecto o título no válidos se rechazan en local sin abrir nada', async (t) => {
+  const f = await fakeFlows(t, () => [200, { ok: true, code: 'NOV26-07', case: 'x' }]);
+  const unknown = await cli(f.env, ['flow', 'open', '--case', 'servicio-empresas', '--project', '06']);
+  assert.notEqual(unknown.status, 0);
+  assert.match(unknown.stderr, /Opción no válida en flow open: --project\. Admite --case, --proyecto, --titulo, --request-id y --json\. No se ha abierto nada\./);
+  const unknownJson = lastJson((await cli(f.env, ['flow', 'open', '--case', 'servicio-empresas', '--foo', 'x', '--json'])).stdout);
+  assert.equal(unknownJson.ok, false);
+  assert.equal(unknownJson.code, 'unknown_option');
+  for (const [args, expected] of [
+    [['--proyecto', 'sin_proyecto'], /es el uso general, no un proyecto/],
+    [['--proyecto', 'super cremita'], /--proyecto admite de 1 a 64 caracteres/],
+    [['--proyecto'], /--proyecto necesita un identificador/],
+    [['--titulo', 'x'.repeat(121)], /--titulo admite de 1 a 120 caracteres/],
+    [['--titulo', '   '], /--titulo admite de 1 a 120 caracteres/],
+  ]) {
+    const rejected = await cli(f.env, ['flow', 'open', '--case', 'servicio-empresas', ...args]);
+    assert.notEqual(rejected.status, 0, args.join(' '));
+    assert.match(rejected.stderr, expected);
+  }
+  assert.equal(f.bodies.length, 0, 'ningún rechazo local llega al servidor');
+  assert.equal((await cli(f.env, ['flow', 'open', '--case', 'servicio-empresas', '--titulo', 'x'.repeat(120)])).status, 0);
+});
+
+test('flow --json: un rechazo del servidor lleva su `code` junto a `error`', async (t) => {
+  let next = null;
+  const f = await fakeFlows(t, () => next);
+  for (const [status, payload, code] of [
+    [409, { ok: false, code: 'project_required', error: 'Esta cuenta exige proyecto en cada vídeo. No se ha creado nada.' }, 'project_required'],
+    [400, { ok: false, code: 'invalid_project', error: 'Proyecto no válido.' }, 'invalid_project'],
+    [400, { ok: false, code: 'invalid_title', error: 'Título no válido.' }, 'invalid_title'],
+    [409, { ok: false, code: 'conflict', error: 'Esa petición ya abrió un vídeo de otro proyecto.' }, 'conflict'],
+    [426, { ok: false, error: 'Actualiza AILAB.' }, 'client_update_required'],
+  ]) {
+    next = [status, payload];
+    const out = lastJson((await cli(f.env, ['flow', 'open', '--case', 'servicio-empresas', '--proyecto', '06', '--json'])).stdout);
+    assert.equal(out.ok, false);
+    assert.equal(out.code, code, JSON.stringify(out));
+    assert.ok(out.error, JSON.stringify(out));
+    assert.match(out.request_id, /^[0-9a-f-]{36}$/);
+  }
+  next = [409, { ok: false, code: 'project_required', error: 'Esta cuenta exige proyecto.' }];
+  const status = lastJson((await cli(f.env, ['flow', 'status', '--json'])).stdout);
+  assert.deepEqual({ ok: status.ok, code: status.code }, { ok: false, code: 'project_required' });
+  next = [400, { ok: false, error: 'Sin código.' }];
+  const plain = lastJson((await cli(f.env, ['flow', 'close', '--code', 'NOV26-07', '--final-seconds', '20', '--used', '1:1', '--json'])).stdout);
+  assert.equal(plain.code, undefined, 'sin código del servidor no se inventa ninguno');
+  assert.equal(plain.error, 'Sin código.');
+});

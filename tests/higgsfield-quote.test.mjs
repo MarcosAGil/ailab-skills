@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { validateCatalogShape, validateParams, estimateCredits, requiresServerQuote, resolveModel } from '../skills/ailab/scripts/lib/catalog.mjs';
+import { validateCatalogShape, validateParams, resolveModel } from '../skills/ailab/scripts/lib/catalog.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(path.join(ROOT, 'skills', 'ailab', 'catalog', 'catalog.json'), 'utf8')));
@@ -21,8 +21,8 @@ test('SOUL 2 y Genjutsu están en el catálogo con el driver de Higgsfield', () 
   assert.equal(soul.params.batch_size.default, '1');
   assert.deepEqual(soul.params.aspect_ratio.values, ['9:16', '16:9', '4:3', '3:4', '1:1', '2:3', '3:2']);
   assert.equal(soul.params.style_id.type, 'string');
-  assert.equal(soul.estimate.kind, 'higgsfield_quote');
-  assert.equal(requiresServerQuote(soul), true);
+  // Sin tarifa local: el precio y el techo los da AILAB (price.php) y la cotización la hace el servidor.
+  assert.equal(soul.estimate, undefined);
 
   const genjutsu = catalog.models['genjutsu'];
   assert.equal(genjutsu.driver, 'higgsfield-v1');
@@ -42,13 +42,31 @@ test('SOUL 2 y Genjutsu están en el catálogo con el driver de Higgsfield', () 
   assert.deepEqual(resolveModel(catalog, 'motion transfer').id, 'genjutsu');
 });
 
-test('higgsfield_quote no inventa un precio local: exige cotización del servidor', () => {
-  for (const id of ['soul-2', 'genjutsu']) {
-    const est = estimateCredits(catalog.models[id], { prompt: 'x' });
-    assert.equal(est.credits, null);
-    assert.equal(est.server_quote, true);
-  }
-  assert.equal(estimateCredits(catalog.models['flux-2-pro'], { prompt: 'x', resolution: '1K' }).server_quote, undefined);
+test('sin techo de AILAB ni --max-credits no se cotiza: rechazo local sin llamar al servidor', async () => {
+  const model = { ...catalog.models['soul-2'], id: 'soul-2' };
+  const payload = adapter.buildPayload(model, { prompt: 'retrato' }, {});
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  const bodies = [];
+  globalThis.fetch = async (url, init = {}) => {
+    calls += 1;
+    bodies.push(JSON.parse(String(init.body || '{}')));
+    return Response.json({ code: 200, data: { quote_id: 'q3', credits: 40, max_credits_authorized: 500, hard_cap_credits: 900, expires_at: new Date(Date.now() + 60000).toISOString() } });
+  };
+  try {
+    for (const intent of [{}, { client_request_id: 'r1' }, { client_request_id: 'r1', max_credits_authorized: 0 }]) {
+      const result = await adapter.quote(model, payload, intent);
+      assert.equal(result.ok, false);
+      assert.equal(result.normalized.kind, 'local_quote');
+    }
+    assert.equal(calls, 0);
+    // Con techo, la cotización nunca lo supera: ni el máximo ni el tope del servidor.
+    const quoted = await adapter.quote(model, payload, { client_request_id: 'r1', max_credits_authorized: 300 });
+    assert.equal(quoted.ok, true);
+    assert.equal(bodies[0].max_credits_authorized, 300);
+    assert.equal(quoted.quote.max_credits_authorized, 300);
+    assert.equal(quoted.quote.hard_cap_credits, 300);
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test('Genjutsu valida el mínimo y el máximo de referencias', () => {

@@ -1,8 +1,18 @@
+// Falso servidor AILAB para la CLI de asistentes. Desde la 2.5.0 sirve `assistants-v3.json` sin importes y los precios
+// salen de `price.php` (acción `assistants`). POST /__price_down los apaga para probar el rechazo sin precio.
 import http from 'node:http';
 import fs from 'node:fs';
+import { handlePrice } from '../helpers/price-server.mjs';
 
 const logFile = process.env.AILAB_MOCK_LOG;
+const priceLog = process.env.AILAB_MOCK_PRICE_LOG;
 let assistantCalls = 0;
+const priceState = {
+  assistantPrices: {
+    assistants: { free: { estimated_credits: 3, max_authorized_credits: 24 }, 'image-prompter': { estimated_credits: 13, max_authorized_credits: 58 } },
+    billing: { max_authorized_credits: 160 },
+  },
+};
 
 function json(response, status, body) {
   const encoded = JSON.stringify(body);
@@ -14,14 +24,14 @@ function json(response, status, body) {
 }
 
 const catalog = {
-  schema_version: 2,
-  catalog_version: '2.0.0',
-  min_cli_version: '2.2.0',
-  billing: { type: 'actual_usage', max_authorized_credits: 160 },
+  schema_version: 3,
+  catalog_version: '3.0.0',
+  min_cli_version: '2.5.0',
+  billing: { type: 'actual_usage' },
   default_model: 'gemini-3-5-flash-lite-priority',
   assistants: {
-    free: { label: 'Libre', description: 'Sin contexto.', prompt_version: 'none', prompt_sha256: null, estimated_credits: 3, max_authorized_credits: 24 },
-    'image-prompter': { label: 'Image Prompter', description: 'Imagen.', prompt_version: 'test', prompt_sha256: 'a'.repeat(64), estimated_credits: 11, max_authorized_credits: 48 },
+    free: { label: 'Libre', description: 'Sin contexto.', prompt_version: 'none', prompt_sha256: null },
+    'image-prompter': { label: 'Image Prompter', description: 'Imagen.', prompt_version: 'test', prompt_sha256: 'a'.repeat(64) },
   },
   models: {
     'gemini-3-5-flash-lite-priority': {
@@ -32,7 +42,7 @@ const catalog = {
 };
 
 const server = http.createServer((request, response) => {
-  if (request.method === 'GET' && request.url === '/api/v1/skill/assistants.json') {
+  if (request.method === 'GET' && request.url === '/api/v1/skill/assistants-v3.json') {
     json(response, 200, catalog);
     return;
   }
@@ -40,6 +50,13 @@ const server = http.createServer((request, response) => {
   request.setEncoding('utf8');
   request.on('data', (chunk) => { raw += chunk; });
   request.on('end', () => {
+    if (request.url === '/__price_down') { priceState.priceDown = true; json(response, 200, { ok: true }); return; }
+    if (request.url === '/api/v1/skill/price.php') {
+      const body = JSON.parse(raw || '{}');
+      if (priceLog) fs.appendFileSync(priceLog, JSON.stringify(body) + '\n');
+      handlePrice(priceState, request.url, body, response);
+      return;
+    }
     if (request.url === '/api/wallet/api.php') {
       json(response, 200, { ok: true, user: { email: 'skill@test.local', tier: 'hub' }, balance: 1000 });
       return;

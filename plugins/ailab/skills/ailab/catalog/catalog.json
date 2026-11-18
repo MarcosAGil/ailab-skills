@@ -1,13 +1,400 @@
 {
-  "catalog_version": "1.32.0",
-  "min_cli_version": "2.3.7",
+  "catalog_version": "1.33.0",
+  "min_cli_version": "2.5.0",
   "models": {
+    "kling-image-4-0": {
+      "id": "kling-image-4-0",
+      "label": "Kling Image 4.0",
+      "description": "Imágenes de 2K a 8K con texto legible, sueltas (hasta 9) o en series coherentes (hasta 10). Hasta 10 referencias o personajes con varias vistas. 8K sale en JPG.",
+      "section": "image",
+      "vendor": "Kuaishou",
+      "tier": "hub",
+      "output": "image",
+      "status": "active",
+      "enabled": true,
+      "expensive": false,
+      "driver": "jobs-v1",
+      "min_cli_version": "2.5.0",
+      "aliases": [
+        "kling image 4",
+        "kling image 4.0",
+        "kling imagen 4",
+        "kling 4 image"
+      ],
+      "modes": [
+        "t2i",
+        "i2i"
+      ],
+      "params": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "t2i",
+            "i2i"
+          ],
+          "default": "t2i",
+          "help": "t2i: solo texto. i2i: con referencias (--image_urls) o personajes (--subject_N_*); necesita al menos uno."
+        },
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "max_len": 20000,
+          "help": "Hasta 20.000 caracteres. Menciona las referencias por su orden con @image_1, @image_2... y cada personaje con @nombre. Un @ sin material correspondiente se rechaza."
+        },
+        "output_mode": {
+          "type": "enum",
+          "values": [
+            "default",
+            "series"
+          ],
+          "default": "default",
+          "help": "default: imágenes sueltas e independientes (de 1 a 9). series: una serie coherente del mismo personaje, estilo y mundo (de 2 a 10)."
+        },
+        "count": {
+          "type": "int",
+          "min": 1,
+          "max": 10,
+          "help": "Número de imágenes: de 1 a 9 sueltas o de 2 a 10 en serie. Sin --count, 1 suelta o 2 en serie. Cada imagen se cobra por separado."
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "2K",
+            "4K",
+            "8K"
+          ],
+          "default": "2K",
+          "help": "8K sale en JPG, tarda más y cada archivo pesa mucho: para revisar ideas, empieza en 2K."
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "9:16",
+            "2:3",
+            "3:4",
+            "1:1",
+            "4:3",
+            "3:2",
+            "16:9",
+            "21:9"
+          ],
+          "default": "auto"
+        },
+        "image_urls": {
+          "type": "file[]",
+          "accept": "image",
+          "max": 10,
+          "help": "Solo i2i. Hasta 10 imágenes JPG o PNG de hasta 20 MB (convierte las WebP a PNG). Referencias y personajes suman como máximo 10. Se mencionan @image_1, @image_2..."
+        },
+        "subject_1_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Solo i2i. Personaje, objeto o escenario (hasta 10, ranuras subject_1 a subject_10): nombre de 1 a 20 letras sin tildes, números o guion bajo, sin image_N ni object_N. Se menciona @nombre. Exige --subject_1_images."
+        },
+        "subject_1_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "De 2 a 4 imágenes del personaje (JPG o PNG de hasta 20 MB), mejor desde ángulos distintos; la primera es la vista principal. Cada vista se cobra como una referencia."
+        },
+        "subject_1_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje."
+        },
+        "subject_1_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje, hasta 100 caracteres."
+        },
+        "subject_2_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 2: igual que el personaje 1."
+        },
+        "subject_2_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 2."
+        },
+        "subject_2_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 2."
+        },
+        "subject_2_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 2."
+        },
+        "subject_3_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 3: igual que el personaje 1."
+        },
+        "subject_3_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 3."
+        },
+        "subject_3_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 3."
+        },
+        "subject_3_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 3."
+        },
+        "subject_4_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 4: igual que el personaje 1."
+        },
+        "subject_4_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 4."
+        },
+        "subject_4_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 4."
+        },
+        "subject_4_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 4."
+        },
+        "subject_5_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 5: igual que el personaje 1."
+        },
+        "subject_5_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 5."
+        },
+        "subject_5_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 5."
+        },
+        "subject_5_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 5."
+        },
+        "subject_6_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 6: igual que el personaje 1."
+        },
+        "subject_6_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 6."
+        },
+        "subject_6_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 6."
+        },
+        "subject_6_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 6."
+        },
+        "subject_7_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 7: igual que el personaje 1."
+        },
+        "subject_7_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 7."
+        },
+        "subject_7_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 7."
+        },
+        "subject_7_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 7."
+        },
+        "subject_8_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 8: igual que el personaje 1."
+        },
+        "subject_8_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 8."
+        },
+        "subject_8_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 8."
+        },
+        "subject_8_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 8."
+        },
+        "subject_9_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 9: igual que el personaje 1."
+        },
+        "subject_9_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 9."
+        },
+        "subject_9_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 9."
+        },
+        "subject_9_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 9."
+        },
+        "subject_10_name": {
+          "type": "string",
+          "max_len": 20,
+          "help": "Personaje 10: igual que el personaje 1."
+        },
+        "subject_10_images": {
+          "type": "file[]",
+          "accept": "image",
+          "min": 2,
+          "max": 4,
+          "help": "Imágenes del personaje 10."
+        },
+        "subject_10_tag": {
+          "type": "enum",
+          "values": [
+            "character",
+            "animal",
+            "prop",
+            "costume",
+            "scene",
+            "effect",
+            "others"
+          ],
+          "help": "Categoría opcional del personaje 10."
+        },
+        "subject_10_description": {
+          "type": "string",
+          "max_len": 100,
+          "help": "Descripción opcional del personaje 10."
+        }
+      }
+    },
     "krea-3": {
       "id": "krea-3",
       "label": "Krea 3",
       "description": "Genera y edita imágenes con Berry (calidad) o Jam (velocidad), referencias ordenadas y razonamiento configurable.",
       "section": "image",
-      "vendor": "Krea · fal",
+      "vendor": "Krea",
       "tier": "hub",
       "output": "image",
       "status": "active",
@@ -121,13 +508,6 @@
           ],
           "default": "png"
         }
-      },
-      "estimate": {
-        "kind": "unit_credits",
-        "credits_per_unit": 5.1,
-        "max_credits": 211,
-        "approximate": true,
-        "note": "Por megapíxeles de salida y referencias procesadas. Alto añade el equivalente a 5 MP. Cotización del servidor antes de enviar; máximo visible y liquidación única."
       }
     },
     "nano-banana-2-1": {
@@ -205,17 +585,6 @@
           },
           "help": "Edición: de 1 a 14 referencias JPG, PNG o WebP, hasta 30 MB cada una. El orden se conserva."
         }
-      },
-      "estimate": {
-        "kind": "param_table",
-        "by_param": "resolution",
-        "credits_by_value": {
-          "1K": 5,
-          "2K": 7,
-          "4K": 10
-        },
-        "approximate": true,
-        "note": "Por generación según resolución, con o sin referencias. Incluye el servicio de AILAB y el redondeo al crédito superior. Liquidación según consumo confirmado."
       }
     },
     "gpt-image-2-5": {
@@ -301,17 +670,6 @@
           ],
           "default": "1K"
         }
-      },
-      "estimate": {
-        "kind": "param_table",
-        "by_param": "resolution",
-        "credits_by_value": {
-          "1K": 7,
-          "2K": 11,
-          "4K": 17
-        },
-        "approximate": true,
-        "note": "Tarifa provisional comprobada el 09/09/2026: igual para Flare y Sunburst, con o sin referencias. Se liquida según el consumo real al terminar."
       }
     },
     "gpt-image-2-6": {
@@ -438,48 +796,6 @@
           "step": 10,
           "help": "Solo con GIF: milisegundos por fotograma, de 20 a 2.000 en múltiplos de 10. Vacío: automático."
         }
-      },
-      "estimate": {
-        "kind": "per_second_matrix",
-        "row_param": "version",
-        "column_param": "resolution",
-        "auto_duration_param": "prompt",
-        "auto_duration_seconds": 1,
-        "credits_matrix": {
-          "flare": {
-            "1K": 22.65,
-            "2K": 22.65,
-            "4K": 33.87
-          },
-          "sunburst": {
-            "1K": 22.65,
-            "2K": 22.65,
-            "4K": 33.87
-          },
-          "economy": {
-            "1K": 6
-          }
-        },
-        "video_param": "image_urls",
-        "credits_with_video_matrix": {
-          "flare": {
-            "1K": 14.49,
-            "2K": 22.65,
-            "4K": 33.87
-          },
-          "sunburst": {
-            "1K": 14.49,
-            "2K": 22.65,
-            "4K": 33.87
-          },
-          "economy": {
-            "1K": 3.44
-          }
-        },
-        "files_param": "image_urls",
-        "credits_per_file": 2.55,
-        "approximate": true,
-        "note": "Reserva máxima por imagen. La regla reutiliza la fórmula por segundo con una sola unidad por imagen: no hay cobro por segundo. Cubre el GIF animado y prompts de hasta 20.000 caracteres; cada referencia suma 2,55 cr. Flare y Sunburst facturan por tokens: el servidor reserva según el prompt real y al terminar cobra el consumo real de Kie más el 2 % (medido el 05/11/2026 a 1:1: 1K 8 cr, 2K 17, 4K 27, GIF 17 y unos 3 más por referencia), nunca por encima de lo autorizado. Economy cobra 6 cr fijos."
       }
     },
     "avatar-photo-video": {
@@ -490,20 +806,6 @@
       "description": "Anima una foto con un guion y voz o con un audio propio.",
       "driver": "heygen-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits_per_unit": 11,
-        "kind": "unit_credits",
-        "minimum_credits": 31,
-        "note": "La duración del guion se estima a 14 caracteres por segundo. El cobro real usa la duración final. 4k cuesta más por segundo.",
-        "units_param": "estimated_duration_seconds",
-        "rate_param": "resolution",
-        "credits_per_unit_by_value": {
-          "720p": 10.2001,
-          "1080p": 10.2001,
-          "4k": 13.6069
-        }
-      },
       "expensive": true,
       "id": "avatar-photo-video",
       "label": "Avatar IV Photo-to-Video",
@@ -589,14 +891,6 @@
       "description": "Upscale premium de imagen entre 2x y 16x.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits_per_unit": 3.2,
-        "kind": "unit_credits",
-        "minimum_credits": 61,
-        "note": "coste real por megapixeles de salida; el servidor reserva al menos 61 cr",
-        "units_param": "output_megapixels"
-      },
       "expensive": false,
       "id": "crystal-upscaler",
       "label": "Crystal Upscaler",
@@ -652,14 +946,6 @@
       "description": "Upscale de video de maxima fidelidad, facturado por megapixel y segundo.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits_per_unit": 20,
-        "kind": "unit_credits",
-        "minimum_credits": 1,
-        "note": "modelo muy caro: verifica resolucion, factor y duracion",
-        "units_param": "est_mps"
-      },
       "expensive": true,
       "id": "crystal-video-upscaler",
       "label": "Crystal Video Upscaler",
@@ -701,13 +987,6 @@
       "description": "Convierte un video en un mapa de profundidad animado.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 8.16,
-        "kind": "unit_credits",
-        "minimum_credits": 9,
-        "units_param": "duration_seconds"
-      },
       "expensive": true,
       "id": "depth-anything-video",
       "label": "Depth Anything Video",
@@ -776,15 +1055,6 @@
       "description": "Aisla la voz de ruido, ambiente y música en un archivo de audio o vídeo.",
       "driver": "eleven-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 0.17,
-        "kind": "unit_credits",
-        "minimum_credits": 1,
-        "note": "1.000 caracteres de cuota por minuto, margen AILAB del 2% y redondeo final al crédito superior.",
-        "round_up": true,
-        "units_param": "duration_seconds"
-      },
       "expensive": false,
       "id": "eleven-audio-isolation",
       "label": "Voice Isolator",
@@ -822,16 +1092,6 @@
       "description": "Dialogo de dos voces con expresividad y estabilidad configurables.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "characters_params": [
-          "text_1",
-          "text_2"
-        ],
-        "credits_per_1000": 20,
-        "kind": "per_1000_chars",
-        "minimum_credits": 19
-      },
       "expensive": false,
       "id": "eleven-dialogue-v3",
       "label": "ElevenLabs Dialogue V3",
@@ -884,13 +1144,6 @@
       "description": "Musica original por descripcion, instrumental o con letra personalizada.",
       "driver": "eleven-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 0.51,
-        "kind": "unit_credits",
-        "minimum_credits": 2,
-        "units_param": "duration_seconds"
-      },
       "expensive": true,
       "id": "eleven-music",
       "label": "ElevenLabs Music",
@@ -943,11 +1196,6 @@
       "description": "Genera efectos de sonido desde una descripcion.",
       "driver": "eleven-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits": 25,
-        "kind": "flat_credits"
-      },
       "expensive": false,
       "id": "eleven-sound-fx",
       "label": "ElevenLabs Efectos de Sonido",
@@ -989,13 +1237,6 @@
       "description": "Transcribe audio con diarizacion y eventos opcionales.",
       "driver": "jobs-text-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits_per_unit": 0.22,
-        "kind": "unit_credits",
-        "minimum_credits": 1,
-        "units_param": "duration_seconds"
-      },
       "expensive": false,
       "id": "eleven-speech-to-text",
       "label": "ElevenLabs Speech to Text",
@@ -1035,22 +1276,6 @@
       "description": "Texto a voz con Flash, Multilingual, v3 y v4. Biblioteca y voces privadas propias, según compatibilidad y tarifa verificada por AILAB.",
       "driver": "eleven-v1",
       "enabled": true,
-      "estimate": {
-        "kind": "per_1000_chars",
-        "characters_param": "text",
-        "rate_param": "version",
-        "credits_per_1000": 10.2,
-        "credits_per_1000_by_value": {
-          "flash": 10.2,
-          "multi": 20.4,
-          "v3": 20.4,
-          "v4": 16.32
-        },
-        "minimum_credits": 1,
-        "round_up": true,
-        "approximate": false,
-        "note": "Precio por caracteres de entrada, mínimo 1 cr y total redondeado al crédito superior. V4: 16,32 cr por 1.000 caracteres, y requiere cotización del servidor por voz."
-      },
       "expensive": false,
       "id": "eleven-tts",
       "label": "ElevenLabs TTS",
@@ -1121,14 +1346,6 @@
       "description": "Transforma un audio conservando el ritmo y el contenido hablado.",
       "driver": "eleven-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 0.408,
-        "kind": "unit_credits",
-        "minimum_credits": 1,
-        "units_param": "duration_seconds",
-        "note": "Duración real del audio de entrada; no depende del tamaño ni del bitrate."
-      },
       "expensive": true,
       "id": "eleven-voice-changer",
       "label": "Cambiador de Voz",
@@ -1176,15 +1393,6 @@
       "description": "Imagen con control granular y hasta ocho referencias.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "resolution",
-        "credits_by_value": {
-          "1K": 15,
-          "2K": 25
-        },
-        "kind": "param_table"
-      },
       "expensive": false,
       "id": "flux-2-flex",
       "label": "Flux.2 Flex",
@@ -1245,15 +1453,6 @@
       "description": "Texto a imagen fotorrealista de 1K o 2K.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "resolution",
-        "credits_by_value": {
-          "1K": 6,
-          "2K": 8
-        },
-        "kind": "param_table"
-      },
       "expensive": false,
       "id": "flux-2-pro",
       "label": "Flux.2 Pro",
@@ -1301,26 +1500,6 @@
       "description": "Mejora vídeos con FLUX en modo preciso o creativo y salida de hasta 4K.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "column_param": "output_resolution",
-        "credits_matrix": {
-          "0": {
-            "1080p": 28.56,
-            "2K": 51,
-            "4K": 112.2
-          },
-          "1": {
-            "1080p": 40.8,
-            "2K": 71.4,
-            "4K": 161.16
-          }
-        },
-        "kind": "per_second_matrix",
-        "note": "Importe por segundo de vídeo entregado, resolución final y modo, con el margen vigente de AILAB.",
-        "row_param": "creativity",
-        "seconds_param": "duration_seconds"
-      },
       "expensive": true,
       "id": "flux-video-upscale",
       "label": "FLUX Video Upscale",
@@ -1390,46 +1569,6 @@
       "description": "Vídeo con texto, First/Last Frame o referencias multimodales. Admite Voice IDs y Character IDs creados previamente en la web de AILAB.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "column_param": "duration",
-        "credits_matrix": {
-          "1080p": {
-            "4": 65,
-            "6": 86,
-            "8": 108,
-            "10": 129
-          },
-          "360p": {
-            "4": 65,
-            "6": 86,
-            "8": 108,
-            "10": 129
-          },
-          "4k": {
-            "4": 150,
-            "6": 172,
-            "8": 193,
-            "10": 215
-          },
-          "720p": {
-            "4": 65,
-            "6": 86,
-            "8": 108,
-            "10": 129
-          }
-        },
-        "credits_with_video": {
-          "1080p": 172,
-          "360p": 172,
-          "4k": 258,
-          "720p": 172
-        },
-        "kind": "matrix_table",
-        "note": "Con vídeo la tarifa es plana por resolución y Gemini decide la duración final. Precio final AILAB con el 2% de servicio.",
-        "row_param": "resolution",
-        "video_param": "video_url"
-      },
       "expensive": true,
       "id": "gemini-omni-flash-1-1",
       "label": "Gemini Omni Flash 1.1",
@@ -1473,7 +1612,7 @@
         },
         "image_urls": {
           "accept": "image",
-          "help": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7 unidades de cuota de Kie)",
+          "help": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7)",
           "max": 7,
           "type": "file[]"
         },
@@ -1548,7 +1687,7 @@
       "label": "Gemini Omni Flash 1.2",
       "description": "Vídeo con audio de 3 a 15 s desde texto, un primer y último frame, hasta 6 imágenes y 2 Character IDs, o editando un vídeo de hasta 15 s. De 360p a 4K. La voz propia va dentro de un Character ID (gemini-omni-character); para alargar un vídeo, gemini-omni-flash-1-2-extend.",
       "section": "video",
-      "vendor": "Google · KIE",
+      "vendor": "Google",
       "tier": "hub",
       "output": "video",
       "status": "active",
@@ -1652,82 +1791,6 @@
           "max": 99999,
           "help": "Opcional, de 10000 a 99999. Sin ella, aleatoria."
         }
-      },
-      "estimate": {
-        "kind": "matrix_table",
-        "row_param": "resolution",
-        "column_param": "duration",
-        "approximate": true,
-        "note": "Tarifa de Kie x 1,02 por segundo de vídeo, redondeada al crédito superior. Al editar se cobra la duración del vídeo de entrada (la fila con vídeo es el máximo de 15 s). Es el máximo que se reserva: se cobra el consumo real, nunca más.",
-        "credits_matrix": {
-          "360p": {
-            "3": 13,
-            "4": 17,
-            "5": 21,
-            "6": 25,
-            "7": 29,
-            "8": 33,
-            "9": 37,
-            "10": 41,
-            "11": 45,
-            "12": 49,
-            "13": 54,
-            "14": 58,
-            "15": 62
-          },
-          "720p": {
-            "3": 28,
-            "4": 37,
-            "5": 46,
-            "6": 56,
-            "7": 65,
-            "8": 74,
-            "9": 83,
-            "10": 92,
-            "11": 101,
-            "12": 111,
-            "13": 120,
-            "14": 129,
-            "15": 138
-          },
-          "1080p": {
-            "3": 31,
-            "4": 41,
-            "5": 51,
-            "6": 62,
-            "7": 72,
-            "8": 82,
-            "9": 92,
-            "10": 102,
-            "11": 113,
-            "12": 123,
-            "13": 133,
-            "14": 143,
-            "15": 153
-          },
-          "4k": {
-            "3": 68,
-            "4": 90,
-            "5": 113,
-            "6": 135,
-            "7": 158,
-            "8": 180,
-            "9": 202,
-            "10": 225,
-            "11": 247,
-            "12": 270,
-            "13": 292,
-            "14": 315,
-            "15": 337
-          }
-        },
-        "video_param": "video_url",
-        "credits_with_video": {
-          "360p": 62,
-          "720p": 138,
-          "1080p": 153,
-          "4k": 337
-        }
       }
     },
     "gemini-omni-flash-1-2-extend": {
@@ -1735,7 +1798,7 @@
       "label": "Gemini Omni Flash 1.2 Extend",
       "description": "Alarga de 3 a 10 s un vídeo de Gemini Omni Flash 1.2 de tu cuenta (360p o 720p y de 15 s o menos). El comando omni12-videos lista los que se pueden extender con su precio; se cobran solo los segundos añadidos.",
       "section": "video",
-      "vendor": "Google · KIE",
+      "vendor": "Google",
       "tier": "hub",
       "output": "video",
       "status": "active",
@@ -1774,12 +1837,6 @@
           "max": 3,
           "help": "Hasta 3 imágenes de referencia opcionales."
         }
-      },
-      "estimate": {
-        "kind": "flat_credits",
-        "credits": 92,
-        "approximate": true,
-        "note": "Máximo posible. El precio real depende de la resolución del vídeo de origen: omni12-videos lo muestra y prepare autoriza esa cifra exacta."
       }
     },
     "gemini-omni-character": {
@@ -1787,7 +1844,7 @@
       "label": "Gemini Omni Character",
       "description": "Crea gratis un Character ID a partir de un retrato y una imagen de cuerpo opcional, con voz propia opcional (un Voice ID de gemini-omni-audio). Se usa en Gemini Omni Flash 1.2 y 1.1.",
       "section": "other",
-      "vendor": "Google · KIE",
+      "vendor": "Google",
       "tier": "hub",
       "output": "text",
       "status": "active",
@@ -1828,12 +1885,6 @@
           "max_len": 200,
           "help": "Voice ID opcional creado con tu cuenta en gemini-omni-audio. En 1.2 es la forma de dar voz propia."
         }
-      },
-      "estimate": {
-        "kind": "flat_credits",
-        "credits": 0,
-        "approximate": false,
-        "note": "Gratis: no consume créditos."
       }
     },
     "gemini-omni-audio": {
@@ -1841,7 +1892,7 @@
       "label": "Gemini Omni Audio",
       "description": "Crea gratis un Voice ID de Gemini a partir de una voz base y una descripción. En 1.2 la voz se usa dentro de un Character ID (gemini-omni-character); en 1.1, directamente con --audio_ids.",
       "section": "voice",
-      "vendor": "Google · KIE",
+      "vendor": "Google",
       "tier": "hub",
       "output": "text",
       "status": "active",
@@ -1908,12 +1959,6 @@
           "max_len": 120,
           "help": "Una frase breve con la intención deseada."
         }
-      },
-      "estimate": {
-        "kind": "flat_credits",
-        "credits": 0,
-        "approximate": false,
-        "note": "Gratis: no consume créditos."
       }
     },
     "gemini-omni-video": {
@@ -1924,39 +1969,6 @@
       "description": "Video multimodal con texto, hasta siete imagenes y clip opcional.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "column_param": "duration",
-        "credits_matrix": {
-          "1080p": {
-            "4": 65,
-            "6": 86,
-            "8": 108,
-            "10": 129
-          },
-          "4k": {
-            "4": 150,
-            "6": 172,
-            "8": 193,
-            "10": 215
-          },
-          "720p": {
-            "4": 65,
-            "6": 86,
-            "8": 108,
-            "10": 129
-          }
-        },
-        "credits_with_video": {
-          "1080p": 172,
-          "4k": 258,
-          "720p": 172
-        },
-        "kind": "matrix_table",
-        "note": "con clip de video la tarifa es plana por calidad (la duracion la decide el modelo)",
-        "row_param": "resolution",
-        "video_param": "video_url"
-      },
       "expensive": true,
       "id": "gemini-omni-video",
       "label": "Gemini Omni Video",
@@ -1989,7 +2001,7 @@
         },
         "image_urls": {
           "accept": "image",
-          "help": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7 unidades de cuota de Kie)",
+          "help": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7)",
           "max": 7,
           "type": "file[]"
         },
@@ -2090,11 +2102,6 @@
           ],
           "default": "720p"
         }
-      },
-      "estimate": {
-        "kind": "higgsfield_quote",
-        "approximate": true,
-        "note": "Higgsfield no publica tarifa fija: el servidor cotiza midiendo el video y las referencias antes de generar."
       }
     },
     "higgsfield-genjutsu-light": {
@@ -2158,18 +2165,6 @@
           ],
           "default": "720p"
         }
-      },
-      "estimate": {
-        "kind": "higgsfield_quote",
-        "by_param": "resolution",
-        "credits_per_second": {
-          "480p": 10.2,
-          "720p": 20.4,
-          "1080p": 40.8
-        },
-        "max_credits": 612,
-        "approximate": false,
-        "note": "Tarifa por segundo de vídeo: se factura la salida (dura lo mismo que el vídeo) más el vídeo de entrada, es decir, 2 x ceil(duración medida). 10 s a 720p son 204 cr. El servidor mide el vídeo y cotiza la misma cifra; es el importe que se aprueba y el máximo posible es 612 cr (15 s a 1080p)."
       }
     },
     "gpt-image-2": {
@@ -2180,16 +2175,6 @@
       "description": "Generacion y edicion de imagen con resoluciones de 1K a 4K.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "by_param": "resolution",
-        "credits_by_value": {
-          "1K": 7,
-          "2K": 11,
-          "4K": 17
-        },
-        "kind": "param_table"
-      },
       "expensive": false,
       "id": "gpt-image-2",
       "label": "GPT Image 2",
@@ -2235,7 +2220,7 @@
         },
         "resolution": {
           "default": "1K",
-          "help": "1K, 2K o 4K. Ojo: el ratio 1:1 no admite 4K (limite de Kie)",
+          "help": "1K, 2K o 4K. Ojo: el ratio 1:1 no admite 4K",
           "type": "enum",
           "values": [
             "1K",
@@ -2258,32 +2243,6 @@
       "description": "Generacion precisa con tipografia solida (top-3 del Text-to-Image Arena). Edicion por task_id con mascaras del segment-map, o Image to Image con 1-3 imagenes subidas (calidad low/medium, 1K/2K).",
       "driver": "hybrid-grok-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "column_param": "resolution",
-        "credits_by_value": {
-          "edit": 5,
-          "segment": 0,
-          "t2i": 5
-        },
-        "credits_matrix": {
-          "low": {
-            "1K": 8,
-            "2K": 12
-          },
-          "medium": {
-            "1K": 12,
-            "2K": 16
-          }
-        },
-        "credits_per_file": 2,
-        "files_param": "image_urls",
-        "kind": "mixed_mode",
-        "matrix_mode": "i2i",
-        "mode_param": "mode",
-        "note": "Image to Image usa la matriz y suma 2 cr por imagen de entrada. Text to Image y edit cuestan aproximadamente 4,08 cr; segment-map es gratuito",
-        "row_param": "quality"
-      },
       "expensive": false,
       "id": "grok-imagine-image-2",
       "label": "Grok Imagine Image 2.0",
@@ -2310,7 +2269,7 @@
         },
         "image_urls": {
           "accept": "image",
-          "help": "Solo en i2i: de 1 a 3 imagenes; cada una suma 2 cr",
+          "help": "Solo en i2i: de 1 a 3 imagenes; cada una suma al precio",
           "max": 3,
           "required_when": {
             "mode": "i2i"
@@ -2318,7 +2277,7 @@
           "type": "file[]"
         },
         "mask_indexs": {
-          "help": "Solo en edit: indices de segmento separados por comas (del segment-map gratuito de Kie); vacio = edita toda la imagen",
+          "help": "Solo en edit: indices de segmento separados por comas (del segment-map gratuito); vacio = edita toda la imagen",
           "type": "string"
         },
         "mode": {
@@ -2383,17 +2342,6 @@
       "description": "Texto o imagen a video con audio y modos creativos.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "resolution",
-        "credits_per_second": {
-          "480p": 1.63,
-          "720p": 4
-        },
-        "kind": "per_second_table",
-        "note": "estimacion de autorizacion; el cobro final usa el coste real informado por el proveedor",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "grok-imagine-video",
       "label": "Grok Imagine Video",
@@ -2461,19 +2409,6 @@
       "description": "Imagen a video de uno a quince segundos en 480p o 720p.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "resolution",
-        "credits_per_file": 2,
-        "credits_per_second": {
-          "480p": 16,
-          "720p": 26
-        },
-        "files_param": "image_urls",
-        "kind": "per_second_table",
-        "note": "incluye una pequena tarifa adicional por la imagen de entrada",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "grok-imagine-video-1-5",
       "label": "Grok Imagine Video 1.5 Preview",
@@ -2532,17 +2467,6 @@
       "description": "Texto, imagen, referencias o edicion de video en 720p y 1080p.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "resolution",
-        "credits_per_second": {
-          "1080p": 50,
-          "720p": 29
-        },
-        "kind": "per_second_table",
-        "note": "estimacion conservadora; el cobro final usa el coste real informado por el proveedor",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "happyhorse-1-0",
       "label": "HappyHorse 1.0",
@@ -2639,16 +2563,6 @@
       "description": "Texto o imagen a video con primer y ultimo frame en 5 o 10 segundos.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "duration",
-        "credits_by_value": {
-          "5": 72,
-          "10": 143
-        },
-        "kind": "param_table",
-        "note": "el coste real se liquida al terminar"
-      },
       "expensive": true,
       "id": "kling-2-5-turbo-pro",
       "label": "Kling 2.5 Turbo Pro",
@@ -2705,17 +2619,6 @@
       "description": "Transfiere movimiento desde un video a una imagen de personaje.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "mode",
-        "credits_per_second": {
-          "1080p": 20.604,
-          "720p": 12.852
-        },
-        "kind": "per_second_table",
-        "note": "estimacion conservadora; el cobro final usa el coste real informado por el proveedor",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "kling-2-6-motion-control",
       "label": "Kling 2.6 Motion Control",
@@ -2776,18 +2679,6 @@
       "description": "Texto o imagen a video de 720p a 4K con audio opcional.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "mode",
-        "credits_per_second": {
-          "4K": 77.01,
-          "pro": 30.804,
-          "std": 23.154
-        },
-        "kind": "per_second_table",
-        "note": "estimacion conservadora con audio",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "kling-3-0",
       "label": "Kling 3.0",
@@ -2877,17 +2768,6 @@
       "description": "Control de movimiento v3 con identidad y expresiones estables.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "mode",
-        "credits_per_second": {
-          "1080p": 30.804,
-          "720p": 23.154
-        },
-        "kind": "per_second_table",
-        "note": "estimacion conservadora; el cobro final usa el coste real informado por el proveedor",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "kling-3-0-motion-control",
       "label": "Kling 3.0 Motion Control",
@@ -2927,7 +2807,7 @@
         },
         "mode": {
           "default": "720p",
-          "help": "El ejemplo oficial de Kie y la web usan 720p/1080p (la ficha tambien menciona std/pro como etiquetas)",
+          "help": "Admite 720p o 1080p (la ficha tambien menciona std/pro como etiquetas)",
           "type": "enum",
           "values": [
             "720p",
@@ -2958,34 +2838,6 @@
       "description": "Kling 3.0 Omni: texto, imagen (primer/ultimo frame), transformacion de video o referencias, con audio nativo y multitoma de hasta 6 tomas.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "audio_param": "audio",
-        "by_param": "resolution",
-        "credits_per_second": {
-          "1080p": 20.604,
-          "4k": 77.01,
-          "720p": 15.402
-        },
-        "credits_with_audio": {
-          "1080p": 25.704,
-          "4k": 77.01,
-          "720p": 20.604
-        },
-        "credits_with_video": {
-          "1080p": 30.804,
-          "4k": 77.01,
-          "720p": 23.154
-        },
-        "duration_by_mode": {
-          "transform": 16
-        },
-        "kind": "per_second_table",
-        "mode_param": "mode",
-        "note": "Tarifa base sin audio. Con audio nativo: 20,604 (720p) / 25,704 (1080p) cr/s. Con video de entrada (transform siempre; ref con video): 23,154 / 30,804 cr/s. En 4K la tarifa es unica (77,01 cr/s). Coste real al terminar",
-        "seconds_param": "duration",
-        "video_param": "video_urls"
-      },
       "expensive": true,
       "id": "kling-o3",
       "label": "Kling O3",
@@ -3090,26 +2942,6 @@
       "description": "Texto o imagen a video en Turbo o Pro, con audio en Pro.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "variant",
-        "credits_per_second": {
-          "pro-i2v": 22.4001,
-          "pro-t2v": 22.4001,
-          "turbo-i2v": 22.4001,
-          "turbo-t2v": 22.4001
-        },
-        "kind": "per_second_table",
-        "note": "Tarifa por segundo de Kling v3. Pro con audio activado cuesta más; Turbo no cambia. El servidor redondea con decimales y la reserva puede quedar 1 cr por debajo de esta estimación.",
-        "seconds_param": "duration",
-        "audio_param": "generate_audio",
-        "credits_with_audio": {
-          "pro-i2v": 33.6001,
-          "pro-t2v": 33.6001,
-          "turbo-i2v": 22.4001,
-          "turbo-t2v": 22.4001
-        }
-      },
       "expensive": true,
       "id": "kling-v3",
       "label": "Kling v3 Turbo",
@@ -3191,22 +3023,6 @@
       "description": "Imagen con versiones Turbo, Medium y Large y referencias de estilo.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "version",
-        "credits_by_value": {
-          "large": 12,
-          "medium": 6,
-          "turbo": 3
-        },
-        "credits_with_files": {
-          "large": 13,
-          "medium": 7,
-          "turbo": 4
-        },
-        "files_param": "style_refs",
-        "kind": "param_table"
-      },
       "expensive": false,
       "id": "krea-2",
       "label": "Krea 2",
@@ -3274,14 +3090,6 @@
       "description": "Sincronizacion labial de mayor precision.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 20.0001,
-        "kind": "unit_credits",
-        "minimum_credits": 20,
-        "units_param": "duration_sec",
-        "note": "El servidor redondea con decimales y la reserva puede quedar 1 cr por debajo de esta estimación."
-      },
       "expensive": true,
       "id": "lipsync-heygen-precision",
       "label": "HeyGen Lipsync Precision v3",
@@ -3333,14 +3141,6 @@
       "description": "Sincronizacion labial rapida y economica.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 10.0001,
-        "kind": "unit_credits",
-        "minimum_credits": 10,
-        "units_param": "duration_sec",
-        "note": "El servidor redondea con decimales y la reserva puede quedar 1 cr por debajo de esta estimación."
-      },
       "expensive": true,
       "id": "lipsync-heygen-speed",
       "label": "HeyGen Lipsync Speed v3",
@@ -3393,13 +3193,6 @@
       "description": "Lipsync de maxima calidad con control de ajuste de duraciones.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 26.6667,
-        "kind": "unit_credits",
-        "minimum_credits": 27,
-        "units_param": "duration_sec"
-      },
       "expensive": true,
       "id": "lipsync-sync-v3",
       "label": "Sync Lipsync v3",
@@ -3447,16 +3240,6 @@
       "description": "Lipsync de calidad de produccion, sin ajustes: sube video y audio y listo.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 14,
-        "kind": "unit_credits",
-        "minimum_credits": 14,
-        "round_up": true,
-        "unit_label": "cr/s",
-        "unit_name": "Duración",
-        "units_param": "duration_sec"
-      },
       "expensive": true,
       "id": "lipsync-veed-v2",
       "label": "VEED Lipsync v2",
@@ -3493,17 +3276,6 @@
       "description": "Genera cuatro imagenes por solicitud con controles creativos avanzados.",
       "driver": "labs-queue-multi-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "speed",
-        "credits_by_value": {
-          "fast": 12,
-          "relax": 10,
-          "turbo": 21
-        },
-        "kind": "param_table",
-        "note": "cuatro imagenes por solicitud; coste real al terminar"
-      },
       "expensive": false,
       "id": "midjourney",
       "label": "Midjourney",
@@ -3636,18 +3408,6 @@
       "description": "Vídeo premium con Texto a vídeo, First/Last Frame y referencias multimodales de imagen, vídeo y audio.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits_by_value": {
-          "t2v": 245,
-          "i2v": 245,
-          "ref": 1300
-        },
-        "kind": "mixed_mode",
-        "matrix_mode": "__none__",
-        "mode_param": "mode",
-        "note": "Autorización máxima conservadora. El servidor reserva y cobra el cálculo exacto según duración, resolución y tokens de imagen/vídeo; el audio de referencia no añade cargo AILAB."
-      },
       "expensive": true,
       "id": "minimax-h3-max",
       "label": "H3 Max",
@@ -3766,17 +3526,6 @@
       "description": "Hailuo 03: texto, imagen (primer y ultimo frame) o referencias multimodales, con audio estereo nativo, en 768P o 2K.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "resolution",
-        "credits_per_second": {
-          "2K": 26.52,
-          "768P": 16.32
-        },
-        "kind": "per_second_table",
-        "note": "el video de referencia suma su duracion al cobro a la misma tarifa; a partir de la sexta imagen de entrada, 8.16 cr por imagen extra; el audio de entrada es gratis. Coste real al terminar",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "minimax-h3",
       "label": "MiniMax H3",
@@ -3839,7 +3588,7 @@
         },
         "reference_image_urls": {
           "accept": "image",
-          "help": "Solo ref; las 5 primeras gratis, extra 8.16 cr por imagen",
+          "help": "Solo ref; las 5 primeras no se cobran y cada imagen extra suma al precio",
           "max": 9,
           "type": "file[]"
         },
@@ -3871,16 +3620,6 @@
       "description": "Imagen de alta calidad con referencias y salida de 1K a 4K.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "by_param": "resolution",
-        "credits_by_value": {
-          "1K": 9,
-          "2K": 13,
-          "4K": 19
-        },
-        "kind": "param_table"
-      },
       "expensive": false,
       "id": "nano-banana-2",
       "label": "Nano Banana 2",
@@ -3948,12 +3687,6 @@
       "description": "Imagen rapida y economica con hasta 10 referencias.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits": 5,
-        "kind": "flat_credits",
-        "note": "coste real habitual validado en produccion"
-      },
       "expensive": false,
       "id": "nano-banana-2-lite",
       "label": "Nano Banana 2 Lite",
@@ -4007,16 +3740,6 @@
       "description": "Imagen premium con referencias, texto preciso y salida hasta 4K.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "by_param": "resolution",
-        "credits_by_value": {
-          "1K": 19,
-          "2K": 19,
-          "4K": 25
-        },
-        "kind": "param_table"
-      },
       "expensive": false,
       "id": "nano-banana-pro",
       "label": "Nano Banana Pro",
@@ -4082,16 +3805,6 @@
       "description": "Realismo, tipografia y layouts en 1K o 2K, texto o edicion con hasta 3 imagenes (el orden importa) y negative prompt. Motor premium: prompts de hasta 5000 caracteres.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "by_param": "resolution",
-        "credits_by_value": {
-          "1K": 8,
-          "2K": 15
-        },
-        "kind": "param_table",
-        "note": "Por imagen generada, igual en texto y edicion; sin recargo por imagenes de entrada. El prompt_expansion va apagado y sin seed (decision de la plataforma)"
-      },
       "expensive": false,
       "id": "qwen-image-3",
       "label": "Qwen Image 3.0",
@@ -4166,17 +3879,6 @@
       "description": "Imagen de marca o vector SVG en cuatro niveles de calidad.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "by_param": "version",
-        "credits_by_value": {
-          "image": 8,
-          "image-pro": 50,
-          "vector": 16,
-          "vector-pro": 60
-        },
-        "kind": "param_table"
-      },
       "expensive": false,
       "id": "recraft-v41",
       "label": "Recraft v4.1",
@@ -4234,15 +3936,6 @@
       "description": "Limpia ruido de fondo, normaliza el volumen y aplica un acabado de estudio a un archivo de audio.",
       "driver": "resemble-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "credits_per_unit": 0.306,
-        "kind": "unit_credits",
-        "minimum_credits": 1,
-        "note": "Tarifa Flex pública de 0,0015 USD/s, margen AILAB del 2% y redondeo final.",
-        "round_up": true,
-        "units_param": "duration_seconds"
-      },
       "expensive": false,
       "id": "resemble-audio-enhancement",
       "label": "Resemble Audio Enhancement",
@@ -4302,12 +3995,6 @@
       "description": "Elimina el fondo y devuelve una imagen transparente.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits": 2,
-        "kind": "flat_credits",
-        "note": "el coste real se liquida al terminar"
-      },
       "expensive": false,
       "id": "remove-background",
       "label": "Recraft Remove Background",
@@ -4335,18 +4022,6 @@
       "description": "Separa de una mezcla el sonido descrito por texto y devuelve la pista aislada junto al audio restante.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": false,
-        "block_seconds": 30,
-        "credit_usd": 0.005,
-        "kind": "duration_blocks",
-        "margin_multiplier": 1.02,
-        "minimum_credits": 11,
-        "note": "cada bloque iniciado de 30 segundos",
-        "round_up": true,
-        "seconds_param": "duration_seconds",
-        "usd_per_block": 0.05
-      },
       "expensive": false,
       "id": "sam-audio",
       "label": "SAM Audio",
@@ -4389,12 +4064,6 @@
       "description": "Genera voz, musica y efectos en una sola pasada.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits": 100,
-        "kind": "flat_credits",
-        "note": "reserva maxima: la duracion la decide el modelo y no se puede fijar. Se cobra la duracion real a 0,625 cr/s (10 s = 7 cr, 1 min = 38 cr) y nunca mas de 100 cr. estimated_duration_seconds no cambia ni la duracion ni la reserva."
-      },
       "expensive": true,
       "id": "seed-audio",
       "label": "Seed Audio",
@@ -4463,18 +4132,6 @@
       "description": "Video con audio, primer y ultimo frame y lente fija.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "resolution",
-        "credits_per_second": {
-          "1080p": 16,
-          "480p": 5,
-          "720p": 8
-        },
-        "kind": "per_second_table",
-        "note": "estimacion conservadora con audio",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "seedance-1-5-pro",
       "label": "Seedance 1.5 Pro",
@@ -4543,43 +4200,6 @@
       "description": "Texto, frames o referencias a video con audio opcional, modo Normal o Fast y resolucion de 480p a 4K.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "column_param": "resolution",
-        "credits_matrix": {
-          "fast": {
-            "1080p": 104.04,
-            "480p": 19.38,
-            "4k": 212.16,
-            "720p": 41.82
-          },
-          "normal": {
-            "1080p": 104.04,
-            "480p": 19.38,
-            "4k": 212.16,
-            "720p": 41.82
-          }
-        },
-        "credits_with_video_matrix": {
-          "fast": {
-            "1080p": 63.24,
-            "480p": 11.73,
-            "4k": 212.16,
-            "720p": 25.5
-          },
-          "normal": {
-            "1080p": 63.24,
-            "480p": 11.73,
-            "4k": 212.16,
-            "720p": 25.5
-          }
-        },
-        "kind": "per_second_matrix",
-        "note": "coste real al terminar. Desde la terminal el modo Fast se reserva y se factura con la tarifa de Normal. Con vídeo de referencia: (salida + entrada) x tarifa con vídeo; la entrada es el vídeo medido, al segundo superior.",
-        "row_param": "speed",
-        "seconds_param": "duration",
-        "video_param": "reference_video_urls"
-      },
       "expensive": true,
       "id": "seedance-2",
       "label": "Seedance 2.0",
@@ -4686,26 +4306,6 @@
       "description": "Texto, imagen, referencias o edición de vídeo con audio nativo, hasta 30 segundos y resolución 480p, 720p o 1080p.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "auto_duration_param": "auto_duration",
-        "auto_duration_seconds": 30,
-        "by_param": "resolution",
-        "credits_per_second": {
-          "1080p": 161.16,
-          "480p": 28.56,
-          "720p": 64.26
-        },
-        "credits_with_video": {
-          "1080p": 96.9,
-          "480p": 17.34,
-          "720p": 38.76
-        },
-        "kind": "per_second_table",
-        "note": "Tarifas con comision AILAB incluida; el coste real lo confirma el proveedor al terminar y nunca supera lo autorizado. Sin vídeo: salida x tarifa. Con vídeo de referencia: (salida + entrada) x tarifa con vídeo; la entrada es la suma de los vídeos, cada uno medido y al segundo superior. Duración automática: salida de 30 s. Editar vídeo: 2 x segundos del clip x tarifa con vídeo.",
-        "seconds_param": "duration",
-        "video_param": "reference_video_urls"
-      },
       "expensive": true,
       "id": "seedance-2-5",
       "label": "Seedance 2.5",
@@ -4720,7 +4320,7 @@
       "params": {
         "aspect_ratio": {
           "default": "adaptive",
-          "help": "En modos i2v y edit se fuerza adaptive porque KIE no admite ratios fijos con First Frame y la edición conserva el formato del vídeo original.",
+          "help": "En modos i2v y edit se fuerza adaptive porque el modelo no admite ratios fijos con First Frame y la edición conserva el formato del vídeo original.",
           "type": "enum",
           "values": [
             "adaptive",
@@ -4773,7 +4373,7 @@
           ]
         },
         "prompt": {
-          "help": "Hasta 30.000 caracteres según el contrato actual de KIE.",
+          "help": "Hasta 30.000 caracteres.",
           "max_len": 30000,
           "required": true,
           "type": "string"
@@ -4821,22 +4421,6 @@
       "description": "Version economica para texto, imagen o referencias a video.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "resolution",
-        "credits_per_second": {
-          "480p": 9.69,
-          "720p": 20.91
-        },
-        "credits_with_video": {
-          "480p": 9.69,
-          "720p": 20.91
-        },
-        "kind": "per_second_table",
-        "note": "coste real al terminar. Con vídeo de referencia la tarifa es la misma, pero se factura (salida + entrada); la entrada es el vídeo medido, al segundo superior.",
-        "seconds_param": "duration",
-        "video_param": "reference_video_urls"
-      },
       "expensive": true,
       "id": "seedance-2-mini",
       "label": "Seedance 2.0 Mini",
@@ -4934,18 +4518,6 @@
       "description": "Texto a imagen o edicion con calidad Basic 1K y High 2K. Incluye modo Capas: separa una imagen en capas PNG editables (web)",
       "driver": "hybrid-seedream-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "basic_credit_per_input": 0.51,
-        "basic_credits": 8,
-        "files_param": "image_urls",
-        "high_credits": 27,
-        "kind": "hybrid_seedream",
-        "layers_max_credits": 300,
-        "mode_param": "mode",
-        "note": "Modo Capas (layer decomposition): separa una imagen en capas PNG independientes; se cobra por capa generada incluida la base, ~7,14 cr en 1K/1.5K y ~14,28 cr en 2K",
-        "quality_param": "quality"
-      },
       "expensive": false,
       "id": "seedream-v5-pro",
       "label": "Seedream v5 Pro",
@@ -5037,7 +4609,7 @@
       "label": "Seedream 5.5",
       "description": "Texto a imagen o edición con hasta 10 referencias, a 1K o 2K y en ocho proporciones.",
       "section": "image",
-      "vendor": "ByteDance · VideoRouter",
+      "vendor": "ByteDance",
       "tier": "hub",
       "output": "image",
       "status": "active",
@@ -5098,23 +4670,6 @@
             "mode": "i2i"
           }
         }
-      },
-      "estimate": {
-        "kind": "matrix_table",
-        "row_param": "mode",
-        "column_param": "resolution",
-        "credits_matrix": {
-          "t2i": {
-            "1K": 4,
-            "2K": 6
-          },
-          "i2i": {
-            "1K": 5,
-            "2K": 8
-          }
-        },
-        "approximate": false,
-        "note": "Máximo por imagen. Al terminar se cobra el coste real del proveedor, que puede ser menor."
       }
     },
     "seedvr-video-upscaler": {
@@ -5124,14 +4679,6 @@
       "description": "Aumenta la resolucion de un video entre 2x y 4x.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits_per_unit": 0.2,
-        "kind": "unit_credits",
-        "minimum_credits": 1,
-        "note": "estimacion por megapixeles procesados",
-        "units_param": "estimated_billable_megapixels"
-      },
       "expensive": true,
       "id": "seedvr-video-upscaler",
       "label": "SeedVR Video Upscaler",
@@ -5172,14 +4719,6 @@
       "description": "Upscale economico de imagen a 2x, 4x u 8x.",
       "driver": "labs-queue-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "credits_per_unit": 0.2,
-        "kind": "unit_credits",
-        "minimum_credits": 6,
-        "note": "coste real por megapixeles de salida; el servidor reserva al menos 6 cr",
-        "units_param": "output_megapixels"
-      },
       "expensive": false,
       "id": "seedvr2-image-upscaler",
       "label": "SeedVR2 Image Upscaler",
@@ -5234,30 +4773,95 @@
       "expensive": true,
       "driver": "topaz-v1",
       "min_cli_version": "2.2.6",
-      "aliases": ["bloom", "bloom 2", "topaz bloom"],
+      "aliases": [
+        "bloom",
+        "bloom 2",
+        "topaz bloom"
+      ],
       "modes": [],
       "params": {
-        "image_url": { "type": "file", "accept": "image", "required": true, "help": "JPG, PNG o WebP de hasta 30 MB." },
-        "prompt": { "type": "string", "max_len": 2000, "help": "Opcional: describe el detalle y el acabado que quieres reforzar. No cambies la escena." },
-        "upscale_factor": { "type": "enum", "values": ["2", "4", "6"], "default": "2" },
-        "creativity": { "type": "int", "min": 1, "max": 9, "default": 3, "help": "1 conserva más; 9 reinventa más detalle." },
-        "color_preservation": { "type": "bool", "default": true, "help": "Conserva los colores de la imagen original." },
-        "face_enhancement": { "type": "bool", "default": false, "help": "Actívalo solo si necesitas recuperar rostros pequeños o degradados." },
-        "grain": { "type": "bool", "default": false },
-        "grain_model": { "type": "enum", "values": ["silver", "gaussian", "grey"], "default": "silver" },
-        "grain_density": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
-        "grain_size": { "type": "number", "min": 1, "max": 5, "step": 0.5, "default": 1 },
-        "grain_strength": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
-        "seed": { "type": "int", "min": 0, "max": 2147483647, "default": 2 },
-        "output_megapixels": { "type": "number", "required": true, "internal": true }
-      },
-      "estimate": {
-        "kind": "topaz_image",
-        "megapixels_param": "output_megapixels",
-        "ailab_credits_per_provider_credit": 14.28,
-        "provider_credits_by_max_megapixels": { "1": 1, "4": 2, "8": 4, "16": 8, "24": 12, "32": 16, "40": 20, "50": 25, "64": 32, "100": 50 },
-        "approximate": false,
-        "note": "Cálculo exacto por el tramo de megapíxeles de salida; el servidor vuelve a medir la imagen."
+        "image_url": {
+          "type": "file",
+          "accept": "image",
+          "required": true,
+          "help": "JPG, PNG o WebP de hasta 30 MB."
+        },
+        "prompt": {
+          "type": "string",
+          "max_len": 2000,
+          "help": "Opcional: describe el detalle y el acabado que quieres reforzar. No cambies la escena."
+        },
+        "upscale_factor": {
+          "type": "enum",
+          "values": [
+            "2",
+            "4",
+            "6"
+          ],
+          "default": "2"
+        },
+        "creativity": {
+          "type": "int",
+          "min": 1,
+          "max": 9,
+          "default": 3,
+          "help": "1 conserva más; 9 reinventa más detalle."
+        },
+        "color_preservation": {
+          "type": "bool",
+          "default": true,
+          "help": "Conserva los colores de la imagen original."
+        },
+        "face_enhancement": {
+          "type": "bool",
+          "default": false,
+          "help": "Actívalo solo si necesitas recuperar rostros pequeños o degradados."
+        },
+        "grain": {
+          "type": "bool",
+          "default": false
+        },
+        "grain_model": {
+          "type": "enum",
+          "values": [
+            "silver",
+            "gaussian",
+            "grey"
+          ],
+          "default": "silver"
+        },
+        "grain_density": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "default": 0.5
+        },
+        "grain_size": {
+          "type": "number",
+          "min": 1,
+          "max": 5,
+          "step": 0.5,
+          "default": 1
+        },
+        "grain_strength": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "default": 0.5
+        },
+        "seed": {
+          "type": "int",
+          "min": 0,
+          "max": 2147483647,
+          "default": 2
+        },
+        "output_megapixels": {
+          "type": "number",
+          "required": true,
+          "internal": true
+        }
       }
     },
     "topaz-wonder-3-5": {
@@ -5273,27 +4877,82 @@
       "expensive": true,
       "driver": "topaz-v1",
       "min_cli_version": "2.2.6",
-      "aliases": ["wonder", "wonder 3.5", "topaz wonder"],
+      "aliases": [
+        "wonder",
+        "wonder 3.5",
+        "topaz wonder"
+      ],
       "modes": [],
       "params": {
-        "image_url": { "type": "file", "accept": "image", "required": true, "help": "JPG, PNG o WebP de hasta 30 MB." },
-        "upscale_factor": { "type": "enum", "values": ["2", "4", "6"], "default": "2" },
-        "enhancement_strength": { "type": "enum", "values": ["low", "medium", "high"], "default": "high", "help": "Controla cuánto detalle nuevo recupera el modelo." },
-        "face_enhancement": { "type": "bool", "default": false, "help": "Actívalo solo si necesitas recuperar rostros pequeños o degradados." },
-        "grain": { "type": "bool", "default": false },
-        "grain_model": { "type": "enum", "values": ["silver", "gaussian", "grey"], "default": "silver" },
-        "grain_density": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
-        "grain_size": { "type": "number", "min": 1, "max": 5, "step": 0.5, "default": 1 },
-        "grain_strength": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
-        "output_megapixels": { "type": "number", "required": true, "internal": true }
-      },
-      "estimate": {
-        "kind": "topaz_image",
-        "megapixels_param": "output_megapixels",
-        "ailab_credits_per_provider_credit": 14.28,
-        "provider_credits_by_max_megapixels": { "1": 1, "4": 1, "8": 1, "16": 2, "24": 3, "32": 4, "40": 5, "50": 7, "64": 8, "100": 13 },
-        "approximate": false,
-        "note": "Cálculo exacto por el tramo de megapíxeles de salida; el servidor vuelve a medir la imagen."
+        "image_url": {
+          "type": "file",
+          "accept": "image",
+          "required": true,
+          "help": "JPG, PNG o WebP de hasta 30 MB."
+        },
+        "upscale_factor": {
+          "type": "enum",
+          "values": [
+            "2",
+            "4",
+            "6"
+          ],
+          "default": "2"
+        },
+        "enhancement_strength": {
+          "type": "enum",
+          "values": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "high",
+          "help": "Controla cuánto detalle nuevo recupera el modelo."
+        },
+        "face_enhancement": {
+          "type": "bool",
+          "default": false,
+          "help": "Actívalo solo si necesitas recuperar rostros pequeños o degradados."
+        },
+        "grain": {
+          "type": "bool",
+          "default": false
+        },
+        "grain_model": {
+          "type": "enum",
+          "values": [
+            "silver",
+            "gaussian",
+            "grey"
+          ],
+          "default": "silver"
+        },
+        "grain_density": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "default": 0.5
+        },
+        "grain_size": {
+          "type": "number",
+          "min": 1,
+          "max": 5,
+          "step": 0.5,
+          "default": 1
+        },
+        "grain_strength": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "default": 0.5
+        },
+        "output_megapixels": {
+          "type": "number",
+          "required": true,
+          "internal": true
+        }
       }
     },
     "topaz-astra-precise-2-6": {
@@ -5309,22 +4968,40 @@
       "expensive": true,
       "driver": "topaz-v1",
       "min_cli_version": "2.2.6",
-      "aliases": ["astra precise", "precise 2.6", "starlight precise 2.6"],
+      "aliases": [
+        "astra precise",
+        "precise 2.6",
+        "starlight precise 2.6"
+      ],
       "modes": [],
       "params": {
-        "video_url": { "type": "file", "accept": "video", "required": true, "help": "Vídeo MP4 de hasta 200 MB. El servidor mide resolución y fotogramas." },
-        "output_resolution": { "type": "enum", "values": ["1080p", "4K"], "default": "1080p" },
-        "sharpness": { "type": "number", "min": 1, "max": 5, "step": 0.25, "default": 5, "help": "1 aplica menos nitidez · 5 aplica más. Baja el valor para un acabado más suave." },
-        "frame_count": { "type": "int", "required": true, "internal": true }
-      },
-      "estimate": {
-        "kind": "topaz_video",
-        "frames_param": "frame_count",
-        "resolution_param": "output_resolution",
-        "ailab_credits_per_provider_credit": 14.28,
-        "frames_per_provider_credit": { "1080p": 26.0417, "4K": 11.9179 },
-        "approximate": false,
-        "note": "Cálculo exacto por número de fotogramas y resolución de salida."
+        "video_url": {
+          "type": "file",
+          "accept": "video",
+          "required": true,
+          "help": "Vídeo MP4 de hasta 200 MB. El servidor mide resolución y fotogramas."
+        },
+        "output_resolution": {
+          "type": "enum",
+          "values": [
+            "1080p",
+            "4K"
+          ],
+          "default": "1080p"
+        },
+        "sharpness": {
+          "type": "number",
+          "min": 1,
+          "max": 5,
+          "step": 0.25,
+          "default": 5,
+          "help": "1 aplica menos nitidez · 5 aplica más. Baja el valor para un acabado más suave."
+        },
+        "frame_count": {
+          "type": "int",
+          "required": true,
+          "internal": true
+        }
       }
     },
     "topaz-astra-creative-2": {
@@ -5340,25 +5017,60 @@
       "expensive": true,
       "driver": "topaz-v1",
       "min_cli_version": "2.2.6",
-      "aliases": ["astra creative", "astra 2", "creative 2"],
+      "aliases": [
+        "astra creative",
+        "astra 2",
+        "creative 2"
+      ],
       "modes": [],
       "params": {
-        "video_url": { "type": "file", "accept": "video", "required": true, "help": "Vídeo MP4 de hasta 200 MB. Con prompt admite hasta 450 fotogramas." },
-        "prompt": { "type": "string", "max_len": 2000, "help": "Opcional: describe texturas, detalle y acabado visual. No pidas movimientos nuevos." },
-        "output_resolution": { "type": "enum", "values": ["1080p", "4K"], "default": "1080p" },
-        "creativity": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "help": "Más alto permite reconstruir más detalle." },
-        "realism": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
-        "sharp": { "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "help": "0 suaviza, 0,5 conserva y 1 aumenta la nitidez previa." },
-        "frame_count": { "type": "int", "required": true, "internal": true }
-      },
-      "estimate": {
-        "kind": "topaz_video",
-        "frames_param": "frame_count",
-        "resolution_param": "output_resolution",
-        "ailab_credits_per_provider_credit": 14.28,
-        "frames_per_provider_credit": { "1080p": 10, "4K": 6 },
-        "approximate": false,
-        "note": "Cálculo exacto por número de fotogramas y resolución de salida. Con prompt: máximo 450 fotogramas."
+        "video_url": {
+          "type": "file",
+          "accept": "video",
+          "required": true,
+          "help": "Vídeo MP4 de hasta 200 MB. Con prompt admite hasta 450 fotogramas."
+        },
+        "prompt": {
+          "type": "string",
+          "max_len": 2000,
+          "help": "Opcional: describe texturas, detalle y acabado visual. No pidas movimientos nuevos."
+        },
+        "output_resolution": {
+          "type": "enum",
+          "values": [
+            "1080p",
+            "4K"
+          ],
+          "default": "1080p"
+        },
+        "creativity": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "default": 0.4,
+          "help": "Más alto permite reconstruir más detalle."
+        },
+        "realism": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "default": 0.5
+        },
+        "sharp": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "default": 0.5,
+          "help": "0 suaviza, 0,5 conserva y 1 aumenta la nitidez previa."
+        },
+        "frame_count": {
+          "type": "int",
+          "required": true,
+          "internal": true
+        }
       }
     },
     "soul-2": {
@@ -5431,11 +5143,6 @@
           "type": "bool",
           "default": true
         }
-      },
-      "estimate": {
-        "kind": "higgsfield_quote",
-        "approximate": true,
-        "note": "Higgsfield no publica tarifa fija: el servidor cotiza antes de generar."
       }
     },
     "suno": {
@@ -5446,18 +5153,6 @@
       "description": "Genera canciones o instrumentales con versiones v4 a v5.5.",
       "driver": "suno-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "version",
-        "credits_by_value": {
-          "v4": 11,
-          "v4_5": 11,
-          "v4_5plus": 13,
-          "v5": 13,
-          "v5_5": 16
-        },
-        "kind": "param_table"
-      },
       "expensive": false,
       "id": "suno",
       "label": "Suno",
@@ -5532,16 +5227,6 @@
       "description": "Video con audio nativo, modo rapido o calidad y referencias visuales.",
       "driver": "veo-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "by_param": "variant",
-        "credits_by_value": {
-          "fast": 62,
-          "quality": 255
-        },
-        "kind": "param_table",
-        "note": "estimacion de autorizacion; el cobro final usa el coste real informado por el proveedor"
-      },
       "expensive": true,
       "id": "veo-3-1",
       "label": "Veo 3.1",
@@ -5622,26 +5307,6 @@
       "description": "Vídeo de hasta 30 segundos con audio nativo y referencias de imagen, vídeo, audio, enlaces y documentos. Normal ofrece la calidad de referencia y Prime genera más rápido. Los vídeos de referencia suman su duración al precio.",
       "driver": "jobs-v1",
       "enabled": true,
-      "estimate": {
-        "approximate": true,
-        "column_param": "resolution",
-        "credits_matrix": {
-          "normal": {
-            "1080P": 32.64,
-            "480P": 8.16,
-            "720P": 16.32
-          },
-          "prime": {
-            "1080P": 51.408,
-            "480P": 12.444,
-            "720P": 25.704
-          }
-        },
-        "kind": "per_second_matrix",
-        "note": "Tarifa AILAB por segundo sobre los segundos de salida más los de los vídeos de referencia (cada vídeo al segundo superior, medido por el servidor), incluido el 2% de servicio. Sin vídeos de entrada es exacto; con ellos es el máximo reservado y el cargo final es el consumo confirmado.",
-        "row_param": "version",
-        "seconds_param": "duration"
-      },
       "expensive": true,
       "id": "wan-3-video",
       "label": "Wan 3.0 Video",
@@ -5748,7 +5413,7 @@
           "type": "int",
           "min": 0,
           "max": 2147483647,
-          "help": "Opcional. Sin semilla, Kie elige una aleatoria."
+          "help": "Opcional. Sin semilla, se elige una aleatoria."
         },
         "version": {
           "default": "normal",
@@ -5770,7 +5435,7 @@
       "label": "Flux 3",
       "description": "Genera una imagen desde texto o edita con hasta 10 referencias ordenadas, en las resoluciones con tarifa verificada de AILAB.",
       "section": "image",
-      "vendor": "Black Forest Labs · fal",
+      "vendor": "Black Forest Labs",
       "tier": "hub",
       "output": "image",
       "status": "active",
@@ -5844,18 +5509,6 @@
           "default": "1:1",
           "help": "En edición, auto toma el aspecto de la primera referencia."
         }
-      },
-      "estimate": {
-        "kind": "param_table",
-        "by_param": "resolution",
-        "credits_by_value": {
-          "768sq": 10,
-          "1k": 10,
-          "2k": 40,
-          "4k": 157
-        },
-        "approximate": false,
-        "note": "Por imagen, igual en texto y edición, sin recargo por referencias."
       }
     },
     "ideogram-v45": {
@@ -5863,7 +5516,7 @@
       "label": "Ideogram 4.5",
       "description": "Genera imágenes desde texto y edita una imagen base con hasta cuatro referencias.",
       "section": "image",
-      "vendor": "Ideogram · fal",
+      "vendor": "Ideogram",
       "tier": "hub",
       "output": "image",
       "status": "active",
@@ -5950,21 +5603,6 @@
           "min": 0,
           "max": 2147483647
         }
-      },
-      "estimate": {
-        "kind": "unit_credits",
-        "units_param": "num_images",
-        "rate_param": "quality",
-        "credits_per_unit": 12,
-        "minimum_credits": 2,
-        "credits_per_unit_by_value": {
-          "very_low": 1.6,
-          "low": 6,
-          "medium": 12,
-          "high": 44
-        },
-        "approximate": false,
-        "note": "Consulta exacta por modo y calidad; el coste se redondea una sola vez sobre el lote."
       }
     },
     "kling-4-0": {
@@ -6309,29 +5947,13 @@
           "help": "Audio de la voz 3."
         }
       },
-      "estimate": {
-        "kind": "per_second_table",
-        "by_param": "resolution",
-        "seconds_param": "duration",
-        "credits_per_second": {
-          "720p": 29.07,
-          "1080p": 43.35
-        },
-        "credits_with_video": {
-          "720p": 17.34,
-          "1080p": 26.01
-        },
-        "video_param": "video_urls",
-        "approximate": true,
-        "note": "Tarifa AILAB por segundo con el 2 % de servicio. Sin vídeo de entrada se cobra la salida y es exacto. Con vídeos de entrada: si suman menos que la salida se facturan 2 x salida, y si no, entrada + salida (cada vídeo al segundo superior, medido por el servidor, a la tarifa con vídeo). Es el máximo reservado; el cargo final es el consumo confirmado."
-      },
       "id": "kling-4-0"
     },
     "seedance-2-5-lite": {
       "label": "Seedance 2.5 Lite",
-      "description": "Versión económica de Seedance 2.5, servida por VideoRouter. Texto, primer y último fotograma o referencias (imágenes, hasta 10 vídeos y 10 audios), de 4 a 30 s. Sin draft ni edición de vídeo: para eso usa Seedance 2.5 Normal.",
+      "description": "Versión económica de Seedance 2.5. Texto, primer y último fotograma o referencias (imágenes, hasta 10 vídeos y 10 audios), de 4 a 30 s. Sin draft ni edición de vídeo: para eso usa Seedance 2.5 Normal.",
       "section": "video",
-      "vendor": "ByteDance · VideoRouter",
+      "vendor": "ByteDance",
       "tier": "hub",
       "output": "video",
       "status": "active",
@@ -6432,24 +6054,6 @@
           "help": "Solo ref. Hasta 10 audios que sumen como máximo 30,2 s. No añaden segundos al precio."
         }
       },
-      "estimate": {
-        "kind": "per_second_table",
-        "by_param": "resolution",
-        "seconds_param": "duration",
-        "credits_per_second": {
-          "480p": 19.482,
-          "720p": 41.922,
-          "1080p": 103.122
-        },
-        "credits_with_video": {
-          "480p": 11.8932,
-          "720p": 25.5612,
-          "1080p": 62.8932
-        },
-        "video_param": "reference_video_urls",
-        "approximate": true,
-        "note": "Tarifa de VideoRouter con el servicio de AILAB. Es el máximo que se reserva: sin vídeo se cobra la salida y, con vídeo de referencia, salida + entrada a la tarifa con vídeo, cada vídeo redondeado al segundo superior. Al terminar se cobra el coste real del proveedor x1,02, que puede ser menor y nunca mayor. Las imágenes y los audios no suman segundos."
-      },
       "id": "seedance-2-5-lite"
     },
     "seedance-2-5-draft-1080p": {
@@ -6475,12 +6079,6 @@
           "max_len": 255,
           "help": "task_id del draft, tal como lo muestra el comando drafts."
         }
-      },
-      "estimate": {
-        "kind": "flat_credits",
-        "credits": 6687,
-        "approximate": true,
-        "note": "Máximo posible. El precio real lo fija el servidor para cada draft: drafts lo muestra y prepare autoriza esa cifra exacta."
       }
     },
     "higgsfield-soul-cinema": {
@@ -6548,11 +6146,6 @@
           "max": 1000000,
           "help": "Opcional. Déjala vacía para una semilla aleatoria."
         }
-      },
-      "estimate": {
-        "kind": "higgsfield_quote",
-        "approximate": true,
-        "note": "Higgsfield no publica tarifa fija: el servidor cotiza antes de generar."
       },
       "id": "higgsfield-soul-cinema"
     },
@@ -6638,11 +6231,6 @@
           },
           "help": "Preset oficial de Marketing Studio; solo con enhance_prompt."
         }
-      },
-      "estimate": {
-        "kind": "higgsfield_quote",
-        "approximate": true,
-        "note": "Higgsfield no publica tarifa fija: el servidor cotiza antes de generar."
       },
       "id": "higgsfield-marketing-studio-image"
     }

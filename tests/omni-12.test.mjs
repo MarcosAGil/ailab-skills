@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { Media } from './helpers/media.mjs';
 import { CANONICAL, canRunParity } from './helpers/php.mjs';
@@ -11,7 +11,8 @@ import { startPriceBank } from './helpers/price-bank.mjs';
 import { PriceFixtures } from './helpers/price-fixtures.mjs';
 
 // Gemini Omni Flash 1.2 por Kie en la skill 2.3.19: generar, editar, Extend y los recursos gratuitos (Character ID y
-// Voice ID). Contrato en AILAB: app/api/wallet/omni-12.php, omni-resource.php y la medición de gateway.php. Con
+// Voice ID). Contrato en AILAB: app/api/wallet/omni-12.php, omni-resource.php y la medición de gateway.php. Desde la 2.5.0
+// el precio lo da price.php (y el de Extend, el listado del servidor). Con
 // AILAB_CANONICAL_REPO se usa el PHP real con un Kie simulado en local: sin red, sin claves y sin gasto.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-omni12-'));
@@ -20,7 +21,8 @@ process.env.AILAB_CREDENTIALS_DIR = path.join(temporary, 'credentials');
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
 const catalogPath = path.join(root, 'skills/ailab/catalog/catalog.json');
-const { validateCatalogShape, validateParams, estimateCredits, modelUsable, requiresServerQuote } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { validateCatalogShape, validateParams, modelUsable } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { priceParams } = await import('../skills/ailab/scripts/lib/price.mjs');
 const { buildPayload } = await import('../skills/ailab/scripts/adapters/jobs-v1.mjs');
 const omni = await import('../skills/ailab/scripts/lib/omni12.mjs');
 const { guideText } = await import('../skills/ailab/scripts/lib/guide.mjs');
@@ -35,8 +37,6 @@ const EXTEND = 'gemini-omni-flash-1-2-extend';
 const CHARACTER = 'gemini-omni-character';
 const AUDIO = 'gemini-omni-audio';
 const NEW_MODELS = [GEN, EXTEND, CHARACTER, AUDIO];
-const OLD_RUNTIMES = ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14', '2.3.15', '2.3.16', '2.3.17', '2.3.18'];
-const RATES = { '360p': 4.08, '720p': 9.18, '1080p': 10.2, '4k': 22.44 };
 const P = 'Una taza de café humeante sobre una mesa de madera';
 const manifestOf = (stdout) => /Manifiesto: ([0-9a-f-]{36})/.exec(stdout)?.[1];
 
@@ -49,7 +49,7 @@ function plan(id, given) {
   const v = validateParams(m, given);
   if (!v.ok) return { ok: false, errors: v.errors };
   const uploaded = Object.fromEntries(Object.entries(v.fileParams).map(([param, files]) => [param, files.map((file) => media.url(file))]));
-  return { ok: true, params: v.params, estimate: estimateCredits(m, { ...v.params, ...v.fileParams }), payload: buildPayload(m, v.params, uploaded) };
+  return { ok: true, params: v.params, fileParams: v.fileParams, payload: buildPayload(m, v.params, uploaded) };
 }
 
 test('catálogo: 1.2 por Kie con cuatro modalidades, Extend y los recursos, todos exigen la skill 2.3.19', () => {
@@ -60,27 +60,14 @@ test('catálogo: 1.2 por Kie con cuatro modalidades, Extend y los recursos, todo
   assert.deepEqual([gen.params.seed.min, gen.params.seed.max], [10000, 99999]);
   assert.deepEqual([gen.params.image_urls.max, gen.params.character_ids.max], [6, 2]);
   assert.equal(gen.params.audio_ids, undefined, '1.2 no admite Voice IDs sueltos');
-  assert.equal(gen.vendor, 'Google · KIE');
+  assert.equal(gen.vendor, 'Google');
   for (const id of NEW_MODELS) {
     assert.equal(catalog.models[id].min_cli_version, '2.3.19', id);
     assert.equal(catalog.models[id].driver, 'jobs-v1', id + ': un driver nuevo haría que las CLI antiguas rechazaran el catálogo entero');
     assert.equal(modelUsable(catalog.models[id]).ok, true, id);
   }
-  for (const id of [CHARACTER, AUDIO]) assert.deepEqual([catalog.models[id].output, catalog.models[id].estimate.credits, catalog.models[id].expensive], ['text', 0, false], id);
-  // La tabla es la tarifa de Kie x 1,02 por segundo: ceil(round(tarifa x segundos, 6)).
-  for (const [resolution, rate] of Object.entries(RATES)) {
-    for (let seconds = 3; seconds <= 15; seconds++) {
-      const expected = Math.ceil(Number((rate * seconds).toFixed(6)));
-      assert.equal(gen.estimate.credits_matrix[resolution][String(seconds)], expected, resolution + ' ' + seconds);
-      assert.equal(omni.omni12Credits(resolution, seconds), expected);
-      assert.equal(plan(GEN, { prompt: P, resolution, duration: String(seconds) }).estimate.credits, expected);
-    }
-    assert.equal(gen.estimate.credits_with_video[resolution], omni.omni12Credits(resolution, 15));
-  }
-  assert.deepEqual([omni.omni12Credits('720p', 8), omni.omni12Credits('360p', 3), omni.omni12Credits('4k', 15)], [74, 13, 337]);
-  assert.equal(catalog.models[EXTEND].estimate.credits, 92, 'cota para parsers: 10 s a 720p');
-  assert.equal(requiresServerQuote(catalog.models[EXTEND]), true);
-  assert.equal(requiresServerQuote(catalog.models[GEN]), false);
+  for (const id of [CHARACTER, AUDIO]) assert.deepEqual([catalog.models[id].output, catalog.models[id].expensive], ['text', false], id);
+  for (const id of NEW_MODELS) assert.equal(catalog.models[id].estimate, undefined, id + ': desde la 2.5.0 el catálogo no lleva tarifas');
 });
 
 test('cada modalidad envía solo sus campos, con los nombres que espera el servidor', () => {
@@ -92,23 +79,21 @@ test('cada modalidad envía solo sus campos, con los nombres que espera el servi
   assert.deepEqual(frames.payload.input, { mode: 'frames', prompt: P, aspect_ratio: '16:9', resolution: '720p', duration: 10, first_frame_url: media.url(first), last_frame_url: media.url(last) });
   const ref = plan(GEN, { mode: 'reference', prompt: P, image_urls: [image('a.png'), image('b.png')], character_ids: ['char_1', 'char_2'], seed: '54321', aspect_ratio: 'auto' });
   assert.deepEqual(ref.payload.input, { mode: 'reference', prompt: P, aspect_ratio: 'auto', resolution: '720p', duration: 8, seeds: 54321, image_urls: [media.url(image('a.png')), media.url(image('b.png'))], character_ids: ['char_1', 'char_2'] });
-  assert.equal(ref.estimate.credits, 74);
   // Editar: sin duración (la salida dura lo que el vídeo) y se cobran los segundos medidos, cada vídeo al segundo superior.
   const video = clip(4.2);
   const edit = plan(GEN, { mode: 'edit', prompt: P, video_url: video, image_urls: [image()], resolution: '720p' });
   assert.deepEqual(edit.payload.input, { mode: 'edit', prompt: P, aspect_ratio: '16:9', resolution: '720p', image_urls: [media.url(image())], video_list: [media.url(video)] });
   assert.equal('duration' in edit.params, false);
-  assert.equal(edit.estimate.credits, 46, '5 s x 9,18');
-  assert.match(edit.estimate.note, /vídeo a editar de 5 s/);
-  assert.equal(plan(GEN, { mode: 'edit', prompt: P, video_url: clip(15), resolution: '4k' }).estimate.credits, 337);
-  assert.equal(plan(GEN, { mode: 'edit', prompt: P, video_url: clip(0.6), resolution: '360p' }).estimate.credits, 5, 'mínimo 1 s');
+  // Para el precio viaja la duración medida del vídeo a editar, nunca la ruta.
+  const sent = priceParams(edit.params, edit.fileParams);
+  assert.equal(Math.round(sent.video_url[0].duration * 10) / 10, 4.2);
+  assert.equal(sent.video_url[0].class, 'video');
+  assert.equal(JSON.stringify(sent).includes(temporary), false);
   // Extend y recursos.
   const extend = plan(EXTEND, { task_id: '  kie-123 ', prompt: P, duration: '3', image_urls: [image()] });
   assert.deepEqual(extend.payload, { model: EXTEND, input: { mode: 'extend', task_id: 'kie-123', prompt: P, duration: 3, image_urls: [media.url(image())] } });
-  assert.equal(extend.estimate.server_quote, true);
   const audio = plan(AUDIO, { name: 'Voz Clara', voice_description: 'Cálida', example_dialogue: 'Hola' });
   assert.deepEqual(audio.payload.input, { audio_id: 'Puck', name: 'Voz Clara', voice_description: 'Cálida', example_dialogue: 'Hola' });
-  assert.equal(audio.estimate.credits, 0);
   const portrait = image('retrato.png');
   const body = image('cuerpo.png');
   const character = plan(CHARACTER, { portrait_url: portrait, body_url: body, descriptions: 'Clara, 30 años', character_name: 'Clara', audio_ids: ['voice_1'] });
@@ -149,26 +134,14 @@ test('Extend: la cotización es la cifra del listado del servidor para esa durac
   assert.equal(quoted.ok, true);
   assert.deepEqual([quoted.quote.estimated_credits, quoted.quote.max_credits_authorized, quoted.quote.expires_at], [41, 41, '2026-11-12T10:15:00.000Z']);
   assert.doesNotMatch(quoted.quote.note, /AVISO/);
-  assert.match(omni.omni12ExtendQuote({ ...video, credits_by_duration: { 10: 50 } }, 10).quote.note, /AVISO: la tarifa local da 41 cr; manda la del servidor/);
+  // La CLI no tiene tarifa propia: la cifra del listado manda siempre, sin comparar con nada local.
+  const listed = omni.omni12ExtendQuote({ ...video, credits_by_duration: { 10: 50 } }, 10);
+  assert.equal(listed.quote.estimated_credits, 50);
+  assert.doesNotMatch(listed.quote.note, /AVISO|tarifa local/);
   assert.equal(omni.omni12ExtendQuote(video, 5).ok, false, 'sin cifra del servidor no se autoriza nada');
   assert.equal(omni.omni12ExtendQuote(video, 11).ok, false);
   const lines = omni.omni12VideoLines(video).join('\n');
   for (const text of ['task_id: kie-1', 'Generado · 360p · 11 s · formato: 9:16', '+3 s 13 cr · +10 s 41 cr']) assert.ok(lines.includes(text), text);
-});
-
-test('compatibilidad: los parsers 2.3.7 a 2.3.18 aceptan el catálogo y no ofrecen los modelos nuevos', parity, async () => {
-  const raw = fs.readFileSync(catalogPath, 'utf8');
-  for (const version of OLD_RUNTIMES) {
-    const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
-    const parsed = old.validateCatalogShape(JSON.parse(raw));
-    assert.equal(Object.keys(parsed.models).length, Object.keys(catalog.models).length, version);
-    assert.equal(old.catalogCompatible(parsed).ok, true, version);
-    for (const id of NEW_MODELS) {
-      const usable = old.modelUsable(parsed.models[id]);
-      assert.equal(usable.ok, false, `la CLI ${version} no debe ofrecer ${id}`);
-      assert.ok(usable.reason.includes('Actualiza la skill') && usable.reason.includes('2.3.19'), `${version} ${id}: ${usable.reason}`);
-    }
-  }
 });
 
 // Kie simulado: crea recursos de Omni y recibe createTask, pero corta la conexión al crear tareas, como una caída de red:
@@ -228,11 +201,11 @@ test('extremo a extremo con el PHP real: reservas iguales a la autorización, Ex
   assert.equal('duration' in editInput, false);
   assert.equal('mode' in editInput, false);
 
-  // Un máximo por debajo de la reserva: 402 con la cifra del servidor y sin llegar a Kie.
+  // Un máximo por debajo de la reserva: 402 `price_changed` (contrato, sección 6) y sin llegar a Kie.
   const forced = await bank.cliForced('prepare', GEN, '--prompt', P, '--resolution', '4k', '--duration', '15');
   const refused = await bank.cliForced('submit', manifestOf(forced.stdout), '--confirmed');
   assert.notEqual(refused.code, 0);
-  assert.match(refused.stderr + refused.stdout, /La estimacion de 337 creditos supera el maximo autorizado de 1/);
+  assert.match(refused.stderr + refused.stdout, /El precio de tu cuenta ha cambiado desde la cotización\. Prepara de nuevo\. No se ha cobrado nada\./);
 
   // Voice ID y Character ID: gratis, sin reserva, con el ID guardado en un archivo de texto.
   const saved = (stdout) => fs.readFileSync(/Guardado: (.+) \(texto\)/.exec(stdout)[1], 'utf8');
@@ -289,7 +262,7 @@ test('extremo a extremo con el PHP real: reservas iguales a la autorización, Ex
   const extendForced = await bank.cliForced('prepare', EXTEND, '--task_id', 'omni-360', '--prompt', P, '--duration', '10');
   assert.match(extendForced.stdout, /coste cotizado 41 cr/);
   const extendRefused = await bank.cliForced('submit', manifestOf(extendForced.stdout), '--confirmed');
-  assert.match(extendRefused.stderr + extendRefused.stdout, /La estimacion de 41 creditos supera el maximo autorizado de 1/);
+  assert.match(extendRefused.stderr + extendRefused.stdout, /El precio de tu cuenta ha cambiado desde la cotización\. Prepara de nuevo\. No se ha cobrado nada\./);
   for (const id of ['omni-1080', 'omni-16', 'no-existe']) {
     const missing = await bank.cli('prepare', EXTEND, '--task_id', id, '--prompt', P, '--duration', '3');
     assert.notEqual(missing.code, 0, id);

@@ -8,16 +8,13 @@
 // hasta 15 s y hasta 5 imágenes, sin duración). 1.2 no admite Voice IDs: la voz va dentro de un Character ID.
 // `gemini-omni-flash-1-2-extend` añade de 3 a 10 s a un vídeo 1.2 de la cuenta (360p o 720p, 15 s o menos).
 //
-// Precio: tarifa de Kie x 1,02 por segundo (4,08 / 9,18 / 10,2 / 22,44 cr/s), ceil(round(tarifa x segundos, 6)). Es lo
-// que se reserva; al terminar se cobra el consumo real de Kie x 1,02, nunca más. La edición se cobra por los segundos del
-// vídeo de entrada (cada vídeo al segundo superior, como mide el servidor) y Extend solo por los segundos añadidos, a la
-// resolución del vídeo de origen: esa cifra la da el servidor en el listado de vídeos extensibles.
+// El precio lo da el servidor: `prepare` lo pide a price.php y Extend usa la cifra del listado de vídeos extensibles
+// (`credits_by_duration`), que es la que se reserva al enviar.
 //
 // Este módulo no toca la red: catalog.mjs lo importa y su copia firmada debe seguir siendo autónoma.
 import { inspectPricingMetadata } from './files.mjs';
 import { phpRound } from './kling4.mjs';
 import { items } from './seedance.mjs';
-import { priced } from './account-pricing.mjs';
 
 export const OMNI12_ID = 'gemini-omni-flash-1-2';
 export const OMNI12_EXTEND_ID = 'gemini-omni-flash-1-2-extend';
@@ -29,8 +26,6 @@ export const OMNI12_VIDEOS_ENDPOINT = 'api/wallet/history.php';
 // 20 vídeos por página en el servidor, del más reciente al más antiguo.
 export const OMNI12_MAX_PAGES = 50;
 
-const RATES = { '360p': 4.08, '720p': 9.18, '1080p': 10.2, '4k': 22.44 };
-const MIN_SECONDS = 3;
 const MAX_SECONDS = 15;
 const MAX_SECONDS_LAST_FRAME = 10;
 const EXTEND_MIN_SECONDS = 3;
@@ -47,16 +42,6 @@ const NOTHING_CHARGED = ' No se ha cobrado nada.';
 const KIND = { generate: 'Generado', edit: 'Editado', extend: 'Extendido' };
 
 const secondsText = (value) => String(value).replace('.', ',');
-
-export function omni12Rate(resolution) {
-  return Object.hasOwn(RATES, String(resolution)) ? RATES[String(resolution)] : null;
-}
-
-// `omni12_credits`: ceil(round(tarifa x segundos, 6)).
-export function omni12Credits(resolution, seconds) {
-  const rate = omni12Rate(resolution);
-  return rate === null ? null : Math.ceil(phpRound(rate * seconds, 6));
-}
 
 // Modalidad que deduce el servidor de los materiales; si no coincide con --mode, rechaza con el mismo texto.
 function inferredMode({ first, images, videos, characters }) {
@@ -139,24 +124,6 @@ export function omni12Problems(params, fileParams = {}) {
   return omni12Inspect(params, fileParams).problems;
 }
 
-// La misma cuenta que `omni12_estimate`: la duración elegida o, al editar, los segundos medidos del vídeo.
-export function omni12Estimate(model, params, fileParams = {}) {
-  const merged = { ...params, ...fileParams };
-  const inspected = omni12Inspect(merged, merged);
-  if (inspected.problems.length) return { credits: null, approximate: false, note: inspected.problems[0] };
-  const resolution = String(params.resolution ?? '720p');
-  const tail = ' · tarifa de Kie por segundo con el 2% de servicio AILAB; máximo reservado, se cobra el consumo real y nunca más';
-  if (String(params.mode) === 'edit') {
-    const credits = omni12Credits(resolution, inspected.editSeconds);
-    if (!credits) return { credits: null, approximate: false, note: 'tarifa de Gemini Omni Flash 1.2 no disponible para esta combinación' };
-    return { credits, approximate: true, note: resolution + ' · vídeo a editar de ' + inspected.editSeconds + ' s (se cobra su duración)' + tail };
-  }
-  const duration = Number(params.duration ?? 8);
-  const credits = Number.isInteger(duration) && duration >= MIN_SECONDS && duration <= MAX_SECONDS ? omni12Credits(resolution, duration) : null;
-  if (!credits) return { credits: null, approximate: false, note: 'tarifa de Gemini Omni Flash 1.2 no disponible para esta combinación' };
-  return { credits, approximate: true, note: resolution + ' · ' + duration + ' s' + tail };
-}
-
 // Entrada tal como la espera el servidor (que la traduce a Kie): sin duración al editar y la semilla como `seeds`.
 export function omni12Input(params, uploaded = {}) {
   const mode = String(params.mode ?? 't2v');
@@ -209,19 +176,15 @@ export function omni12VideoNotFound() {
   return { ok: false, normalized: { kind: 'bad_request', message: 'Ese vídeo no aparece entre los que puedes extender (Gemini Omni Flash 1.2 de tu cuenta, terminado, a 360p o 720p y de 15 s o menos). Consúltalo con el comando omni12-videos.' + NOTHING_CHARGED } };
 }
 
-// Cotización local de `prepare`: congela en el manifiesto la cifra que el servidor reservará para alargar ese vídeo.
-export function omni12ExtendQuote(video, duration, now = Date.now(), factor = 1) {
+// Cotización de `prepare`: congela en el manifiesto la cifra que el servidor da en el listado para alargar ese vídeo.
+export function omni12ExtendQuote(video, duration, now = Date.now()) {
   const refuse = (message) => ({ ok: false, normalized: { kind: 'bad_request', message } });
   const seconds = Number(duration);
   if (!Number.isInteger(seconds) || seconds < EXTEND_MIN_SECONDS || seconds > EXTEND_MAX_SECONDS) {
     return refuse('Extend añade de 3 a 10 segundos: la duración debe ser un entero en ese rango.' + NOTHING_CHARGED);
   }
   const listed = Number(video.credits_by_duration && video.credits_by_duration[String(seconds)]);
-  // La cifra del listado es el precio de la cuenta: la tarifa local (de miembro) se compara con el mismo factor.
-  // La tarifa por segundo es de miembro: solo se enseña a una cuenta con factor 1,0.
-  const memberLocal = omni12Credits(video.resolution, seconds);
-  const local = memberLocal === null ? null : priced(memberLocal, factor);
-  if (!Number.isSafeInteger(listed) || listed <= 0 || local === null) return refuse('El servidor no devolvió un coste válido para alargar ese vídeo.' + NOTHING_CHARGED);
+  if (!Number.isSafeInteger(listed) || listed <= 0) return refuse('El servidor no devolvió un coste válido para alargar ese vídeo.' + NOTHING_CHARGED);
   return {
     ok: true,
     quote: {
@@ -231,8 +194,7 @@ export function omni12ExtendQuote(video, duration, now = Date.now(), factor = 1)
       expires_at: new Date(now + QUOTE_TTL_MS).toISOString(),
       verified_duration_seconds: seconds,
       note: 'Extend de un vídeo ' + video.resolution + (video.output_seconds ? ' de ' + video.output_seconds + ' s' : '') + ': +' + seconds
-        + ' s' + (factor === 1 ? ' a ' + secondsText(video.rate ?? omni12Rate(video.resolution)) + ' cr/s' : '') + '. Es el máximo reservado: se cobra el consumo real y nunca más.'
-        + (local !== listed ? ' AVISO: la tarifa local da ' + local + ' cr; manda la del servidor.' : ''),
+        + ' s. Es el máximo reservado: se cobra el consumo real y nunca más.',
     },
   };
 }

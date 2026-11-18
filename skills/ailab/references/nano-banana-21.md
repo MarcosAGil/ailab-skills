@@ -1,6 +1,6 @@
 # Nano Banana 2.1
 
-> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+> El precio lo da siempre AILAB para tu cuenta: `info` y `prepare` lo muestran.
 
 ID: `nano-banana-2-1`. Runtime mínimo: 2.3.9.
 
@@ -12,10 +12,10 @@ Prompt: entre 1 y 20.000 caracteres Unicode. Resolución: `1K`, `2K` o `4K`.
 Proporción: `auto`, `21:9`, `16:9`, `3:2`, `4:3`, `5:4`, `1:1`, `4:5`,
 `3:4`, `2:3`, `9:16`, `4:1`, `1:4`, `8:1` o `1:8`.
 
-Salida PNG fija. Sin lote, semilla, campos de fal, razonamiento ni búsquedas.
+Salida PNG fija. Sin lote, semilla, razonamiento ni búsquedas.
 
-Estimación: 1K / 5 cr, 2K / 7 cr, 4K / 10 cr, con o sin referencias.
-Prevalece el catálogo vigente y nunca se supera el máximo autorizado.
+El precio depende solo de la resolución, con o sin referencias, y nunca se
+supera el máximo autorizado.
 
 Ante un timeout o resultado ausente: conserva el ID y recupera con `status`
 y el historial; no vuelvas a generar.

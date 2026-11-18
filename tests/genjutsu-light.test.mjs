@@ -10,14 +10,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { Media } from './helpers/media.mjs';
 import { CANONICAL, canRunParity, php } from './helpers/php.mjs';
-import { startPriceBank, MEMBER_TOKEN } from './helpers/price-bank.mjs';
-import { auditCase } from './helpers/price-audit.mjs';
-import { PriceFixtures } from './helpers/price-fixtures.mjs';
+import { handlePrice } from './helpers/price-server.mjs';
 
 // Genjutsu Light (Higgsfield) y el arreglo de los estados finales de Higgsfield (nsfw y rejected), en la release 2.3.14.
 // Contrato del servidor: api/skill/higgsfield.php (spec, input, quote, create, status) y wallet_genjutsu_light_* de
 // api/wallet/lib.php. Con AILAB_CANONICAL_REPO las comparaciones usan el PHP real, con proveedores sin conexión: sin red
-// ni gasto. El resto de pruebas usa un servidor simulado en localhost.
+// ni gasto. El resto de pruebas usa un servidor simulado en localhost. Desde la 2.5.0 la CLI no tiene tarifa: el precio lo da
+// price.php (simulado aquí) y la cifra que se aprueba es siempre la cotización del servidor.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skillRoot = path.join(root, 'skills/ailab');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-light-skill-'));
@@ -26,10 +25,9 @@ process.env.AILAB_CREDENTIALS_DIR = path.join(temporary, 'credentials');
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
 const catalogPath = path.join(skillRoot, 'catalog/catalog.json');
-const { validateCatalogShape, validateParams, estimateCredits, modelUsable, requiresServerQuote, resolveModel } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { validateCatalogShape, validateParams, modelUsable, resolveModel } = await import('../skills/ailab/scripts/lib/catalog.mjs');
 const higgsfield = await import('../skills/ailab/scripts/adapters/higgsfield-v1.mjs');
 const light = await import('../skills/ailab/scripts/lib/genjutsu-light.mjs');
-const { pricingLines } = await import('../skills/ailab/scripts/lib/pricing.mjs');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
 const ID = 'higgsfield-genjutsu-light';
 const model = { id: ID, ...catalog.models[ID] };
@@ -38,18 +36,13 @@ const execute = promisify(execFile);
 const media = new Media(path.join(temporary, 'files'));
 const strip = (text) => text.normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-// Referencia independiente: micro-dólares por segundo facturable (0,025 / 0,05 / 0,10 USD con el descuento de la cuenta),
-// crédito de 0,005 USD y margen 1,02, con aritmética entera como el servidor. Segundos facturables = 2 x ceil(vídeo).
-const MICRO_USD = { '480p': 25000, '720p': 50000, '1080p': 100000 };
-const reference = (resolution, videoSeconds) => Math.floor((2 * videoSeconds * MICRO_USD[resolution] * 10200 + 49999999) / 50000000);
 const RESOLUTIONS = ['480p', '720p', '1080p'];
 
 function plan(given) {
   const v = validateParams(model, given);
   if (!v.ok) return { ok: false, errors: v.errors };
-  const estimate = estimateCredits(model, { ...v.params, ...v.fileParams });
   const uploaded = Object.fromEntries(Object.entries(v.fileParams).map(([param, files]) => [param, files.map((file) => media.url(file))]));
-  return { ok: true, v, estimate, payload: higgsfield.buildPayload(model, v.params, uploaded) };
+  return { ok: true, v, payload: higgsfield.buildPayload(model, v.params, uploaded) };
 }
 
 test('el contrato publicado: modelo nuevo, activo desde la skill 2.3.14, con cotización del servidor y sin datos del proveedor', async () => {
@@ -69,12 +62,9 @@ test('el contrato publicado: modelo nuevo, activo desde la skill 2.3.14, con cot
   assert.equal(model.params.video_url.type, 'file');
   assert.equal(model.params.video_url.required, true);
   assert.equal(Object.keys(model.params).sort().join(), 'image_urls,mode,prompt,resolution,video_url', 'sin parámetros que el servidor no admite');
-  assert.equal(model.estimate.kind, 'higgsfield_quote', 'la forma del estimate la conocen todas las CLI 2.3.x');
-  assert.deepEqual(model.estimate.credits_per_second, { '480p': 10.2, '720p': 20.4, '1080p': 40.8 });
-  assert.equal(model.estimate.max_credits, 612);
-  assert.equal(requiresServerQuote(model), true);
+  assert.equal(model.estimate, undefined, 'sin tarifa local: el precio y el techo los da AILAB');
   assert.equal(modelUsable(model).ok, true);
-  assert.equal(modelUsable({ ...model, min_cli_version: '2.4.1' }).ok, false);
+  assert.equal(modelUsable({ ...model, min_cli_version: '9.0.0' }).ok, false);
   assert.equal(resolveModel(catalog, 'genjutsu-light').id, ID);
   assert.equal(resolveModel(catalog, 'genjutsu light').id, ID);
   assert.equal(resolveModel(catalog, 'genjutsu').id, 'genjutsu', 'Genjutsu Normal sigue siendo `genjutsu`');
@@ -83,16 +73,15 @@ test('el contrato publicado: modelo nuevo, activo desde la skill 2.3.14, con cot
   for (const forbidden of ['genjutsu-light/', 'motion-transfer/v1', 'object-swap/v1', 'open.higgsfield', 'higgsfield-ai/', 'provider_contract', 'HIGGSFIELD', 'api_key']) assert.equal(text.includes(forbidden), false, forbidden);
   assert.equal(text.includes(String.fromCharCode(0x2014)), false);
   assert.equal(higgsfield.serverModelId(model), ID);
-  assert.equal(higgsfield.hardCreditCap(model), 612, '15 s a 1080p son 30 s facturables: el máximo posible');
   // Genjutsu Normal no cambia.
   assert.deepEqual(normal.params.resolution.values, ['480p', '720p']);
   assert.equal(normal.min_cli_version, '2.3.0');
-  assert.equal(higgsfield.hardCreditCap(normal), 2100);
   if (!CANONICAL) return;
   // Las CLI 2.3.7 a 2.3.13 aceptan el catálogo entero y listan Light como no disponible: piden la 2.3.14.
   for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13']) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
-    const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
+    // Las CLI anteriores a la 2.5.0 leen catalog-v2.json (con tarifas); el catálogo sin `estimate` es solo para la 2.5.0.
+    const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(path.join(CANONICAL, 'app/api/v1/skill/catalog-v2.json'), 'utf8')));
     const usable = old.modelUsable(parsed.models[ID]);
     assert.equal(usable.ok, false, `la CLI ${version} no debe ofrecer Light`);
     assert.match(usable.reason, /necesita CLI 2\.3\.14/, `la CLI ${version} pide actualizar`);
@@ -100,35 +89,11 @@ test('el contrato publicado: modelo nuevo, activo desde la skill 2.3.14, con cot
   }
 });
 
-test('el precio local es exacto: 3 resoluciones x 15 duraciones coinciden con la fórmula del servidor', () => {
-  let checked = 0;
-  for (const resolution of RESOLUTIONS) for (let seconds = 1; seconds <= 15; seconds += 1) {
-    const result = plan({ video_url: media.video(`lv${seconds}.mp4`, seconds), image_urls: [media.image('li.png')], resolution });
-    assert.equal(result.ok, true, result.errors?.join('\n'));
-    assert.equal(result.estimate.credits, reference(resolution, seconds), `${resolution} ${seconds} s`);
-    assert.equal(result.estimate.credits, light.lightCredits(model.estimate, resolution, seconds));
-    assert.equal(result.estimate.approximate, false);
-    assert.equal(result.estimate.server_quote, true, 'el servidor cotiza igualmente');
-    assert.ok(result.estimate.credits <= higgsfield.hardCreditCap(model), `${resolution} ${seconds} s cabe en el tope`);
-    checked += 1;
-  }
-  assert.equal(checked, 45);
-  // Cifras del informe: 10 s de vídeo son 20 s facturables.
-  const ten = (resolution) => plan({ video_url: media.video('lv10.mp4', 10), image_urls: [media.image('li.png')], resolution }).estimate.credits;
-  assert.deepEqual([ten('480p'), ten('720p'), ten('1080p')], [102, 204, 408]);
-  assert.equal(plan({ video_url: media.video('lv15.mp4', 15), image_urls: [media.image('li.png')], resolution: '1080p' }).estimate.credits, 612);
-  // Sin --resolution manda el valor por defecto del servidor (720p).
-  assert.equal(plan({ video_url: media.video('lv10.mp4', 10), image_urls: [media.image('li.png')] }).estimate.credits, 204);
-  assert.match(plan({ video_url: media.video('lv10.mp4', 10), image_urls: [media.image('li.png')] }).estimate.note, /10 s de salida \+ 10 s de vídeo = 20 s facturables/);
-});
-
 test('el vídeo se redondea al segundo superior como el servidor: fracciones, milésimas y bordes', () => {
   const credits = (seconds, resolution = '720p', brand = 'isom') => plan({ video_url: media.video(`lf${seconds}${brand}.mp4`, seconds, brand), image_urls: [media.image('li.png')], resolution });
-  assert.equal(credits(0.2).estimate.credits, reference('720p', 1), '0,2 s factura 1 s de vídeo (2 s)');
-  assert.equal(credits(8.2).estimate.credits, reference('720p', 9));
-  assert.equal(credits(12.34, '1080p', 'qt').estimate.credits, reference('1080p', 13), 'MOV igual que MP4');
-  assert.equal(credits(14.999).estimate.credits, reference('720p', 15));
-  assert.equal(credits(15).estimate.credits, reference('720p', 15));
+  for (const [seconds, resolution, brand] of [[0.2], [8.2], [12.34, '1080p', 'qt'], [14.999], [15]]) {
+    assert.equal(credits(seconds, resolution, brand).ok, true, `${seconds} s cabe en Light`);
+  }
   for (const seconds of [15.001, 15.01, 16, 30, 60]) {
     const result = credits(seconds);
     assert.equal(result.ok, false, `${seconds} s se rechaza`);
@@ -141,9 +106,7 @@ test('el vídeo se redondea al segundo superior como el servidor: fracciones, mi
   assert.equal(light.lightVideoSeconds(15.000001), 16);
   assert.equal(light.lightVideoSeconds(0), null);
   assert.equal(light.lightVideoSeconds(NaN), null);
-  assert.equal(light.lightCredits(model.estimate, '720p', 16), null, 'más de 15 s no tiene precio');
-  assert.equal(light.lightCredits(model.estimate, '4k', 5), null);
-  assert.equal(light.lightCredits({ credits_per_second: { '720p': 20.45 } }, '720p', 5), null, 'una tarifa que no es múltiplo de una décima no se estima en local');
+  assert.equal(light.lightCredits, undefined, 'la CLI ya no calcula el precio de Light');
 });
 
 test('límites de la CLI: más de 15 s con el texto exacto, prompt en bytes, resoluciones, materiales y vídeos que la CLI no mide', () => {
@@ -171,17 +134,13 @@ test('límites de la CLI: más de 15 s con el texto exacto, prompt en bytes, res
   assert.equal(plan({ video_url: video(), image_urls: [img('j.png')], prompt: 'a'.repeat(5000) }).ok, true, '5.000 caracteres ASCII caben');
   assert.equal(plan({ video_url: video(), image_urls: [img('j.png')], prompt: 'é'.repeat(2500) }).ok, true, '5.000 bytes exactos caben');
   assert.equal(plan({ video_url: video(), image_urls: Array.from({ length: 8 }, (_, i) => img(`k${i}.png`)) }).ok, true, 'ocho imágenes caben');
-  // Un WebM lo mide el servidor: la CLI no lo rechaza ni inventa un precio.
+  // Un WebM lo mide el servidor: la CLI no lo rechaza.
   const webm = media.put('light.webm', Buffer.concat([Buffer.from('1a45dfa3', 'hex'), Buffer.alloc(64)]), { mime: 'video/webm', duration: 5 });
   const unmeasured = plan({ video_url: webm, image_urls: [img('l.png')], resolution: '1080p' });
   assert.equal(unmeasured.ok, true, unmeasured.errors?.join('\n'));
-  assert.equal(unmeasured.estimate.credits, null);
-  assert.equal(unmeasured.estimate.server_quote, true);
-  assert.match(unmeasured.estimate.note, /lo mide y lo cotiza el servidor/);
   // Genjutsu Normal no cambia: admite hasta 30 s, no se mide en local y no admite 1080p.
   assert.equal(validateParams(normal, { video_url: 'cualquiera.mp4', image_urls: ['a.png'] }).ok, true);
   assert.equal(validateParams(normal, { video_url: 'cualquiera.mp4', image_urls: ['a.png'], resolution: '1080p' }).ok, false);
-  assert.equal(estimateCredits(normal, {}).credits, null);
 });
 
 test('el payload lleva el id del servidor, el modo fuera del input y solo los campos que admite el servidor', () => {
@@ -200,12 +159,7 @@ test('el payload lleva el id del servidor, el modo fuera del input y solo los ca
   assert.equal(higgsfield.buildPayload(normal, { video_url: 'v', image_urls: ['i'] }, {}).model, 'higgsfield-genjutsu-motion-transfer', 'Normal conserva su id');
 });
 
-test('`info` y `validate` enseñan la tarifa por segundo de vídeo y la cifra local, sin inventar un precio fijo', async () => {
-  const lines = pricingLines(model).join('\n');
-  assert.match(lines, /lo cotiza el servidor/);
-  assert.match(lines, /480p 10,2 cr · 720p 20,4 cr · 1080p 40,8 cr/);
-  assert.match(lines, /Ejemplo con 10 s de vídeo: 480p 102 cr · 720p 204 cr · 1080p 408 cr/);
-  assert.equal(lines.includes(String.fromCharCode(0x2014)), false);
+test('`info` y `validate` sin sesión no inventan precio: lo da AILAB en `prepare`', async () => {
   const env = { ...process.env, AILAB_SKIP_UPDATE: '1', AILAB_SKIP_NOTICES: '1', AILAB_CATALOG_PATH: catalogPath, AILAB_CONFIG_DIR: path.join(temporary, 'cli-config'),
     AILAB_CREDENTIALS_DIR: path.join(temporary, 'cli-credentials'), AILAB_BASE_URL: 'http://127.0.0.1:9/' };
   const exec = (...args) => execute(process.execPath, [process.env.AILAB_TEST_RUNTIME || path.join(skillRoot, 'scripts/ailab.mjs'), ...args], { env, timeout: 30000 });
@@ -214,12 +168,14 @@ test('`info` y `validate` enseñan la tarifa por segundo de vídeo y la cifra lo
   assert.doesNotMatch(models.stdout, /higgsfield-genjutsu-light .*NO DISPONIBLE/);
   const clip = media.video('lv-cli.mp4', 10);
   const validated = await exec('validate', 'genjutsu-light', '--video_url', clip, '--image_urls', media.image('lvi.png'), '--resolution', '1080p');
-  assert.match(validated.stdout, /estimacion local ~408 cr \(el servidor la cotiza en prepare\)/);
+  assert.match(validated.stdout, /parametros validos · el precio lo da `prepare` · sin gasto/);
   await assert.rejects(exec('validate', 'genjutsu-light', '--video_url', media.video('lv-long.mp4', 20), '--image_urls', media.image('lvi.png')),
     (error) => /Genjutsu Light usa hasta 15 segundos de vídeo\. Recórtalo a 15 s o usa la versión Normal\./.test(error.stderr));
   const info = await exec('info', 'higgsfield-genjutsu-light');
   assert.match(info.stdout, /Higgsfield Genjutsu Light \(higgsfield-genjutsu-light\)/);
   assert.match(info.stdout, /--resolution \(enum, 480p\|720p\|1080p, def 720p\)/);
+  assert.match(info.stdout, /Precio: lo da AILAB con tu sesión/);
+  assert.doesNotMatch(info.stdout, /\d+(,\d+)? cr\b/, 'ninguna cifra de créditos en local');
 });
 
 // Estados que el servidor trata como finales sin resultado, tal como los publica wallet_higgsfield_failure_meta.
@@ -289,7 +245,7 @@ test('paridad con el PHP real: la CLI trata como finales los mismos estados que 
   assert.match(source.slice(source.indexOf('function ailab_skill_higgsfield_status')), /\$data\['ailab_error'\] = \$failure\['error'\];/);
 });
 
-test('paridad con el PHP real: segundos facturables y créditos de Light, de 1 a 15 s y en los bordes', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
+test('paridad con el PHP real: segundos facturables de Light, de 1 a 15 s y en los bordes', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
   const durations = [0.2, 0.5, 1, 1.0000004, 1.0000006, 2.5, 5, 8.2, 9.999, 10, 14.99, 14.999, 15, 15.0000004, 15.000001, 15.001, 15.01, 16, 20, 30, 0, -1];
   const cases = RESOLUTIONS.flatMap((resolution) => durations.map((duration) => ({ resolution, duration })));
   const results = php(`
@@ -306,23 +262,17 @@ test('paridad con el PHP real: segundos facturables y créditos de Light, de 1 a
     const tooLong = seconds === null || seconds > light.LIGHT_MAX_VIDEO_SECONDS;
     if (tooLong) {
       assert.equal(server.credits, null, `${c.duration} s a ${c.resolution}: el servidor lo rechaza`);
-      assert.equal(light.lightCredits(model.estimate, c.resolution, seconds), null);
       return;
     }
     accepted += 1;
     assert.equal(server.billable, 2 * seconds, `${c.duration} s`);
-    assert.equal(light.lightCredits(model.estimate, c.resolution, seconds), server.credits, `${c.duration} s a ${c.resolution}: la CLI estima lo mismo que el servidor`);
-    assert.equal(server.credits, reference(c.resolution, seconds));
-    assert.ok(server.credits <= higgsfield.hardCreditCap(model));
+    assert.ok(Number.isSafeInteger(server.credits) && server.credits > 0, `${c.duration} s a ${c.resolution}: el servidor da un precio`);
   });
   assert.ok(accepted >= 40 && accepted < cases.length);
-  // La tabla del servidor: una sola, con las tres resoluciones; el tope por tarea cubre el máximo de Light.
-  const table = php("$c = wallet_config(); echo json_encode([wallet_genjutsu_light_usd_per_second($c), wallet_skill_higgsfield_hard_cap($c, 'higgsfield-genjutsu-light'), wallet_genjutsu_light_resolutions(), wallet_genjutsu_light_max_video_seconds(), $c['HIGGSFIELD_CR_USD'], $c['HIGGSFIELD_MARKUP']]);", [], { skillHiggsfield: true });
-  assert.deepEqual(table[0], { '480p': 0.025, '720p': 0.05, '1080p': 0.1 });
-  assert.ok(table[1] >= higgsfield.hardCreditCap(model), 'el tope del servidor no queda por debajo del máximo de la CLI');
-  assert.deepEqual(table[2], model.params.resolution.values);
-  assert.equal(table[3], light.LIGHT_MAX_VIDEO_SECONDS);
-  assert.deepEqual([table[4], table[5]], [0.005, 1.02]);
+  // Resoluciones y duración máxima del servidor: las mismas que valida la CLI.
+  const table = php("echo json_encode([wallet_genjutsu_light_resolutions(), wallet_genjutsu_light_max_video_seconds()]);", [], { skillHiggsfield: true });
+  assert.deepEqual(table[0], model.params.resolution.values);
+  assert.equal(table[1], light.LIGHT_MAX_VIDEO_SECONDS);
 });
 
 test('paridad con el PHP real: el endpoint de la skill acepta el cuerpo de la CLI y rechaza lo mismo (15 s, 1080p en Normal, campos ajenos)', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
@@ -413,100 +363,6 @@ test('paridad con el PHP real: interruptor de Light (true, admin, false o ausent
   assert.equal(config, 'open', 'Genjutsu Light está abierto a todos en el repositorio');
 });
 
-// Servidor real de AILAB (PHP) con los proveedores sin conexión: el endpoint de la skill valida, cotiza y reserva como en producción.
-test('servidor real: Light acepta el cuerpo de la CLI, cotiza y reserva lo mismo que estima, y el interruptor cerrado responde 403 sin cobrar', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, async (t) => {
-  const files = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-light-bank-files-'));
-  const fixtures = new PriceFixtures(files);
-  const bank = await startPriceBank({ canonical: CANONICAL, skillRoot });
-  t.after(() => { bank.stop(); fs.rmSync(files, { recursive: true, force: true }); });
-
-  // 1) Acepta lo que construye la CLI, en ambos modos, y reserva exactamente lo estimado y cotizado.
-  const accepted = [
-    ['character_swap', '480p', 5, 51], ['character_swap', '720p', 10, 204], ['object_swap', '1080p', 15, 612], ['object_swap', '720p', 8.2, 184],
-  ];
-  for (const [mode, resolution, seconds, expected] of accepted) {
-    const record = await auditCase(bank, { id: ID, args: { mode, video_url: fixtures.video(seconds), image_urls: [fixtures.image()], resolution }, label: '' }, fixtures);
-    assert.equal(record.outcome, 'reserva', `${mode} ${resolution} ${seconds} s: ${record.note}`);
-    assert.equal(record.cli, expected, `${mode} ${resolution} ${seconds} s: estimación local`);
-    assert.equal(record.quote, expected, `${mode} ${resolution} ${seconds} s: cotización del servidor`);
-    assert.equal(record.hold, expected, `${mode} ${resolution} ${seconds} s: reserva del servidor`);
-  }
-
-  // 2) Interruptor: 'admin' y false responden 403 «pendiente de activación» sin cotizar, reservar ni cobrar; true acepta.
-  const count = () => bank.php("$d = wallet_db(); echo json_encode(array_map(fn($t) => (int)$d->query('SELECT COUNT(*) FROM ' . $t)->fetchColumn(), ['skill_quotes', 'wallet_reservations', 'ledger']));");
-  const argv = ['prepare', ID, '--video_url', fixtures.video(5), '--image_urls', fixtures.image(), '--resolution', '720p'];
-  for (const flag of ['admin', false]) {
-    bank.setHiggsfieldFlags({ [ID]: flag });
-    const before = count();
-    const refused = await bank.cli(...argv);
-    assert.notEqual(refused.code, 0, `interruptor ${JSON.stringify(flag)}: prepare debe fallar`);
-    assert.match(refused.stdout + refused.stderr, /pendiente de activacion/, JSON.stringify(flag));
-    assert.match(refused.stdout + refused.stderr, /no se ha gastado nada/i);
-    assert.equal(count(), before, `interruptor ${JSON.stringify(flag)}: ni presupuesto, ni reserva, ni cargo`);
-  }
-  bank.setHiggsfieldFlags({ [ID]: true });
-  const opened = await bank.cli(...argv);
-  assert.equal(opened.code, 0, opened.stdout + opened.stderr);
-  assert.match(opened.stdout, /Estimacion local de la skill: ~102 cr/);
-  assert.match(opened.stdout, /coste cotizado 102 cr/);
-  assert.doesNotMatch(opened.stdout, /AVISO: la estimacion local/);
-  // Genjutsu Normal no depende del interruptor de Light.
-  bank.setHiggsfieldFlags({ [ID]: false });
-  const normalRun = await bank.cli('prepare', 'genjutsu', '--video_url', fixtures.video(5), '--image_urls', fixtures.image(), '--resolution', '720p');
-  assert.equal(normalRun.code, 0, normalRun.stdout + normalRun.stderr);
-  bank.setHiggsfieldFlags({ [ID]: true });
-
-  // 3) Rechazos del servidor con una subida propia: más de 15 s, 1080p en Normal y la misma subida aceptada por Normal.
-  const upload = async (file, name) => {
-    const form = new FormData();
-    form.append('file', new Blob([fs.readFileSync(file)], { type: 'video/mp4' }), name);
-    const response = await fetch(bank.base + 'api/skill/upload.php', { method: 'POST', body: form, headers: { Authorization: 'Bearer ' + MEMBER_TOKEN } });
-    const body = await response.json();
-    assert.equal(body.ok, true, JSON.stringify(body));
-    return body.url || body.data?.url;
-  };
-  const uploadImage = async (file) => {
-    const form = new FormData();
-    form.append('file', new Blob([fs.readFileSync(file)], { type: 'image/png' }), 'ref.png');
-    const body = await (await fetch(bank.base + 'api/skill/upload.php', { method: 'POST', body: form, headers: { Authorization: 'Bearer ' + MEMBER_TOKEN } })).json();
-    return body.url || body.data?.url;
-  };
-  const quote = async (modelId, input, mode = 'character_swap') => {
-    const response = await fetch(bank.base + 'api/skill/higgsfield.php?action=quote', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + MEMBER_TOKEN },
-      body: JSON.stringify({ action: 'quote', model: modelId, mode, input, client_request_id: crypto.randomUUID(), max_credits_authorized: 2100 }),
-    });
-    return { status: response.status, body: await response.json() };
-  };
-  const image = await uploadImage(fixtures.image());
-  const long = await upload(fixtures.video(20), 'largo.mp4');
-  const edge = await upload(fixtures.video(15.001), 'borde.mp4');
-  const exact = await upload(fixtures.video(15), 'justo.mp4');
-  for (const [name, url] of [['20 s', long], ['15,001 s', edge]]) {
-    const refused = await quote(ID, { video_url: url, image_urls: [image], resolution: '720p' });
-    assert.equal(refused.status, 400, name);
-    assert.equal(refused.body.ok, false);
-    assert.ok(refused.body.msg.startsWith(strip(light.LIGHT_TOO_LONG_MESSAGE)), `${name}: el servidor dice lo mismo que la CLI: ${refused.body.msg}`);
-    assert.match(refused.body.msg, /No se ha cobrado nada\.$/);
-  }
-  const ok = await quote(ID, { video_url: exact, image_urls: [image], resolution: '1080p' });
-  assert.equal(ok.status, 200, JSON.stringify(ok.body));
-  assert.equal(ok.body.data.credits, 612);
-  assert.equal(ok.body.data.billable_seconds, 30);
-  assert.equal(ok.body.data.credits, light.lightCredits(model.estimate, '1080p', 15), 'la CLI estima lo que cotiza el servidor');
-  const normalLong = await quote('higgsfield-genjutsu-motion-transfer', { video_url: long, image_urls: [image], resolution: '720p' });
-  assert.equal(normalLong.status, 200, 'Genjutsu Normal sigue admitiendo hasta 30 s: ' + JSON.stringify(normalLong.body));
-  assert.equal(normalLong.body.data.billable_seconds, 20);
-  const normal1080 = await quote('higgsfield-genjutsu-motion-transfer', { video_url: exact, image_urls: [image], resolution: '1080p' });
-  assert.equal(normal1080.status, 400);
-  assert.match(normal1080.body.msg, /solo admite resolucion 480p o 720p/);
-  // Con el interruptor cerrado el servidor ni mide ni cotiza.
-  bank.setHiggsfieldFlags({ [ID]: 'admin' });
-  const closed = await quote(ID, { video_url: exact, image_urls: [image], resolution: '720p' });
-  assert.equal(closed.status, 403);
-  assert.match(closed.body.msg, /pendiente de activacion/);
-});
-
 // ---------------------------------------------------------------------------
 // CLI real contra un servidor simulado en localhost: prepare, submit y status con cada estado final y con 429 y 500.
 // ---------------------------------------------------------------------------
@@ -517,7 +373,7 @@ const FUTURE = () => new Date(Date.now() + 10 * 60 * 1000).toISOString();
 const json = (res, body, status = 200, headers = {}) => { res.writeHead(status, { 'Content-Type': 'application/json', ...headers }); res.end(JSON.stringify(body)); };
 
 // `statuses`: respuestas sucesivas de action=status (la última se repite). Cada una: { status, headers, body } o { data }.
-async function harness(t, { statuses = [], quoteCredits = 204, quoteFailure = null, balance = 5000, poll = '20', pricing = undefined } = {}) {
+async function harness(t, { statuses = [], quoteCredits = 204, quoteFailure = null, balance = 5000, poll = '20', price = { credits: 204, server_quote: true, max_credits: 612 } } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-light-flow-'));
   const credentials = path.join(temp, 'credentials');
   const config = path.join(temp, 'config');
@@ -526,6 +382,8 @@ async function harness(t, { statuses = [], quoteCredits = 204, quoteFailure = nu
   const requests = [];
   let base;
   let statusCalls = 0;
+  // price.php simulado: precio de la cuenta para Light (lo cotiza el servidor) y techo de la cuenta en `max_credits`.
+  const priceState = { prices: { [ID]: price } };
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, base);
@@ -536,13 +394,14 @@ async function harness(t, { statuses = [], quoteCredits = 204, quoteFailure = nu
       let body = {};
       if (isJson) { try { body = raw.length ? JSON.parse(raw.toString('utf8')) : {}; } catch { body = { unreadable: true }; } }
       requests.push({ method: req.method, pathname: url.pathname, query: url.search, body });
+      if (handlePrice(priceState, url.pathname, body, res)) return;
       if (url.pathname === '/result.mp4') {
         res.writeHead(200, { 'Content-Type': 'video/mp4' });
         return res.end(Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(64)]));
       }
       if (url.pathname === '/api/wallet/api.php') {
         if (body.action === 'task_costs') return json(res, { ok: true, costs: { ['higgsfield:' + TASK]: quoteCredits } });
-        return json(res, { ok: true, user: { email: 'light@example.test', tier: 'hub' }, balance, ...(pricing ? { pricing } : {}) });
+        return json(res, { ok: true, user: { email: 'light@example.test', tier: 'hub' }, balance });
       }
       if (url.pathname === '/api/skill/upload.php') {
         const name = base + 'uploads/' + requests.length + '.bin';
@@ -582,24 +441,32 @@ async function harness(t, { statuses = [], quoteCredits = 204, quoteFailure = nu
     assert.ok(id, 'La CLI no publicó el manifiesto:\n' + stdout);
     return { id, file: path.join(config, 'manifests', id + '.json') };
   };
-  return { base, requests, run, tryRun, of, manifestOf, temp, output: path.join(temp, 'out') };
+  return { base, requests, run, tryRun, of, manifestOf, temp, output: path.join(temp, 'out'), priceState };
 }
 
 const lightArgs = (h, { seconds = 10, resolution = '720p', mode = 'character_swap' } = {}) => [ID, '--mode', mode, '--video_url', media.video(`flow${seconds}.mp4`, seconds), '--image_urls', media.image('flow.png', 640, 480), '--resolution', resolution];
 
-test('CLI real: prepare mide el vídeo, cotiza con el tope de 612 cr y submit envía el cuerpo exacto con el importe aprobado', async (t) => {
+test('CLI real: prepare mide el vídeo, pide el precio a AILAB, cotiza con el techo de la cuenta y submit envía el importe aprobado', async (t) => {
   const h = await harness(t, { statuses: [{ data: { status: 'in_progress' } }, { data: { status: 'completed', video: { url: '__BASE__result.mp4' } } }] });
   h.requests.length = 0;
   const prepared = (await h.run('prepare', ...lightArgs(h, { seconds: 10, resolution: '720p', mode: 'object_swap' }), '--prompt', 'cambia la taza')).stdout;
-  assert.match(prepared, /Estimacion local de la skill: ~204 cr \(10 s de salida \+ 10 s de vídeo = 20 s facturables/);
   assert.match(prepared, /coste cotizado 204 cr \(importe que se aprueba\) · techo de seguridad del servidor 612 cr/);
-  assert.doesNotMatch(prepared, /AVISO: la estimacion local/);
+  assert.doesNotMatch(prepared, /Estimacion local|AVISO: la estimacion local/);
+  // price.php recibe los parámetros y la medida del vídeo (nunca la ruta local).
+  const [asked] = h.priceState.priceRequests;
+  assert.equal(h.priceState.priceRequests.length, 1);
+  assert.deepEqual([asked.action, asked.model, asked.params.mode, asked.params.resolution], ['estimate', ID, 'object_swap', '720p']);
+  assert.equal(asked.params.video_url.length, 1);
+  assert.equal(asked.params.video_url[0].class, 'video');
+  assert.equal(asked.params.video_url[0].duration, 10);
+  assert.equal(JSON.stringify(asked).includes(h.temp), false, 'sin rutas locales');
+  assert.equal(JSON.stringify(asked).includes('flow10.mp4'), false, 'sin nombres de archivo');
   const manifest = h.manifestOf(prepared);
   const [quote] = h.of('quote');
   assert.equal(h.of('quote').length, 1);
   assert.equal(quote.body.model, ID);
   assert.equal(quote.body.mode, 'object_swap');
-  assert.equal(quote.body.max_credits_authorized, 612, 'el tope de la cotización es el máximo posible de Light');
+  assert.equal(quote.body.max_credits_authorized, 612, 'el techo de la cotización es el que da AILAB para la cuenta');
   assert.deepEqual(Object.keys(quote.body.input).sort(), ['image_urls', 'prompt', 'resolution', 'video_url']);
   assert.equal(quote.body.input.resolution, '720p');
   assert.equal(quote.body.input.prompt, 'cambia la taza');
@@ -635,26 +502,37 @@ test('CLI real: más de 15 s se rechaza en local antes de subir nada; --max-cred
   const capped = await h.tryRun('prepare', ...lightArgs(h, { seconds: 10 }), '--max-credits', '203');
   assert.notEqual(capped.code, 0);
   assert.match(capped.stderr, /El coste \(204 cr\) supera el máximo que autorizaste \(--max-credits 203\)\. No se ha enviado nada\./);
-  assert.equal(h.requests.length, 0, 'se avisa antes de subir nada');
+  assert.deepEqual(h.requests.map((r) => r.pathname), ['/api/wallet/api.php', '/api/v1/skill/price.php'], 'solo sesión y precio: se avisa antes de subir nada');
   const exact = await h.tryRun('prepare', ...lightArgs(h, { seconds: 10 }), '--max-credits', '204');
   assert.equal(exact.code, 0, exact.stderr);
 });
 
-test('CLI real: cuenta ×1,2: --max-credits entre la base y el precio final se rechaza tras la sesión y antes de subir nada', async (t) => {
-  const h = await harness(t, { pricing: { label: 'cliente', factor: 1.2, rounding: 'ceil', require_project: false, min_client: '2.4.0' } });
+test('CLI real: el precio de la cuenta lo da AILAB: --max-credits por debajo se rechaza tras pedirlo y antes de subir nada', async (t) => {
+  const h = await harness(t, { price: { credits: 245, server_quote: true, max_credits: 735 } });
   const capped = await h.tryRun('prepare', ...lightArgs(h, { seconds: 10 }), '--max-credits', '240');
   assert.notEqual(capped.code, 0);
   assert.match(capped.stderr, /El coste \(245 cr\) supera el máximo que autorizaste \(--max-credits 240\)\. No se ha enviado nada\./);
-  assert.deepEqual(h.requests.map((r) => r.pathname), ['/api/wallet/api.php'], 'solo la sesión: ni subida ni cotización');
+  assert.deepEqual(h.requests.map((r) => r.pathname), ['/api/wallet/api.php', '/api/v1/skill/price.php'], 'solo sesión y precio: ni subida ni cotización');
 });
 
-test('CLI real: si el servidor cotiza otra cifra manda el servidor y la CLI avisa', async (t) => {
+test('CLI real: si la cotización da otra cifra que price.php, se aprueba la del servidor sin avisos locales', async (t) => {
   const h = await harness(t, { quoteCredits: 230 });
   const prepared = await h.tryRun('prepare', ...lightArgs(h, { seconds: 10 }));
   assert.equal(prepared.code, 0, prepared.stderr);
-  assert.match(prepared.stdout, /AVISO: la estimacion local \(204 cr\) no coincide con la cotizacion del servidor \(230 cr\)\. Manda el servidor/);
+  assert.match(prepared.stdout, /coste cotizado 230 cr/);
+  assert.doesNotMatch(prepared.stdout, /AVISO: la estimacion local/);
   const frozen = JSON.parse(fs.readFileSync(h.manifestOf(prepared.stdout).file, 'utf8'));
   assert.equal(frozen.max_credits_authorized, 230, 'se aprueba lo que cotiza el servidor');
+});
+
+test('CLI real: sin precio de AILAB no se sube ni se cotiza nada', async (t) => {
+  const h = await harness(t);
+  h.priceState.priceDown = true;
+  const prepared = await h.tryRun('prepare', ...lightArgs(h, { seconds: 10 }));
+  assert.notEqual(prepared.code, 0);
+  assert.match(prepared.stderr, /No se ha podido obtener el precio de AILAB\. No se ha enviado nada\./);
+  assert.equal(h.requests.some((r) => r.pathname === '/api/skill/upload.php'), false);
+  assert.equal(h.of('quote').length, 0);
 });
 
 test('CLI real: el interruptor cerrado (403 pendiente de activación) se explica, no cobra y no se reintenta', async (t) => {

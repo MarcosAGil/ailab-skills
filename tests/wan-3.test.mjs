@@ -8,9 +8,10 @@ import {execFile, spawnSync} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
+import {handlePrice, estimates} from './helpers/price-server.mjs';
 
-// Wan 3.0 Video y Prime (Kie, contrato leído el 23/10/2026): Kie factura (segundos de vídeos de
-// entrada + segundos de salida) x tarifa. La CLI mide los vídeos locales; el servidor es la autoridad.
+// Wan 3.0 Video y Prime (Kie, contrato leído el 23/10/2026): se factura por segundos de vídeos de entrada más
+// segundos de salida. La CLI mide los archivos locales y envía la medida a price.php; el servidor da el precio.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-wan3-skill-'));
 process.env.AILAB_CONFIG_DIR = path.join(temporary, 'config');
@@ -18,7 +19,8 @@ process.env.AILAB_CREDENTIALS_DIR = path.join(temporary, 'credentials');
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(() => fs.rmSync(temporary, {recursive: true, force: true}));
 const catalogPath = path.join(root, 'skills/ailab/catalog/catalog.json');
-const {validateCatalogShape, validateParams, estimateCredits, modelContractHash, modelUsable} = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const {validateCatalogShape, validateParams, modelUsable} = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const {priceParams} = await import('../skills/ailab/scripts/lib/price.mjs');
 const {buildPayload, check} = await import('../skills/ailab/scripts/adapters/jobs-v1.mjs');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
 const model = {id: 'wan-3-video', ...catalog.models['wan-3-video']};
@@ -53,19 +55,18 @@ const audio = (name, seconds) => put(name, wav(seconds));
 const image = (name, width = 1024, height = 768) => put(name, png(width, height));
 
 const REF = {mode: 'ref', prompt: 'Combina @Image1 y @Video1', duration: 10, version: 'prime', resolution: '1080P'};
-const run = (given) => { const v = validateParams(model, given); return {...v, estimate: v.ok ? estimateCredits(model, {...v.params, ...v.fileParams}) : null}; };
+const run = (given) => validateParams(model, given);
 
 test('el contrato publicado exige la skill 2.3.12, no añade campos privados y arranca sin semilla', () => {
   assert.equal(model.min_cli_version, '2.3.12');
-  assert.equal(catalog.min_cli_version, '2.3.7', 'el resto del catálogo sigue disponible para las CLI 2.3.7 a 2.3.11');
-  assert.equal(catalog.catalog_version, '1.32.0');
+  assert.equal(catalog.min_cli_version, '2.5.0', 'el catálogo sin tarifas solo lo lee la 2.5.0');
+  assert.equal(catalog.catalog_version, '1.33.0');
   assert.equal(model.params.seed.default, undefined);
   assert.equal(model.params.nsfw_checker, undefined);
   assert.deepEqual(model.params.duration, {type: 'int', min: 2, max: 30, default: 5, help: model.params.duration.help});
   assert.match(model.params.duration.help, /30 s en total/);
   assert.match(model.params.reference_video_urls.help, /duración se suma/);
-  assert.equal(model.estimate.kind, 'per_second_matrix', 'la forma del estimate la conocen todas las CLI 2.3.x');
-  assert.deepEqual(model.estimate.credits_matrix, {normal: {'480P': 8.16, '720P': 16.32, '1080P': 32.64}, prime: {'480P': 12.444, '720P': 25.704, '1080P': 51.408}});
+  assert.equal(model.estimate, undefined, 'desde la 2.5.0 el catálogo no lleva tarifas');
   const text = JSON.stringify(model);
   for (const key of ['provider_contract', 'provider_usd', 'margin_multiplier', 'credit_usd', 'wan/3-0-video', 'nsfw']) assert.equal(text.includes(key), false, key);
   assert.equal(text.includes(String.fromCharCode(0x2014)), false);
@@ -73,87 +74,38 @@ test('el contrato publicado exige la skill 2.3.12, no añade campos privados y a
 });
 
 test('una CLI anterior a 2.3.12 no ofrece Wan 3.0 en vez de autorizar un precio por debajo del servidor', async () => {
-  assert.equal(modelUsable({...model, min_cli_version: '2.4.1'}).ok, false);
+  assert.equal(modelUsable({...model, min_cli_version: '2.5.1'}).ok, false);
   const config = await import('../skills/ailab/scripts/lib/config.mjs');
-  assert.equal(config.CLI_VERSION, '2.4.0');
+  assert.equal(config.CLI_VERSION, '2.5.0');
   const updater = await import('../skills/ailab/scripts/lib/updater.mjs');
-  assert.equal(updater.BUNDLED_RUNTIME_VERSION, '2.4.0');
+  assert.equal(updater.BUNDLED_RUNTIME_VERSION, '2.5.0');
   // Las CLI 2.3.7 a 2.3.12 siguen validando el catálogo v2 completo (sin claves ni tipos nuevos).
   const canonical = process.env.AILAB_CANONICAL_REPO;
   if (!canonical) return;
   for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12']) {
     const old = await import(pathToFileURL(path.join(canonical, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
-    const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
+    // Las CLI anteriores a la 2.5.0 leen catalog-v2.json (con tarifas); el catálogo sin `estimate` es solo para la 2.5.0.
+    const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(path.join(canonical, 'app/api/v1/skill/catalog-v2.json'), 'utf8')));
     assert.equal(parsed.models['wan-3-video'].min_cli_version, '2.3.12');
   }
 });
 
-test('sin vídeos de entrada, las 6 combinaciones y 29 duraciones dan el precio por segundo exacto', () => {
-  const table = {normal: {'480P': 8.16, '720P': 16.32, '1080P': 32.64}, prime: {'480P': 12.444, '720P': 25.704, '1080P': 51.408}};
-  let checked = 0;
-  for (const version of ['normal', 'prime']) for (const resolution of ['480P', '720P', '1080P']) for (let duration = 2; duration <= 30; duration += 1) {
-    const result = run({prompt: 'Plano cenital', version, resolution, duration});
-    assert.equal(result.ok, true, result.errors?.join('\n'));
-    assert.equal(result.estimate.credits, Math.ceil(Number((table[version][resolution] * duration).toFixed(6))), `${version} ${resolution} ${duration}`);
-    assert.equal(result.estimate.approximate, false);
-    checked += 1;
-  }
-  assert.equal(checked, 174);
-});
-
-test('con vídeos de entrada se factura salida más entrada, cada vídeo al segundo superior, y solo los vídeos suman', () => {
+test('para el precio la CLI envía la medida de vídeos, audios e imágenes, nunca la ruta', () => {
   const clip75 = video('v75.mp4', 7.5);
   const clip42 = video('v42.mov', 4.2, 'qt');
   const image1 = image('i1.png');
   const audio1 = audio('a1.wav', 9);
-  // Ejemplo de Kie: 5 s de vídeo + 10 s de salida en Prime 1080P = 15 s x 50,4 = 756 cr Kie.
-  const five = run({...REF, reference_video_urls: [video('v5.mp4', 5)]});
-  assert.equal(five.estimate.credits, Math.ceil(756 * 1.02));
-  assert.equal(five.estimate.credits, 772);
-  assert.equal(five.estimate.approximate, true);
-  assert.match(five.estimate.note, /10 s de salida \+ 5 s de vídeo de entrada = 15 s/);
-  // 7,5 s -> 8 s y 4,2 s -> 5 s: 10 + 13 = 23 s; imágenes y audio no cuentan.
   const all = run({...REF, reference_image_urls: [image1], reference_video_urls: [clip75, clip42], reference_audio_urls: [audio1], reference_link_urls: ['https://example.com/guion']});
   assert.equal(all.ok, true, all.errors?.join('\n'));
-  assert.equal(all.estimate.credits, Math.ceil(Number((51.408 * 23).toFixed(6))));
-  assert.equal(all.estimate.credits, 1183);
-  // Solo imágenes y audio: sin vídeo de entrada el precio es el de la salida y es exacto.
-  const noVideo = run({...REF, reference_image_urls: [image1], reference_audio_urls: [audio1]});
-  assert.equal(noVideo.estimate.credits, 515);
-  assert.equal(noVideo.estimate.approximate, false);
-  // Texto e imagen a vídeo nunca facturan vídeo: ni se admite adjuntarlo.
-  assert.equal(run({prompt: 'x', mode: 'i2v', first_frame_url: [image1], version: 'normal', resolution: '720P', duration: 6}).estimate.credits, 98);
-});
-
-test('paridad: la CLI, la referencia independiente y, con AILAB_CANONICAL_REPO, el gateway PHP dan la misma cifra', () => {
-  const kie = {normal: {'480P': 8, '720P': 16, '1080P': 32}, prime: {'480P': 12.2, '720P': 25.2, '1080P': 50.4}};
-  const clips = {};
-  const get = (seconds) => clips[seconds] ||= video(`p${String(seconds).replace('.', '_')}.mp4`, seconds);
-  const rows = [];
-  for (const version of ['normal', 'prime']) for (const resolution of ['480P', '720P', '1080P']) {
-    for (const output of [2, 5, 10, 14, 15, 22, 25, 30]) for (const durations of [[], [1], [2.4], [7.5], [15], [5, 5, 5], [3.2, 4.5, 5.5]]) {
-      const exact = durations.reduce((total, value) => total + value, 0);
-      if (exact + output > 30 + 1e-9) continue;
-      const input = durations.reduce((total, value) => total + Math.ceil(value), 0);
-      const expected = Math.ceil(Number((kie[version][resolution] * (output + input) * 1.02).toFixed(6)));
-      const result = run({...REF, version, resolution, duration: output, ...(durations.length ? {reference_video_urls: durations.map(get)} : {reference_image_urls: [image('base.png')]})});
-      assert.equal(result.ok, true, `${version} ${resolution} ${output} ${durations}: ${result.errors?.join(' ')}`);
-      assert.equal(result.estimate.credits, expected, `${version} ${resolution} ${output} ${JSON.stringify(durations)}`);
-      rows.push({version, resolution, output, input, expected});
-    }
-  }
-  assert.ok(rows.length > 200, String(rows.length));
-  const canonical = process.env.AILAB_CANONICAL_REPO;
-  if (!canonical) return;
-  const gateway = path.join(canonical, 'app/api/wallet/gateway.php');
-  const php = spawnSync('php', ['-r', `define('AILAB_GATEWAY_FUNCTIONS_ONLY', true); require ${JSON.stringify(gateway)};
-    $out = []; foreach (json_decode(stream_get_contents(STDIN), true) as $row) {
-      $input = ['resolution' => $row['resolution'], 'duration' => $row['output'], '_billing_input_seconds' => $row['input']];
-      if ($row['input'] > 0) { $input['reference_video_urls'] = ['https://u.test/a.mp4']; }
-      $out[] = gateway_estimate_credits($row['version'] === 'prime' ? 'wan/3-0-video-prime' : 'wan/3-0-video', $input);
-    } echo json_encode($out);`], {input: JSON.stringify(rows), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024});
-  assert.equal(php.status, 0, php.stderr);
-  assert.deepEqual(JSON.parse(php.stdout), rows.map((row) => row.expected), 'la CLI y el gateway deben autorizar y reservar lo mismo');
+  const sent = priceParams(all.params, all.fileParams);
+  assert.equal(sent.version, 'prime');
+  assert.equal(sent.resolution, '1080P');
+  assert.equal(sent.duration, 10);
+  assert.deepEqual(sent.reference_video_urls.map((item) => [item.class, item.mime, item.duration]), [['video', 'video/mp4', 7.5], ['video', 'video/quicktime', 4.2]]);
+  assert.deepEqual(sent.reference_image_urls.map((item) => [item.class, item.width, item.height]), [['image', 1024, 768]]);
+  assert.equal(Math.round(sent.reference_audio_urls[0].duration), 9);
+  assert.deepEqual(sent.reference_link_urls, ['https://example.com/guion'], 'los enlaces no son archivos locales');
+  assert.equal(JSON.stringify(sent).includes(temporary), false);
 });
 
 test('límites de la CLI: modalidades, materiales y duración medida', () => {
@@ -189,7 +141,6 @@ test('límites de la CLI: modalidades, materiales y duración medida', () => {
   // Tolerancia de 0,05 s en 15 s, igual que la web y el servidor; el audio MP3 también se mide.
   const edge = run({...REF, duration: 14, reference_video_urls: [video('v1504.mp4', 15.04)]});
   assert.equal(edge.ok, true, edge.errors?.join('\n'));
-  assert.equal(edge.estimate.credits, Math.ceil(Number((51.408 * (14 + 16)).toFixed(6))));
   assert.equal(run({...ok, reference_audio_urls: [put('voz.mp3', mp3(5))]}).ok, true);
   assert.equal(run({...ok, reference_audio_urls: [put('larga.mp3', mp3(16))]}).ok, false);
 });
@@ -226,11 +177,12 @@ test('recuperación: el vídeo de salida es la URL, nunca una entrada; sin archi
   } finally { globalThis.fetch = previous; }
 });
 
-test('CLI real: prepare mide el vídeo y autoriza entrada más salida; submit envía el máximo y no repite', async (t) => {
+test('CLI real: prepare pide el precio a AILAB con el vídeo medido y lo congela; submit envía ese máximo y no repite', async (t) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-wan3-cli-'));
   const credentials = path.join(temp, 'credentials'); const config = path.join(temp, 'config');
   fs.mkdirSync(credentials); fs.writeFileSync(path.join(credentials, 'token'), 'ailp_' + 'W'.repeat(48), {mode: 0o600});
   const requests = []; let base;
+  const state = {prices: {'wan-3-video': {credits: 772, approximate: true, note: 'Con vídeo de entrada es el máximo reservado.'}}};
   const server = http.createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const raw = Buffer.concat(chunks);
@@ -238,6 +190,7 @@ test('CLI real: prepare mide el vídeo y autoriza entrada más salida; submit en
     const isJson = /json/.test(req.headers['content-type'] || '');
     const body = isJson ? JSON.parse(raw.toString() || '{}') : {};
     requests.push({path: url.pathname, query: url.searchParams.get('path'), body});
+    if (handlePrice(state, url.pathname, body, res)) return;
     if (url.pathname === '/result.mp4') { res.writeHead(200, {'content-type': 'video/mp4'}); return res.end(mp4(2)); }
     let response = {ok: true, user: {email: 'test@example.invalid', tier: 'hub'}, balance: 5000};
     if (body.action === 'task_costs') response = {ok: true, costs: {'wan-cli-job': 772}};
@@ -261,7 +214,13 @@ test('CLI real: prepare mide el vídeo y autoriza entrada más salida; submit en
   const {stdout} = await exec('prepare', 'wan-3-video', '--mode', 'ref', '--version', 'prime', '--resolution', '1080P', '--duration', '10',
     '--prompt', 'Mueve @Video1', '--reference_video_urls', clip, '--max-credits', '772');
   assert.match(stdout, /Estimacion: ~772 cr/);
-  assert.match(stdout, /10 s de salida \+ 5 s de vídeo de entrada = 15 s/);
+  assert.match(stdout, /máximo reservado/);
+  const asked = estimates(state);
+  assert.equal(asked.length, 1);
+  assert.equal(asked[0].model, 'wan-3-video');
+  assert.deepEqual([asked[0].params.version, asked[0].params.resolution, asked[0].params.duration, asked[0].params.mode], ['prime', '1080P', 10, 'ref']);
+  assert.equal(asked[0].params.reference_video_urls[0].duration, 5);
+  assert.equal(JSON.stringify(asked[0]).includes(temp), false, 'price.php nunca recibe rutas locales');
   const id = /Manifiesto: ([0-9a-f-]{36})/.exec(stdout)?.[1]; assert.ok(id, stdout);
   const manifest = JSON.parse(fs.readFileSync(path.join(config, 'manifests', id + '.json'), 'utf8'));
   assert.equal(manifest.max_credits_authorized, 772);
@@ -278,6 +237,8 @@ test('CLI real: prepare mide el vídeo y autoriza entrada más salida; submit en
   assert.equal('seed' in sends[0].body.input, false);
   await assert.rejects(exec('submit', id, '--confirmed'), /ya se ejecutó/);
   assert.equal(requests.filter((request) => request.query === '/jobs/createTask').length, 1, 'no duplica un envío confirmado');
-  // Un tope del usuario por debajo del máximo con vídeo se respeta aunque el precio sin vídeo cupiese.
+  // Un tope del usuario por debajo del precio de AILAB se respeta antes de subir nada.
+  const uploadsBefore = requests.filter((request) => request.path.endsWith('/upload.php')).length;
   await assert.rejects(exec('prepare', 'wan-3-video', '--mode', 'ref', '--version', 'prime', '--resolution', '1080P', '--duration', '10', '--prompt', 'x', '--reference_video_urls', clip, '--max-credits', '600'), /supera el m[aá]ximo/i);
+  assert.equal(requests.filter((request) => request.path.endsWith('/upload.php')).length, uploadsBefore);
 });

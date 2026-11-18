@@ -74,9 +74,10 @@ for (const [name, overrides, expectedBase, expectedGeneration] of [
   ['override explícito de generación', { AILAB_GENERATION_BASE_URL: 'https://explicit.invalid//' }, base, 'https://explicit.invalid/'],
 ]) {
   test('bases coherentes: ' + name, () => {
-    const result = spawnSync(process.execPath, ['--input-type=module', '-e', `import * as c from ${JSON.stringify(configURL)}; console.log(JSON.stringify([c.BASE_URL,c.GENERATION_BASE_URL,c.CATALOG_URL,c.TASK_ENDPOINT]));`], { env: { PATH: process.env.PATH, ...overrides }, encoding: 'utf8' });
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', `import * as c from ${JSON.stringify(configURL)}; console.log(JSON.stringify([c.BASE_URL,c.GENERATION_BASE_URL,c.CATALOG_URL,c.TASK_ENDPOINT,c.ASSISTANTS_URL,c.PRICE_ENDPOINT]));`], { env: { PATH: process.env.PATH, ...overrides }, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(JSON.parse(result.stdout), [expectedBase, expectedGeneration, expectedBase + 'api/v1/skill/catalog-v2.json', expectedBase + 'api/v1/skill/task.php']);
+    // Catálogos sin precios (v3) en la base de la plataforma; el motor de precios va con la generación.
+    assert.deepEqual(JSON.parse(result.stdout), [expectedBase, expectedGeneration, expectedBase + 'api/v1/skill/catalog-v3.json', expectedBase + 'api/v1/skill/task.php', expectedBase + 'api/v1/skill/assistants-v3.json', expectedGeneration + 'api/v1/skill/price.php']);
   });
 }
 
@@ -98,9 +99,8 @@ async function exercise(model, overrides = {}, uploads = {}) {
   const payload = adapter.buildPayload(model, { ...params, ...overrides }, uploads);
   const intent = { client_request_id: crypto.randomUUID(), max_credits_authorized: 1000 };
   if (model.driver === 'higgsfield-v1') {
-    // Higgsfield exige una cotizacion verificada antes de crear la tarea, y nunca por encima del tope del contrato
-    // del modelo (Genjutsu Light: 612 cr).
-    intent.max_credits_authorized = Math.min(1000, adapter.hardCreditCap(model));
+    // Higgsfield exige una cotizacion verificada antes de crear la tarea. Desde la 2.5.0 el techo lo da AILAB
+    // (price.php `max_credits`, congelado en el manifiesto) y no hay topes locales por modelo.
     intent.quote_id = 'quote-mock';
     intent.quote_max_credits = intent.max_credits_authorized;
     intent.quote_expires_at = new Date(Date.now() + 600000).toISOString();

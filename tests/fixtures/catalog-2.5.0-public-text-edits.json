@@ -1,0 +1,185 @@
+{
+  "note": "Textos del catálogo 1.32.0 que la 2.5.0 publica sin cifras de créditos ni nombres de plataformas intermedias (contrato precio-opaco-historial, secciones 2 y 5). Generado comparando con 4e6f7bc.",
+  "edits": [
+    {
+      "path": [
+        "krea-3",
+        "vendor"
+      ],
+      "before": "Krea · fal",
+      "after": "Krea"
+    },
+    {
+      "path": [
+        "gemini-omni-flash-1-1",
+        "params",
+        "image_urls",
+        "help"
+      ],
+      "before": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7 unidades de cuota de Kie)",
+      "after": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7)"
+    },
+    {
+      "path": [
+        "gemini-omni-flash-1-2",
+        "vendor"
+      ],
+      "before": "Google · KIE",
+      "after": "Google"
+    },
+    {
+      "path": [
+        "gemini-omni-flash-1-2-extend",
+        "vendor"
+      ],
+      "before": "Google · KIE",
+      "after": "Google"
+    },
+    {
+      "path": [
+        "gemini-omni-character",
+        "vendor"
+      ],
+      "before": "Google · KIE",
+      "after": "Google"
+    },
+    {
+      "path": [
+        "gemini-omni-audio",
+        "vendor"
+      ],
+      "before": "Google · KIE",
+      "after": "Google"
+    },
+    {
+      "path": [
+        "gemini-omni-video",
+        "params",
+        "image_urls",
+        "help"
+      ],
+      "before": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7 unidades de cuota de Kie)",
+      "after": "Hasta 7 imagenes de referencia (5 si tambien adjuntas clip de video: el clip consume 2 de las 7)"
+    },
+    {
+      "path": [
+        "gpt-image-2",
+        "params",
+        "resolution",
+        "help"
+      ],
+      "before": "1K, 2K o 4K. Ojo: el ratio 1:1 no admite 4K (limite de Kie)",
+      "after": "1K, 2K o 4K. Ojo: el ratio 1:1 no admite 4K"
+    },
+    {
+      "path": [
+        "grok-imagine-image-2",
+        "params",
+        "image_urls",
+        "help"
+      ],
+      "before": "Solo en i2i: de 1 a 3 imagenes; cada una suma 2 cr",
+      "after": "Solo en i2i: de 1 a 3 imagenes; cada una suma al precio"
+    },
+    {
+      "path": [
+        "grok-imagine-image-2",
+        "params",
+        "mask_indexs",
+        "help"
+      ],
+      "before": "Solo en edit: indices de segmento separados por comas (del segment-map gratuito de Kie); vacio = edita toda la imagen",
+      "after": "Solo en edit: indices de segmento separados por comas (del segment-map gratuito); vacio = edita toda la imagen"
+    },
+    {
+      "path": [
+        "kling-3-0-motion-control",
+        "params",
+        "mode",
+        "help"
+      ],
+      "before": "El ejemplo oficial de Kie y la web usan 720p/1080p (la ficha tambien menciona std/pro como etiquetas)",
+      "after": "Admite 720p o 1080p (la ficha tambien menciona std/pro como etiquetas)"
+    },
+    {
+      "path": [
+        "minimax-h3",
+        "params",
+        "reference_image_urls",
+        "help"
+      ],
+      "before": "Solo ref; las 5 primeras gratis, extra 8.16 cr por imagen",
+      "after": "Solo ref; las 5 primeras no se cobran y cada imagen extra suma al precio"
+    },
+    {
+      "path": [
+        "seedance-2-5",
+        "params",
+        "aspect_ratio",
+        "help"
+      ],
+      "before": "En modos i2v y edit se fuerza adaptive porque KIE no admite ratios fijos con First Frame y la edición conserva el formato del vídeo original.",
+      "after": "En modos i2v y edit se fuerza adaptive porque el modelo no admite ratios fijos con First Frame y la edición conserva el formato del vídeo original."
+    },
+    {
+      "path": [
+        "seedance-2-5",
+        "params",
+        "prompt",
+        "help"
+      ],
+      "before": "Hasta 30.000 caracteres según el contrato actual de KIE.",
+      "after": "Hasta 30.000 caracteres."
+    },
+    {
+      "path": [
+        "seedream-5-5",
+        "vendor"
+      ],
+      "before": "ByteDance · VideoRouter",
+      "after": "ByteDance"
+    },
+    {
+      "path": [
+        "wan-3-video",
+        "params",
+        "seed",
+        "help"
+      ],
+      "before": "Opcional. Sin semilla, Kie elige una aleatoria.",
+      "after": "Opcional. Sin semilla, se elige una aleatoria."
+    },
+    {
+      "path": [
+        "flux-3",
+        "vendor"
+      ],
+      "before": "Black Forest Labs · fal",
+      "after": "Black Forest Labs"
+    },
+    {
+      "path": [
+        "ideogram-v45",
+        "vendor"
+      ],
+      "before": "Ideogram · fal",
+      "after": "Ideogram"
+    },
+    {
+      "path": [
+        "seedance-2-5-lite",
+        "description"
+      ],
+      "before": "Versión económica de Seedance 2.5, servida por VideoRouter. Texto, primer y último fotograma o referencias (imágenes, hasta 10 vídeos y 10 audios), de 4 a 30 s. Sin draft ni edición de vídeo: para eso usa Seedance 2.5 Normal.",
+      "after": "Versión económica de Seedance 2.5. Texto, primer y último fotograma o referencias (imágenes, hasta 10 vídeos y 10 audios), de 4 a 30 s. Sin draft ni edición de vídeo: para eso usa Seedance 2.5 Normal."
+    },
+    {
+      "path": [
+        "seedance-2-5-lite",
+        "vendor"
+      ],
+      "before": "ByteDance · VideoRouter",
+      "after": "ByteDance"
+    }
+  ]
+}

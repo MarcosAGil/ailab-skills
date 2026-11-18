@@ -1,5 +1,5 @@
-// Catalogo remoto de asistentes. Solo contiene metadatos publicos: el system
-// prompt, las rutas y las credenciales permanecen en el servidor.
+// Catalogo remoto de asistentes (`assistants-v3.json`). Solo contiene metadatos publicos y ningun precio: el system
+// prompt, las rutas, las credenciales y los importes permanecen en el servidor (los importes los da price.php).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -7,8 +7,13 @@ import { ASSISTANTS_URL, CLI_VERSION, CONFIG_DIR, ensureConfigDir } from './conf
 import { stableStringify } from './catalog.mjs';
 
 const TOP_KEYS = new Set(['schema_version', 'catalog_version', 'min_cli_version', 'billing', 'default_model', 'assistants', 'models']);
-const BILLING_KEYS = new Set(['type', 'max_authorized_credits']);
-const ASSISTANT_KEYS = new Set(['label', 'description', 'prompt_version', 'prompt_sha256', 'estimated_credits', 'max_authorized_credits']);
+const BILLING_KEYS = new Set(['type']);
+const ASSISTANT_KEYS = new Set(['label', 'description', 'prompt_version', 'prompt_sha256']);
+// Campos de precio de `assistants.json` (anterior a la 2.5.0). La v3 no los trae; si llegaran, se descartan al leer.
+const LEGACY_PRICE_KEYS = ['estimated_credits', 'max_authorized_credits'];
+const SCHEMA_VERSIONS = [2, 3];
+const CACHE_FILE = 'assistants-v3.json';
+const CACHE_META_FILE = 'assistants-v3-meta.json';
 const MODEL_KEYS = new Set(['label', 'vendor', 'accepts_images', 'accepts_audio', 'accepts_video']);
 
 function parseSemver(value) {
@@ -35,24 +40,23 @@ function rejectExtra(value, allowed, where) {
 export function validateAssistantsCatalog(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Catalogo de asistentes invalido.');
   rejectExtra(value, TOP_KEYS, 'raiz');
-  if (value.schema_version !== 2) throw new Error('Version de schema de asistentes incompatible.');
+  if (!SCHEMA_VERSIONS.includes(value.schema_version)) throw new Error('Version de schema de asistentes incompatible.');
   if (!parseSemver(value.catalog_version) || !parseSemver(value.min_cli_version)) throw new Error('Version del catalogo de asistentes no valida.');
   if (!semverGte(CLI_VERSION, value.min_cli_version)) throw new Error('Actualiza AILAB para usar los asistentes (necesita CLI ' + value.min_cli_version + ').');
   if (!value.billing || typeof value.billing !== 'object' || Array.isArray(value.billing)) throw new Error('Falta la facturacion de asistentes.');
+  for (const key of LEGACY_PRICE_KEYS) delete value.billing[key];
   rejectExtra(value.billing, BILLING_KEYS, 'billing');
   if (value.billing.type !== 'actual_usage') throw new Error('Tipo de facturacion de asistentes no valido.');
-  if (!Number.isInteger(value.billing.max_authorized_credits) || value.billing.max_authorized_credits < 1 || value.billing.max_authorized_credits > 10000) throw new Error('Maximo autorizado de asistentes no valido.');
   if (!value.assistants || typeof value.assistants !== 'object' || Array.isArray(value.assistants)) throw new Error('Faltan asistentes.');
   if (!value.models || typeof value.models !== 'object' || Array.isArray(value.models)) throw new Error('Faltan modelos de asistente.');
   if (!value.models[value.default_model]) throw new Error('El modelo por defecto no existe.');
   for (const [id, item] of Object.entries(value.assistants)) {
     if (!/^[a-z0-9][a-z0-9-]{1,79}$/.test(id) || !item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Asistente no valido: ' + id + '.');
+    for (const key of LEGACY_PRICE_KEYS) delete item[key];
     rejectExtra(item, ASSISTANT_KEYS, 'assistants.' + id);
     if (typeof item.label !== 'string' || !item.label.trim() || item.label.length > 100) throw new Error('Nombre no valido en ' + id + '.');
     if (typeof item.description !== 'string' || item.description.length > 500) throw new Error('Descripcion no valida en ' + id + '.');
     if (item.prompt_sha256 !== null && !/^[0-9a-f]{64}$/.test(String(item.prompt_sha256))) throw new Error('Hash de prompt no valido en ' + id + '.');
-    if (!Number.isInteger(item.estimated_credits) || item.estimated_credits < 1 || item.estimated_credits > value.billing.max_authorized_credits) throw new Error('Estimacion no valida en ' + id + '.');
-    if (!Number.isInteger(item.max_authorized_credits) || item.max_authorized_credits < item.estimated_credits || item.max_authorized_credits > value.billing.max_authorized_credits) throw new Error('Maximo autorizado no valido en ' + id + '.');
   }
   for (const [id, item] of Object.entries(value.models)) {
     if (!/^[a-z0-9][a-z0-9-]{1,79}$/.test(id) || !item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Modelo de asistente no valido: ' + id + '.');
@@ -73,7 +77,7 @@ function atomicJson(file, value) {
 }
 
 function readCached() {
-  const file = path.join(CONFIG_DIR, 'assistants.json');
+  const file = path.join(CONFIG_DIR, CACHE_FILE);
   const raw = fs.readFileSync(file, 'utf8');
   if (Buffer.byteLength(raw, 'utf8') > 1024 * 1024) throw new Error('Catalogo de asistentes demasiado grande.');
   return validateAssistantsCatalog(JSON.parse(raw));
@@ -81,8 +85,8 @@ function readCached() {
 
 export async function refreshAssistantsCatalog({ maxAgeMs = 10 * 60 * 1000, requireNetwork = false } = {}) {
   ensureConfigDir();
-  const cacheFile = path.join(CONFIG_DIR, 'assistants.json');
-  const metaFile = path.join(CONFIG_DIR, 'assistants-meta.json');
+  const cacheFile = path.join(CONFIG_DIR, CACHE_FILE);
+  const metaFile = path.join(CONFIG_DIR, CACHE_META_FILE);
   let meta = {};
   try { meta = JSON.parse(fs.readFileSync(metaFile, 'utf8')); } catch {}
   const age = meta.fetched_at ? Date.now() - Date.parse(meta.fetched_at) : Infinity;

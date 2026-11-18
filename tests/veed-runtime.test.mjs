@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import http from 'node:http';
+import { execFile, spawnSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import test from 'node:test';
 
 // Importa el adapter con una ruta de credenciales vacia. Las pruebas usan fetch
@@ -27,7 +29,9 @@ process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 const config = await import('../skills/ailab/scripts/lib/config.mjs');
 assert.equal(config.CONFIG_DIR, adapterConfig);
 assert.equal(config.CREDENTIALS_DIR, adapterCredentials);
-const { estimateCredits, validateCatalogShape } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { validateCatalogShape } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { handlePrice, estimates } = await import('./helpers/price-server.mjs');
+const execute = promisify(execFile);
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync('skills/ailab/catalog/catalog.json', 'utf8')));
 const model = catalog.models['lipsync-veed-v2'];
 const queueAdapter = await import('../skills/ailab/scripts/adapters/labs-queue-v1.mjs');
@@ -44,11 +48,10 @@ test('VEED Lipsync publica un contrato remoto sin duración manual', () => {
   assert.equal(model.params.video_url.required, true);
   assert.equal(model.params.audio_url.required, true);
   assert.equal(model.params.duration_sec.internal, true);
-  assert.equal(estimateCredits(model, { duration_sec: 1 }).credits, 14);
-  assert.equal(estimateCredits(model, { duration_sec: 2.01 }).credits, 29);
+  assert.equal(model.estimate, undefined, 'el precio por segundo lo da AILAB');
 });
 
-test('la CLI mide el vídeo y calcula VEED antes de autorizar', (t) => {
+test('la CLI mide el vídeo y AILAB presupuesta VEED con esa duración', async (t) => {
   const available = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' });
   if (available.status !== 0) return t.skip('ffmpeg no está disponible');
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-veed-test-'));
@@ -59,20 +62,45 @@ test('la CLI mide el vídeo y calcula VEED antes de autorizar', (t) => {
     const madeAudio = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=16000:cl=mono', '-t', '2', audio]);
     assert.equal(madeVideo.status, 0, madeVideo.stderr && String(madeVideo.stderr));
     assert.equal(madeAudio.status, 0, madeAudio.stderr && String(madeAudio.stderr));
-    const checked = spawnSync(process.execPath, [
+    // Falso price.php y credenciales aisladas: nunca la sesión ni el servidor reales del desarrollador.
+    const state = { prices: { 'lipsync-veed-v2': 28 } };
+    const server = http.createServer(async (req, res) => {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const body = chunks.length ? JSON.parse(Buffer.concat(chunks)) : {};
+      if (handlePrice(state, new URL(req.url, 'http://x').pathname, body, res)) return;
+      res.writeHead(500); res.end('Petición inesperada en una prueba sin gasto');
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    t.after(async () => { server.closeAllConnections(); await new Promise((resolve) => server.close(resolve)); });
+    const base = 'http://127.0.0.1:' + server.address().port + '/';
+    const credentials = path.join(temp, 'credentials');
+    fs.mkdirSync(credentials);
+    fs.writeFileSync(path.join(credentials, 'token'), 'ailp_' + 'V'.repeat(48), { mode: 0o600 });
+    const checked = await execute(process.execPath, [
       'skills/ailab/scripts/ailab.mjs', 'validate', 'lipsync-veed-v2',
       '--video_url', video, '--audio_url', audio,
     ], {
       cwd: process.cwd(),
       encoding: 'utf8',
+      timeout: 30000,
       env: {
         ...process.env,
         AILAB_SKIP_UPDATE: '1',
+        AILAB_SKIP_NOTICES: '1',
         AILAB_CATALOG_PATH: path.join(process.cwd(), 'skills', 'ailab', 'catalog', 'catalog.json'),
+        AILAB_CONFIG_DIR: path.join(temp, 'config'),
+        AILAB_CREDENTIALS_DIR: credentials,
+        AILAB_BASE_URL: base,
+        AILAB_GENERATION_BASE_URL: base,
       },
     });
-    assert.equal(checked.status, 0, checked.stderr);
     assert.match(checked.stdout, /estimacion ~28 cr/);
+    const sent = estimates(state);
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].model, 'lipsync-veed-v2');
+    assert.ok(Math.abs(sent[0].params.duration_sec - 2) < 0.2, String(sent[0].params.duration_sec));
+    assert.doesNotMatch(JSON.stringify(sent), /input\.mp4|voice\.wav/);
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
   }

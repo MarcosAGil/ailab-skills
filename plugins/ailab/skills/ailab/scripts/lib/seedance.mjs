@@ -1,12 +1,9 @@
 // Seedance 2.5 Normal, 2.0 (Normal y Fast) y 2.0 Mini, más la medición que comparten con Seedance 2.5 Lite.
 // Contrato en el servidor: `gateway_seedance_*`, `gateway_validate_video_contract` y `gateway_estimate_credits`
-// (api/wallet/gateway.php). Las cifras están en docs/operations/seedance-25-draft-precios-2026-10-31.md de AILAB.
+// (api/wallet/gateway.php).
 //
-// Sin vídeo se factura la salida. Con vídeo de referencia, (salida + entrada) x tarifa con vídeo, donde la entrada es
-// la suma de los vídeos, cada uno al segundo superior. Editar vídeo (solo Normal) son 2 x segundos del clip. El cálculo
-// vive aquí y no en el catálogo porque las CLI anteriores rechazan el catálogo entero ante una clave de `estimate` que
-// no conocen. El máximo autorizado nunca puede quedar por debajo de la reserva del servidor (daría 402), así que un
-// vídeo que la CLI no puede medir se rechaza en local en lugar de presupuestarlo a ciegas.
+// Los vídeos de referencia cuentan en el precio, que da el servidor con las duraciones que mide la CLI. Un vídeo que la
+// CLI no puede medir se rechaza en local en lugar de presupuestarlo a ciegas.
 import { inspectPricingMetadata } from './files.mjs';
 import { phpRound } from './kling4.mjs';
 
@@ -30,11 +27,6 @@ export function items(value) {
 }
 
 const secondsText = (value) => String(value).replace('.', ',');
-
-// ceil(round(tarifa x segundos, 6)): `gateway_seedance_credits`.
-export function seedanceCredits(rate, seconds) {
-  return Math.ceil(phpRound(rate * seconds, 6));
-}
 
 // Mide los vídeos de referencia igual que el servidor: la suma exacta para el tope y cada vídeo al segundo superior
 // para cobrar. Devuelve { problems, inputSeconds, durations }.
@@ -107,26 +99,4 @@ export function seedanceProblems(model, params, fileParams = {}) {
   const { problems } = seedanceInspect(model, params, fileParams);
   if (model.id === SEEDANCE_25_ID && params.mode === 'edit' && !String(params.prompt ?? '').trim()) problems.push('Editar vídeo requiere un prompt.');
   return problems;
-}
-
-// `rateFor(hasVideo)` lo aporta catalog.mjs, que resuelve la tarifa vigente del catálogo.
-export function seedanceEstimate(model, params, rateFor) {
-  const e = model.estimate || {};
-  const inspected = seedanceInspect(model, params, params);
-  if (inspected.problems.length) return { credits: null, approximate: false, note: inspected.problems[0] };
-  const hasVideo = items(params.reference_video_urls).length > 0;
-  const edit = model.id === SEEDANCE_25_ID && params.mode === 'edit';
-  const auto = !edit && e.auto_duration_param && params[e.auto_duration_param];
-  const spec = (model.params || {}).duration || {};
-  const output = auto ? Number(e.auto_duration_seconds) : Number(params.duration ?? spec.default);
-  const rate = Number(rateFor(hasVideo));
-  const validOutput = edit || (Number.isInteger(output) && output >= spec.min && output <= spec.max);
-  if (!validOutput || !Number.isFinite(rate) || rate <= 0) {
-    return { credits: null, approximate: false, note: 'tarifa de ' + MODELS[model.id].label + ' no disponible para esta combinación' };
-  }
-  const billed = edit ? 2 * inspected.inputSeconds : output + inspected.inputSeconds;
-  let note = e.note || '';
-  if (edit) note = '2 x ' + inspected.inputSeconds + ' s del clip = ' + billed + ' s · máximo reservado; el cargo final es el consumo confirmado, nunca más';
-  else if (hasVideo) note = output + ' s de salida + ' + inspected.inputSeconds + ' s de vídeo de referencia = ' + billed + ' s · máximo reservado; el cargo final es el consumo confirmado, nunca más';
-  return { credits: seedanceCredits(rate, billed), approximate: !!e.approximate, note };
 }

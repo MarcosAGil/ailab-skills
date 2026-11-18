@@ -1,6 +1,6 @@
 # ElevenLabs: biblioteca y Mis voces
 
-> Cifras: precio de miembro; el de tu cuenta lo da `prepare`.
+> El precio lo da siempre AILAB para tu cuenta: `voice-options` y `voice-prepare` lo muestran.
 
 Esta ampliación requiere el backend compatible y la release firmada 2.3.8.
 El catálogo activo decide su disponibilidad. No evites un rechazo de
@@ -27,12 +27,12 @@ solo requiere los permisos existentes de lectura/generación.
 
 ## Costes y disponibilidad
 
-- Alta: 100 cr cuando la voz queda disponible, con 48 horas incluidas.
+- Alta: se cobra cuando la voz queda disponible, con 48 horas incluidas.
 - Diseño: lote de hasta tres muestras, cobrado al entregarlas, aunque no guardes
-  ninguna. `voice-prepare design` consulta el precio actual: 100, 500 y 1.000
-  caracteres de prueba corresponden actualmente a 7, 31 y 62 cr. No hay límite
+  ninguna. `voice-prepare design` consulta el precio actual, que depende de la
+  longitud del texto de prueba. No hay límite
   comercial diario; siguen los controles técnicos, la capacidad y los casos en revisión.
-- Conservación: opcional, 15 cr por periodo de 24 horas, con fecha y presupuesto
+- Conservación: opcional, se cobra por periodo de 24 horas, con fecha y presupuesto
   máximo elegidos por el usuario. No se activa durante el alta.
 - Generar audio se cobra por separado. Usa el flujo `prepare` / `submit` del modelo.
 - Una voz por miembro, con plazas compartidas y reserva del proveedor. Una plaza
@@ -56,7 +56,7 @@ El texto de prueba debe tener entre 100 y 1.000 caracteres Unicode. Puedes usar
 `--text` y `--description-file` en lugar de sus alternativas. Muestra el precio
 del lote antes de enviarlo. El usuario elige la muestra después de escucharla:
 no elijas ni guardes una automáticamente salvo instrucción explícita.
-El plan de alta vuelve a mostrar sus 100 cr. La autorización de pedir muestras
+El plan de alta vuelve a mostrar su precio. La autorización de pedir muestras
 por sí sola no autoriza el alta. Las muestras/plazas caducan: no prometas
 recuperación de audio que el proveedor no identificó o que ya se eliminó.
 

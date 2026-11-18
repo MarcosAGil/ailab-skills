@@ -4,16 +4,16 @@
 // Sin keys maestras ni contrasenas guardadas; usa tokens de dispositivo revocables.
 import { CLI_VERSION, BASE_URL, CUENTA_URL } from './lib/config.mjs';
 import { login, promptVisible, promptHidden, readCookie, readToken, saveToken, clearToken, clearCookie, openDevicePage, cookieAuthEnabled } from './lib/auth.mjs';
-import { apiPost, servicePost, assistantPost, taskLookup, explain, isFlowsOnly, setRequestProject, errorCode } from './lib/http.mjs';
-import { accountPricing, priced, takeProject, projectProblem, frozenFactor, PRICE_CHANGED_TEXT, savePricingCache, loadPricingCache, clearPricingCache } from './lib/account-pricing.mjs';
+import { apiPost, servicePost, assistantPost, taskLookup, explain, isFlowsOnly, setRequestProject } from './lib/http.mjs';
+import { accountInfo, takeProject, projectProblem, removeLegacyAccountCache } from './lib/account.mjs';
+import { priceEstimate, priceInfo, priceAssistants, PRICE_UNAVAILABLE_TEXT } from './lib/price.mjs';
 import { runProjectCommand, PROJECT_COMMANDS, PROJECTS_HELP } from './lib/projects.mjs';
 import { runFlowCommand, fetchFlowsStatus, statusLines, FLOW_HELP } from './lib/flows.mjs';
-import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, estimateCredits, modelContractHash, requiresServerQuote, stableStringify } from './lib/catalog.mjs';
+import { loadCatalog, refreshCatalog, catalogCompatible, resolveModel, modelUsable, validateParams, modelContractHash, stableStringify } from './lib/catalog.mjs';
 import { refreshAssistantsCatalog, resolveAssistant, resolveAssistantModel, assistantContractHash } from './lib/assistants.mjs';
 import { assistantLimits, validateAssistantBatch, LEGACY_ASSISTANT_LIMITS } from './lib/assistant-limits.mjs';
 import { createAssistantRequest, loadAssistantRequest, updateAssistantRequest, loadSession, createSession, saveSession, assistantRequestIntact } from './lib/assistant-requests.mjs';
 import { inspectFile, inspectPricingMetadata, inspectVideoMetadata, rehashMatches } from './lib/files.mjs';
-import { LIGHT_ID } from './lib/genjutsu-light.mjs';
 import { DRAFTS_ENDPOINT, decodeDraftCursor, draftLines, draftsRequest, encodeDraftCursor } from './lib/seedance-draft.mjs';
 import { OMNI12_VIDEOS_ENDPOINT, omni12VideoLines, omni12VideosRequest } from './lib/omni12.mjs';
 import { createManifest, loadManifest, manifestExpired, markSubmitted } from './lib/manifest.mjs';
@@ -27,7 +27,6 @@ import * as hybridGrokV1 from './adapters/hybrid-grok-v1.mjs';
 import * as veoV1 from './adapters/veo-v1.mjs';
 import * as elevenV1 from './adapters/eleven-v1.mjs';
 import { runVoiceCommand, listElevenVoices, VOICE_PROJECT_TEXT } from './lib/voice-commands.mjs';
-import { pricingLines } from './lib/pricing.mjs';
 import * as sunoV1 from './adapters/suno-v1.mjs';
 import * as heygenV1 from './adapters/heygen-v1.mjs';
 import * as jobsTextV1 from './adapters/jobs-text-v1.mjs';
@@ -107,25 +106,22 @@ function parseArgs(argv) {
 }
 
 async function requireSession() {
-  if (!readToken() && !readCookie()) fail('No hay sesion. Pide al usuario que ejecute en su terminal: ' + cliCommand('login'));
+  if (!hasSession()) fail('No hay sesion. Pide al usuario que ejecute en su terminal: ' + cliCommand('login'));
   const me = await apiPost({ action: 'me' });
   if (isFlowsOnly(me)) fail('Esta es una cuenta de cliente: solo puede usar sus flujos. Usa ' + cliCommand('flow status') + ' y los comandos flow.');
   if (!me.ok) fail(explain(me));
-  rememberPricing(me.raw);
   return me.raw;
 }
 
-// Guarda el precio de la cuenta para mostrarlo sin red en info, models y validate.
-function rememberPricing(meRaw) {
-  const result = accountPricing(meRaw);
-  if (result.ok) savePricingCache(result.pricing); else clearPricingCache();
+function hasSession() {
+  return Boolean(readToken() || readCookie());
 }
 
-// Precio de la cuenta de `me.pricing` (miembro ×1,0 si el servidor no lo manda). Un valor incoherente detiene el comando.
-function pricingOf(me) {
-  const result = accountPricing(me);
+// Datos de la cuenta de `me.pricing` (etiqueta y si exige proyecto). Un valor incoherente detiene el comando.
+function accountOf(me) {
+  const result = accountInfo(me);
   if (!result.ok) fail(result.error);
-  return result.pricing;
+  return result.account;
 }
 
 // `--proyecto` sale de las opciones antes de validar parámetros: viaja en la cabecera X-AILAB-Proyecto.
@@ -135,21 +131,9 @@ function projectOption(opts) {
   return taken;
 }
 
-// Precio de la cuenta para mostrar (info, models, validate, assistants) SIN red: con sesión, el último que dio
-// `me` en esta instalación; sin sesión o sin ese dato, null, y el texto lo rotula como precio de miembro.
-function displayPricing() {
-  if (!readToken() && !readCookie()) return null;
-  return loadPricingCache();
-}
-
-// Un 402 al enviar puede deberse a que el factor de la cuenta cambió desde prepare: se comprueba con `me`.
-async function chargeRejection(response, factor) {
-  if (response && errorCode(response) === 'price_changed') return PRICE_CHANGED_TEXT;
-  if (response && response.kind === 'insufficient_balance') {
-    const again = await apiPost({ action: 'me' });
-    const now = again.ok ? accountPricing(again.raw) : null;
-    if (now && now.ok && now.pricing.factor !== factor) return PRICE_CHANGED_TEXT;
-  }
+// Un rechazo al enviar se explica con el mensaje del servidor. Si el precio de la cuenta cambió desde prepare,
+// AILAB responde 402 `price_changed` con su propio texto; la CLI no compara precios.
+function chargeRejection(response) {
   return explain(response);
 }
 
@@ -170,21 +154,17 @@ async function cmdLogin(opts = {}) {
     // Cuenta de cliente: `me` no le corresponde. Se valida con el estado de sus flujos y el token se guarda igual.
     const status = await fetchFlowsStatus();
     if (!status.ok) { clearToken(); fail('Token rechazado: ' + status.error); }
-    clearPricingCache();
     out('Dispositivo autorizado para una cuenta de cliente · saldo ' + status.view.balance_cr + ' cr.');
     out('Esta cuenta solo usa flujos de producción: ' + cliCommand('flow status') + '.');
     return;
   }
   if (!me.ok) { clearToken(); fail('Token rechazado: ' + explain(me)); }
-  rememberPricing(me.raw);
   const user = me.raw.user || {};
   out('Dispositivo autorizado para ' + (user.email || 'tu cuenta') + ' · saldo ' + me.raw.balance + ' cr.');
 }
 
 async function cmdLoginCookie() {
   if (!cookieAuthEnabled()) fail('El login por contraseña está desactivado. Usa: ' + cliCommand('login'));
-  // La cookie es otra sesión: el precio guardado de un login anterior ya no vale para mostrar.
-  clearPricingCache();
   out('Login privado por cookie (compatibilidad temporal de desarrollo).');
   const email = await promptVisible('Email: ');
   const password = await promptHidden('Contrasena (oculta): ');
@@ -195,7 +175,7 @@ async function cmdLoginCookie() {
 }
 
 function cmdLogout() {
-  clearToken(); clearCookie(); clearPricingCache();
+  clearToken(); clearCookie();
   out('Credenciales locales eliminadas. Revoca tambien el dispositivo desde tu cuenta si ya no vas a usarlo.');
 }
 
@@ -211,7 +191,6 @@ async function cmdBalance() {
       return;
     }
     if (!probe.ok) fail(explain(probe));
-    rememberPricing(probe.raw);
     me = probe.raw;
   } else me = await requireSession();
   out('Cuenta: ' + (me.user ? me.user.email : '¿?') + ' · tier ' + (me.user ? me.user.tier : '¿?') + ' · saldo ' + me.balance + ' cr.');
@@ -297,13 +276,17 @@ function readAssistantMessage(opts) {
 
 async function cmdAssistants() {
   const catalog = await refreshAssistantsCatalog({ maxAgeMs: 10 * 60 * 1000, requireNetwork: false });
-  const account = displayPricing();
-  const factor = account ? account.factor : 1;
-  out('Asistentes disponibles · cobro por consumo real' + (account ? '' : ' · precio de miembro') + ':');
+  // Importes orientativos con el precio de la cuenta: los da AILAB (price.php). Sin sesión o sin respuesta se lista
+  // igual, sin importes: assistant-prepare los vuelve a pedir siempre.
+  const prices = hasSession() ? await priceAssistants() : null;
+  const listed = prices && prices.ok ? prices.assistants : null;
+  out('Asistentes disponibles · cobro por consumo real:');
   for (const [id, item] of Object.entries(catalog.assistants)) {
-    out('  ' + id + ' · ' + item.label + ' · ~' + priced(item.estimated_credits, factor) + ' cr orientativos · ' + item.description);
+    const price = listed && listed[id] ? ' · ~' + listed[id].estimated_credits + ' cr orientativos' : '';
+    out('  ' + id + ' · ' + item.label + price + ' · ' + item.description);
   }
-  if (!account) out('Son precios de miembro: assistant-prepare da el de tu cuenta.');
+  if (!hasSession()) out('Precio: inicia sesión (' + cliCommand('login') + '); assistant-prepare da el importe de tu cuenta.');
+  else if (!listed) out('Precio: ' + (prices && prices.error ? prices.error : PRICE_UNAVAILABLE_TEXT) + ' assistant-prepare lo vuelve a pedir.');
   const model = catalog.models[catalog.default_model];
   out('Modelo fijo: ' + model.label + ' · ' + model.vendor + ' · imagen, audio y video.');
 }
@@ -355,12 +338,15 @@ async function cmdAssistantPrepare(name, opts) {
   const modelHit = resolveAssistantModel(catalog, catalog.default_model);
   const message = readAssistantMessage(opts);
   const me = await requireSession();
-  const pricing = pricingOf(me);
-  const missing = projectProblem(pricing, project);
+  const missing = projectProblem(accountOf(me), project);
   if (missing) fail(missing);
   setRequestProject(project);
-  const factor = pricing.factor;
   const files = assistantFiles(opts, modelHit.model, await currentAssistantLimits());
+  // Importe orientativo y máximo de este asistente con el precio de la cuenta. Sin respuesta, no se prepara nada.
+  const prices = await priceAssistants();
+  if (!prices.ok) fail(prices.error);
+  const price = prices.assistants[hit.id];
+  if (!price) fail(PRICE_UNAVAILABLE_TEXT);
 
   let session = null;
   const sessionOption = singleOpt(opts, 'session');
@@ -387,10 +373,10 @@ async function cmdAssistantPrepare(name, opts) {
     attachment_urls: [],
     catalog_version: catalog.catalog_version,
     contract_hash: assistantContractHash(catalog, hit.id, modelHit.id),
-    // Precio de la cuenta. El servidor reserva priced(máximo) y cobra el consumo real con el mismo factor.
-    estimated_credits: priced(hit.assistant.estimated_credits, factor),
-    max_credits_authorized: priced(hit.assistant.max_authorized_credits, factor),
-    ...(factor !== 1 || project ? { price_factor: factor, project } : {}),
+    // Precio de la cuenta que da AILAB. El servidor reserva el máximo y cobra el consumo real.
+    estimated_credits: price.estimated_credits,
+    max_credits_authorized: price.max_authorized_credits,
+    ...(project ? { project } : {}),
   });
   out('── PLAN DE ASISTENTE (sin gasto todavia) ──');
   out('Asistente: ' + hit.assistant.label + ' (' + hit.id + ')');
@@ -422,12 +408,8 @@ async function cmdAssistantSubmit(requestId, opts) {
   if (!catalog.assistants[request.assistant_id] || !catalog.models[request.model_id]) fail('El asistente o el modelo ya no esta disponible. Vuelve a preparar.');
   const currentHash = assistantContractHash(catalog, request.assistant_id, request.model_id);
   if (currentHash !== request.contract_hash) fail('El contrato o el precio del asistente cambio. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
-  const factor = frozenFactor(request);
-  if (factor === null) fail('La petición tiene un precio de cuenta no válido. Vuelve a preparar; no se ha enviado nada.');
   setRequestProject(request.project || null);
-  const current = pricingOf(await requireSession());
-  if (current.factor !== factor) fail(PRICE_CHANGED_TEXT);
-  const missing = projectProblem(current, request.project || null);
+  const missing = projectProblem(accountOf(await requireSession()), request.project || null);
   if (missing) fail(missing);
   validateAssistantBatch(request.files || [], await currentAssistantLimits());
 
@@ -487,7 +469,7 @@ async function cmdAssistantSubmit(requestId, opts) {
       updateAssistantRequest(request, { state: 'ambiguous', last_error: explain(response) });
       fail(explain(response) + ' Consulta: assistant-status ' + request.request_id + '. No prepares otra petición.');
     }
-    const reason = await chargeRejection(response, factor);
+    const reason = chargeRejection(response);
     updateAssistantRequest(request, { state: 'failed', last_error: reason });
     fail(reason);
   }
@@ -525,22 +507,16 @@ async function cmdAssistantStatus(requestId) {
   if (typeof status.charged_credits === 'number') out('Consumo verificado: ' + status.charged_credits + ' cr.');
 }
 
-// `account`: precio de la cuenta con sesión, o null (sin sesión: precio de miembro rotulado como tal).
-function cmdModels(cat, account) {
+function cmdModels(cat) {
   out('Modelos disponibles (' + Object.keys(cat.models).length + '):');
   for (const [id, m] of Object.entries(cat.models)) {
     const usable = modelUsable(m);
     out('  ' + id + ' · ' + m.label + ' [' + m.section + ']' + (m.expensive ? ' · CARO' : '') + (usable.ok ? '' : ' · NO DISPONIBLE: ' + usable.reason));
   }
-  if (account && account.factor !== 1) {
-    out('Precios: `info <modelo>` muestra el precio de tu cuenta. Para dar un precio al usuario usa el presupuesto de `prepare`; no leas tablas a mano.');
-    return;
-  }
-  out('Precios: `info <modelo>` muestra la tarifa vigente de hoy. Para dar un precio al usuario usa el presupuesto de `prepare`; no leas tablas a mano.');
-  if (!account) out('Son precios de miembro: el precio exacto de tu cuenta lo da `prepare`.');
+  out('Precios: los da siempre AILAB con el precio de tu cuenta. `info <modelo>` muestra los de un modelo y `prepare` el importe exacto de cada generación, que es el que se da al usuario.');
 }
 
-function cmdInfo(cat, name, account) {
+async function cmdInfo(cat, name) {
   const hit = resolveModel(cat, name);
   if (!hit) fail('Modelo no encontrado: ' + name);
   const m = hit.model;
@@ -556,7 +532,18 @@ function cmdInfo(cat, name, account) {
     if (s.default !== undefined) bits.push('def ' + s.default);
     out('  --' + k + ' (' + bits.join(', ') + (s.required ? ', OBLIGATORIO' : '') + ')' + (s.help ? ' · ' + s.help : ''));
   }
-  for (const line of pricingLines(m, Date.now(), account)) out(line);
+  // El precio lo da AILAB con el de la cuenta; sin sesión no hay precio que mostrar.
+  if (!hasSession()) {
+    out('Precio: lo da AILAB con tu sesión (' + cliCommand('login') + '). El importe exacto de cada generación lo da `prepare`.');
+    return;
+  }
+  const info = await priceInfo(hit.id);
+  if (!info.ok) {
+    out('Precio: ' + info.error + ' `prepare` lo vuelve a pedir.');
+    process.exitCode = 1;
+    return;
+  }
+  for (const line of info.lines) out(line);
 }
 
 function deriveInternalParams(model, given) {
@@ -624,25 +611,31 @@ function deriveInternalParams(model, given) {
   return derived;
 }
 
-function cmdValidate(cat, name, opts, account) {
+// Parámetros validados más los archivos inspeccionados. Falla con el primer archivo que no se puede usar.
+function inspectFileParams(model, fileParams) {
+  for (const [param, paths] of Object.entries(fileParams)) {
+    const accept = (model.params[param] || {}).accept || null;
+    for (const p of paths) { const inspected = inspectFile(p, accept); if (!inspected.ok) fail(inspected.error); }
+  }
+}
+
+async function cmdValidate(cat, name, opts) {
   const hit = resolveModel(cat, name);
   if (!hit) fail('Modelo no encontrado: ' + name);
   let given = projectOption(opts).rest; delete given.output; delete given.confirmed; delete given['max-credits'];
   given = deriveInternalParams(hit.model, given);
   const v = validateParams(hit.model, given);
   if (!v.ok) fail('Parametros no validos:\n  - ' + v.errors.join('\n  - '));
-  for (const [param, paths] of Object.entries(v.fileParams)) {
-    const accept = (hit.model.params[param] || {}).accept || null;
-    for (const p of paths) { const inspected = inspectFile(p, accept); if (!inspected.ok) fail(inspected.error); }
+  inspectFileParams(hit.model, v.fileParams);
+  // Precio orientativo de AILAB con el de la cuenta. Sin sesión o sin respuesta los parámetros siguen siendo válidos.
+  let priceText = 'el precio lo da `prepare`';
+  if (hasSession()) {
+    const asked = await priceEstimate(hit.id, v.params, v.fileParams);
+    if (!asked.ok) priceText = 'precio no disponible ahora (' + asked.error + ') · lo da `prepare`';
+    else if (asked.price.server_quote) priceText = Number.isFinite(asked.price.credits) ? '~' + asked.price.credits + ' cr (el servidor lo cotiza en prepare)' : 'el coste lo cotiza el servidor en prepare';
+    else priceText = asked.price.credits === null ? 'estimacion no disponible' : 'estimacion ~' + asked.price.credits + ' cr';
   }
-  const est = estimateCredits(hit.model, { ...v.params, ...v.fileParams });
-  const credits = priced(est.credits, account ? account.factor : 1);
-  const member = !account && Number.isFinite(credits) ? ' · precio de miembro (el de tu cuenta lo da prepare)' : '';
-  out('OK ' + hit.model.label + ': parametros validos · '
-    + (est.server_quote
-      ? (Number.isFinite(credits) ? 'estimacion local ~' + credits + ' cr (el servidor la cotiza en prepare)' : 'el coste lo cotiza el servidor en prepare')
-      : 'estimacion ' + (credits === null ? 'no disponible' : '~' + credits + ' cr'))
-    + member + ' · sin gasto.');
+  out('OK ' + hit.model.label + ': parametros validos · ' + priceText + ' · sin gasto.');
 }
 
 async function cmdDoctor(cat) {
@@ -653,7 +646,6 @@ async function cmdDoctor(cat) {
   const hasSession = Boolean(readToken() || readCookie());
   const me = hasSession ? await apiPost({ action: 'me' }) : { ok: false };
   if (isFlowsOnly(me)) return doctorClient(add, checks);
-  if (me.ok) rememberPricing(me.raw);
   add(me.ok, 'Autenticacion', me.ok ? (me.raw.user.email + ' · saldo ' + me.raw.balance + ' cr')
     : hasSession ? explain(me) : 'no hay sesión. Pide al usuario que ejecute en su terminal: ' + cliCommand('login') + ' (no se ha gastado nada)');
   try { const dir = resolveOutputDir(); add(true, 'Salida', dir); } catch (e) { add(false, 'Salida', describeEnvironmentError(e) || e.message); }
@@ -693,9 +685,6 @@ async function doctorClient(add, checks) {
   for (const notice of environmentNotices({ info })) out('AVISO · ' + notice.text);
   if (checks.some((ok) => !ok)) process.exitCode = 1;
 }
-
-// Modelos con tarifa exacta en local: sin tarifa válida no se prepara y --max-credits se comprueba siempre.
-const EXACT_TARIFF_IDS = ['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control', 'gemini-omni-flash-1-2'];
 
 // Techo de creditos fijado por el usuario con --max-credits (opcional).
 function creditCeiling(opts) {
@@ -747,6 +736,8 @@ async function uploadFrozenFiles(frozenFiles, cachedUploads, persist) {
   return { uploadedByParam, savedUploads };
 }
 
+const overCeiling = (credits, ceiling) => 'El coste (' + credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.';
+
 async function cmdPrepare(cat, name, opts) {
   const hit = resolveModel(cat, name);
   if (!hit) fail('Modelo no encontrado: ' + name);
@@ -780,43 +771,42 @@ async function cmdPrepare(cat, name, opts) {
   }
 
   const ceiling = creditCeiling(opts);
-  const serverQuote = requiresServerQuote(m, v.params);
-  const est = estimateCredits(m, { ...v.params, ...v.fileParams });
-  if (EXACT_TARIFF_IDS.includes(m.id)) {
-    if (!Number.isFinite(est.credits) || est.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Actualiza AILAB o consulta el catálogo; no se ha enviado nada.');
-    if (ceiling !== null && est.credits > ceiling) fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
-  }
-  if (m.id === LIGHT_ID && Number.isFinite(est.credits) && est.credits > 0 && ceiling !== null && est.credits > ceiling) {
-    // Genjutsu Light: el vídeo ya está medido en local; se avisa antes de subir nada. El servidor repite la cuenta.
-    fail('El coste (' + est.credits + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
-  }
   const me = await requireSession();
-  // Precio de la cuenta: la estimación local es precio de miembro; el final es priced(base). Los topes locales
-  // (--max-credits, saldo, topes de Higgsfield) se comprueban con el final. Con factor 1,0 no cambia nada.
-  const pricing = pricingOf(me);
-  const missingProject = projectProblem(pricing, project);
+  const missingProject = projectProblem(accountOf(me), project);
   if (missingProject) fail(missingProject);
   setRequestProject(project);
-  const factor = pricing.factor;
-  const finalLocal = priced(est.credits, factor);
-  if (factor !== 1 && (EXACT_TARIFF_IDS.includes(m.id) || m.id === LIGHT_ID) && Number.isFinite(finalLocal) && ceiling !== null && finalLocal > ceiling) {
-    fail('El coste (' + finalLocal + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+
+  // El precio lo da AILAB (price.php) con el de la cuenta y lo que la CLI mide de los archivos. Sin respuesta no se
+  // sube ni se envía nada. Los modelos que cotiza el servidor (`server_quote`) piden además su cotización.
+  const asked = await priceEstimate(hit.id, v.params, v.fileParams);
+  if (!asked.ok) fail(asked.error);
+  const price = asked.price;
+  const serverQuote = price.server_quote;
+  const expensive = !!(m.expensive || price.expensive);
+  if (!serverQuote) {
+    if (price.credits === null) fail('No hay una tarifa válida para esta solicitud' + (price.note ? ': ' + price.note : '') + '. No se ha enviado nada.');
+    if (ceiling !== null && price.credits > ceiling) fail(overCeiling(price.credits, ceiling));
+  } else if (Number.isFinite(price.credits) && price.credits > 0 && ceiling !== null && price.credits > ceiling) {
+    // Cotizado en el servidor con importe ya conocido (Genjutsu Light): se avisa antes de subir nada.
+    fail(overCeiling(price.credits, ceiling));
   }
 
-  // Higgsfield: los archivos suben ANTES de cotizar porque el servidor mide el
-  // video y las referencias para fijar el coste. Subir no gasta creditos.
+  // Modelos que cotiza el servidor: los archivos suben ANTES de cotizar porque el servidor los mide para fijar el
+  // coste. Subir no gasta creditos.
   let uploads = { uploadedByParam: {}, savedUploads: [] };
   let quote = null;
   if (serverQuote) {
-    uploads = await uploadFrozenFiles(files, [], null);
     const adapter = ADAPTERS[m.driver];
+    if (typeof adapter.quote !== 'function') fail('AILAB cotiza este modelo en el servidor y esta versión no sabe pedir la cotización. Actualiza AILAB con ' + cliCommand('update --confirmed') + '; no se ha enviado nada.');
+    uploads = await uploadFrozenFiles(files, [], null);
     const payload = adapter.buildPayload(m, v.params, uploads.uploadedByParam);
     const clientRequestId = crypto.randomUUID();
-    // La cotización del servidor ya es el precio de la cuenta: no se multiplica otra vez.
+    // Techo de la cotización: el que da AILAB para la cuenta (`max_credits`) o, si es menor, --max-credits.
+    const limits = [ceiling, price.max_credits].filter((n) => Number.isFinite(n) && n > 0);
     const asked = await adapter.quote(m, payload, {
       client_request_id: clientRequestId,
-      max_credits_authorized: ceiling === null ? undefined : ceiling,
-    }, { priceFactor: factor });
+      max_credits_authorized: limits.length ? Math.min(...limits) : undefined,
+    });
     if (!asked.ok) fail('La cotizacion del servidor no se pudo obtener: ' + explain(asked.normalized) + ' (no se ha gastado nada)');
     quote = { ...asked.quote, client_request_id: clientRequestId };
     // quote.estimated_credits es el coste real cotizado (lo que se aprueba);
@@ -847,13 +837,10 @@ async function cmdPrepare(cat, name, opts) {
     params: v.params,
     files,
     estimate: serverQuote
-      ? { credits: Number(quote.estimated_credits), note: est.note, expensive: m.expensive }
-      : { ...est, credits: finalLocal, expensive: m.expensive },
-    pricing: {
-      base_credits: Number.isFinite(est.credits) ? est.credits : null,
-      price_factor: factor,
-      project,
-    },
+      ? { credits: Number(quote.estimated_credits), note: price.note, expensive }
+      : { credits: price.credits, approximate: price.approximate, note: price.note, expensive },
+    project,
+    serverQuote,
   });
   if (serverQuote) {
     // La cotizacion queda congelada en el manifiesto: submit no puede enviar
@@ -868,36 +855,28 @@ async function cmdPrepare(cat, name, opts) {
       quote_estimated_credits: quote.estimated_credits,
       quote_max_credits: Number(quote.estimated_credits),
       quote_ceiling_credits: Number(quote.max_credits_authorized),
+      ...(Number.isFinite(Number(quote.hard_cap_credits)) && Number(quote.hard_cap_credits) > 0 ? { quote_hard_cap_credits: Number(quote.hard_cap_credits) } : {}),
       quote_verified_duration_seconds: quote.verified_duration_seconds,
       estimated_credits: quote.estimated_credits,
     });
   }
 
-  // Genjutsu Light: la cifra local es la misma que cotiza el servidor. Si difieren, manda el servidor y se avisa.
-  const localLight = m.id === LIGHT_ID && serverQuote && Number.isFinite(est.credits) && est.credits > 0 ? finalLocal : null;
-  // Un solo importe por generación: con un precio de cuenta no se muestran notas con tarifas de miembro.
-  const estNote = factor === 1 ? est.note : 'precio de tu cuenta';
   out('── PLAN DE GENERACION (sin gasto todavia) ──');
-  out('Modelo: ' + m.label + ' (' + hit.id + ')' + (m.expensive ? ' · MODELO CARO' : ''));
+  out('Modelo: ' + m.label + ' (' + hit.id + ')' + (expensive ? ' · MODELO CARO' : ''));
   for (const [k, val] of Object.entries(v.params)) out('  ' + k + ': ' + JSON.stringify(val));
   for (const f of files) out('  archivo (' + f.param + '): ' + f.path + ' · ' + f.mime + ' · ' + Math.round(f.size / 1024) + 'KB');
   if (project) out('  proyecto: ' + project);
-  const requiredBalance = serverQuote ? Number(quote.estimated_credits) : finalLocal;
+  const requiredBalance = serverQuote ? Number(quote.estimated_credits) : price.credits;
   if (serverQuote) {
     out('Cotizacion del servidor: ' + quote.quote_id + ' · coste cotizado '
       + (quote.estimated_credits === null ? 'pendiente' : quote.estimated_credits + ' cr')
       + ' (importe que se aprueba) · techo de seguridad del servidor ' + quote.max_credits_authorized + ' cr');
-    if (localLight !== null) {
-      out('Estimacion local de la skill: ~' + localLight + ' cr (' + estNote + ')');
-      if (localLight !== Number(quote.estimated_credits)) {
-        out('AVISO: la estimacion local (' + localLight + ' cr) no coincide con la cotizacion del servidor (' + quote.estimated_credits + ' cr). Manda el servidor; actualiza la skill con `update --confirmed` por si cambio la tarifa.');
-      }
-    }
     if (quote.note) out(quote.note);
+    else if (price.note) out(price.note);
     out('La cotizacion caduca: ' + quote.expires_at + '. Pasada esa hora hay que volver a preparar.');
   } else {
-    out('Estimacion: ' + (finalLocal === null ? 'no disponible' : '~' + finalLocal + ' cr') + (estNote ? ' (' + estNote + ')' : ''));
-    if (m.expensive && finalLocal !== null) out('Maximo autorizado por este manifiesto: ' + finalLocal + ' cr.');
+    out('Estimacion: ~' + price.credits + ' cr' + (price.note ? ' (' + price.note + ')' : ''));
+    if (expensive) out('Maximo autorizado por este manifiesto: ' + price.credits + ' cr.');
   }
   out('Saldo actual: ' + me.balance + ' cr.');
   if (Number.isFinite(requiredBalance) && requiredBalance > 0 && me.balance < requiredBalance) {
@@ -909,12 +888,11 @@ async function cmdPrepare(cat, name, opts) {
 }
 
 async function cmdSubmit(cat, manifestId, opts) {
-    const m0 = loadManifest(manifestId);
+  const m0 = loadManifest(manifestId);
   if (!m0) fail('Manifiesto no encontrado: ' + manifestId);
   if (m0.submitted_task) fail('Ese manifiesto ya se ejecutó. Consulta: ' + cliCommand('status ' + m0.submitted_task) + '. No vuelvas a generar para recuperarlo.');
-  // Precio y proyecto congelados en prepare: el factor actual de la cuenta nunca recalcula un manifiesto.
-  const factor = frozenFactor(m0);
-  if (factor === null) fail('El manifiesto tiene un precio de cuenta no válido. Vuelve a preparar; no se ha enviado nada.');
+  // Importe y proyecto congelados en prepare: submit nunca recalcula un manifiesto. Si el precio de la cuenta cambió,
+  // AILAB rechaza con 402 `price_changed` sin cobrar.
   const project = typeof m0.project === 'string' && m0.project ? m0.project : null;
   if (opts.proyecto !== undefined) {
     const given = projectOption(opts).project;
@@ -944,7 +922,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   const usable = modelUsable(model);
   if (!usable.ok) fail(usable.reason);
   if (!m0.model_contract_hash || m0.model_contract_hash !== modelContractHash(hit.id, model)) {
-    fail('El contrato o el precio de este modelo cambio desde el prepare. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
+    fail('El contrato de este modelo cambio desde el prepare. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   }
 
   const paramsHash = crypto.createHash('sha256').update(stableStringify(m0.params || {})).digest('hex');
@@ -966,10 +944,8 @@ async function cmdSubmit(cat, manifestId, opts) {
   if (!validatedAgain.ok || stableStringify(validatedAgain.params) !== stableStringify(m0.params || {})) {
     fail('El manifiesto ya no supera la validacion del modelo. Vuelve a preparar; continua solo dentro del alcance y presupuesto expresamente autorizados.');
   }
-  const estimateAgain = estimateCredits(model, { ...validatedAgain.params, ...validatedAgain.fileParams });
-  // Precio base recalculado en local con el factor CONGELADO del manifiesto.
-  const finalAgain = priced(estimateAgain.credits, factor);
-  const serverQuote = requiresServerQuote(model, m0.params);
+  const serverQuote = m0.server_quote === true;
+  const ceiling = creditCeiling(opts);
   if (serverQuote) {
     // El manifiesto congela una cotizacion del servidor: sin ella, caducada o
     // con un maximo distinto no se envia nada (el adapter lo vuelve a exigir).
@@ -987,16 +963,14 @@ async function cmdSubmit(cat, manifestId, opts) {
     const quotedCost = Number(m0.quote_estimated_credits);
     if (!Number.isFinite(quotedCost) || quotedCost <= 0) fail('La cotizacion del manifiesto no tiene un coste cotizado valido. Vuelve a preparar; no se ha enviado nada.');
     if (quotedCost > quoteCeiling) fail('La cotizacion (' + quotedCost + ' cr) supera el techo de seguridad de la cotizacion (' + quoteCeiling + ' cr). Vuelve a preparar; no se ha enviado nada.');
-    const ceiling = creditCeiling(opts);
     if (ceiling !== null && quoteApproved > ceiling) fail('La cotizacion del servidor (' + quoteApproved + ' cr) supera el maximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
-  } else if (finalAgain !== m0.estimated_credits || finalAgain !== m0.max_credits_authorized
-    || (m0.base_credits !== undefined && m0.base_credits !== null && estimateAgain.credits !== m0.base_credits)) {
-    fail('La estimacion o el maximo autorizado del manifiesto no coincide con el plan confirmado. Vuelve a preparar.');
-  }
-  if (EXACT_TARIFF_IDS.includes(model.id)) {
-    const ceiling = creditCeiling(opts);
-    if (!Number.isFinite(estimateAgain.credits) || estimateAgain.credits <= 0) fail('No hay una tarifa válida para esta solicitud. Vuelve a preparar; no se ha enviado nada.');
-    if (ceiling !== null && finalAgain > ceiling) fail('El coste (' + finalAgain + ' cr) supera el máximo que autorizaste (--max-credits ' + ceiling + '). No se ha enviado nada.');
+  } else {
+    // Importe de AILAB congelado en prepare: estimado y máximo autorizado son el mismo entero.
+    const frozen = m0.max_credits_authorized;
+    if (!Number.isSafeInteger(frozen) || frozen < 0 || m0.estimated_credits !== frozen) {
+      fail('La estimacion o el maximo autorizado del manifiesto no coincide con el plan confirmado. Vuelve a preparar.');
+    }
+    if (ceiling !== null && frozen > ceiling) fail(overCeiling(frozen, ceiling));
   }
 
   for (const f of frozenFiles) {
@@ -1004,10 +978,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   }
 
   const me = await requireSession();
-  // Si el factor de la cuenta cambió desde prepare, el servidor rechazaría con 402: se avisa antes de enviar.
-  const current = pricingOf(me);
-  if (current.factor !== factor) fail(PRICE_CHANGED_TEXT);
-  const missingProject = projectProblem(current, project);
+  const missingProject = projectProblem(accountOf(me), project);
   if (missingProject) fail(missingProject);
   // El importe que se exige en saldo es el coste cotizado aprobado, no el techo
   // de seguridad del servidor.
@@ -1036,7 +1007,7 @@ async function cmdSubmit(cat, manifestId, opts) {
   out('Enviando a ' + model.label + '…');
   const intent = {
     client_request_id: clientRequestId,
-    max_credits_authorized: serverQuote ? Number(m0.max_credits_authorized) : finalAgain,
+    max_credits_authorized: Number(m0.max_credits_authorized),
   };
   if (serverQuote) {
     // El adapter reenvia la cotizacion aprobada; si algo no cuadra rechaza en
@@ -1044,9 +1015,10 @@ async function cmdSubmit(cat, manifestId, opts) {
     intent.quote_id = String(m0.quote_id);
     intent.quote_max_credits = Number(m0.quote_max_credits);
     intent.quote_expires_at = String(m0.quote_expires_at);
+    if (Number.isFinite(Number(m0.quote_hard_cap_credits))) intent.quote_hard_cap_credits = Number(m0.quote_hard_cap_credits);
   }
-  const sub = await adapter.submit(model, payload, intent, { priceFactor: factor });
-  if (!sub.ok) fail(await chargeRejection(sub.normalized, factor));
+  const sub = await adapter.submit(model, payload, intent);
+  if (!sub.ok) fail(chargeRejection(sub.normalized));
   markSubmitted(manifestState, { submitted_task: sub.taskRef.serverTaskId, submitted_at: new Date().toISOString() });
   saveTaskReceipt(hit.id, sub.taskRef);
   out('Tarea encolada: ' + sub.taskRef.serverTaskId);
@@ -1227,6 +1199,8 @@ function cmdGuide() {
 async function main() {
   const { pos, opts } = parseArgs(process.argv.slice(2));
   const cmd = pos[0];
+  // La 2.4.0 guardaba un precio de cuenta en local; desde la 2.5.0 no queda ninguno.
+  removeLegacyAccountCache();
   // Avisos de entorno (plugin antiguo, doble instalacion): una vez al dia por aviso,
   // siempre en help y guide, y dentro de doctor. Nunca en self-test (lo parsea el updater).
   const noisy = !process.env.AILAB_SKIP_NOTICES && !['self-test', 'doctor', 'login', 'login-cookie'].includes(cmd);
@@ -1269,8 +1243,10 @@ async function main() {
   if (cmd.startsWith('voice-')) {
     // Las voces van siempre a Uso general: --proyecto se rechaza antes de abrir sesión.
     if (opts.proyecto !== undefined) fail(VOICE_PROJECT_TEXT);
-    const me = await requireSession();
-    return runVoiceCommand(cmd, pos.slice(1), opts, out, { pricing: pricingOf(me) });
+    await requireSession();
+    // Los rechazos de las voces son mensajes para el usuario, no fallos del runtime: sin traza.
+    try { return await runVoiceCommand(cmd, pos.slice(1), opts, out); }
+    catch (e) { if (e && e.constructor === Error && !describeEnvironmentError(e)) fail(e.message); throw e; }
   }
   if (PROJECT_COMMANDS.includes(cmd)) { await requireSession(); return runProjectCommand(cmd, pos.slice(1), opts, { out, fail }); }
   if (cmd === 'drafts') return cmdDrafts(opts);
@@ -1284,9 +1260,9 @@ async function main() {
     : await refreshCatalog({ maxAgeMs: 60 * 60 * 1000, requireNetwork: false });
   const compat = catalogCompatible(cat);
   if (!compat.ok) fail(compat.reason);
-  if (cmd === 'models') return cmdModels(cat, displayPricing());
-  if (cmd === 'info') return cmdInfo(cat, pos[1], displayPricing());
-  if (cmd === 'validate') return cmdValidate(cat, pos[1], opts, displayPricing());
+  if (cmd === 'models') return cmdModels(cat);
+  if (cmd === 'info') return cmdInfo(cat, pos[1]);
+  if (cmd === 'validate') return cmdValidate(cat, pos[1], opts);
   if (cmd === 'prepare') return cmdPrepare(cat, pos[1], opts);
   if (cmd === 'submit') return cmdSubmit(cat, pos[1], opts);
   if (cmd === 'doctor') return cmdDoctor(cat);

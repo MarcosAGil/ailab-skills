@@ -7,15 +7,17 @@ const root=fs.mkdtempSync(path.join(os.tmpdir(),'ailab-voices-client-'));
 process.env.AILAB_CONFIG_DIR=path.join(root,'config');process.env.AILAB_CREDENTIALS_DIR=path.join(root,'credentials');
 const {prepareVoice,submitVoice,voiceStatus,listElevenVoices,runVoiceCommand}=await import('../skills/ailab/scripts/lib/voice-commands.mjs');
 const {loadManifest}=await import('../skills/ailab/scripts/lib/manifest.mjs');
-const {validateParams,requiresServerQuote}=await import('../skills/ailab/scripts/lib/catalog.mjs');
+const {validateParams}=await import('../skills/ailab/scripts/lib/catalog.mjs');
 const {privateVoiceSample,normalize}=await import('../skills/ailab/scripts/lib/http.mjs');
+const {PRICE_UNAVAILABLE_TEXT}=await import('../skills/ailab/scripts/lib/price.mjs');
 const adapter=await import('../skills/ailab/scripts/adapters/eleven-v1.mjs');
 const cat=JSON.parse(fs.readFileSync(new URL('../skills/ailab/catalog/catalog.json',import.meta.url),'utf8'));
 const original=globalThis.fetch;let calls=[];
 const slot='a'.repeat(32),sample='b'.repeat(32),voice='c'.repeat(32);
 function mock(handler) {calls=[];globalThis.fetch=async(url,init={})=>{const u=new URL(url);const body=typeof init.body==='string'?JSON.parse(init.body):init.body;calls.push({action:u.searchParams.get('action'),method:init.method||'GET',body,url:u});
   const d=await handler(calls.at(-1));return d instanceof Response?d:Response.json({ok:true,data:d});};}
-const options={can_create:true,design_enabled:true};
+// Desde la 2.5.0 el alta y la conservación las da AILAB con el precio de la cuenta (`options`).
+const options={can_create:true,design_enabled:true,creation_credits:100,renewal_credits:15};
 const quiet=()=>{};
 test.after(()=>{globalThis.fetch=original;fs.rmSync(root,{recursive:true,force:true});});
 test.afterEach(()=>{globalThis.fetch=original;});
@@ -54,7 +56,7 @@ test('a forged manifest price or changed file cannot trigger an HTTP mutation',a
   await assert.rejects(submitVoice(m.manifest_id,{confirmed:true},quiet),/ha cambiado/);assert.equal(calls.length,0);
 });
 test('retention is off without a date; explicit conservation uses the server price and ceiling',async()=>{
-  mock(()=>({credits:45}));const off=await prepareVoice('renew',{id:voice},quiet);assert.equal(off.params.enabled,false);assert.equal(off.max_credits_authorized,0);assert.equal(calls.length,0);
+  mock(({action})=>action==='status'?{id:voice,state:'available',renewal_credits:15}:{credits:45});const off=await prepareVoice('renew',{id:voice},quiet);assert.equal(off.params.enabled,false);assert.equal(off.params.price,15);assert.equal(off.max_credits_authorized,0);assert.deepEqual(calls.map(c=>c.method),['GET']);
   await assert.rejects(prepareVoice('renew',{id:voice,until:'2026-10-20','max-credits':'44'},quiet),/supera/);
   const on=await prepareVoice('renew',{id:voice,until:'2026-10-20','max-credits':'45'},quiet);assert.equal(on.params.enabled,true);assert.equal(on.max_credits_authorized,45);
 });
@@ -75,7 +77,19 @@ test('TTS uses a private AILAB ID exclusively, validates IDs and requests server
   const m=cat.models['eleven-tts'];assert.equal(validateParams(m,{version:'v4',text:'Hola',private_voice_id:voice}).ok,true);
   assert.equal(validateParams(m,{version:'v4',text:'Hola',private_voice_id:voice,voice_id:'public1234567890'}).ok,false);
   assert.equal(validateParams(m,{version:'v4',text:'Hola',private_voice_id:'../private'}).ok,false);
-  assert.equal(requiresServerQuote(m,{version:'v4'}),true);assert.equal(requiresServerQuote(m,{version:'flash'}),false);
+});
+test('sin importe válido de AILAB no se prepara ni se reserva nada; la reanudación usa el precio de la voz',async()=>{
+  for(const bad of [undefined,0,1.5,'100']){
+    mock(({action})=>action==='options'?{...options,creation_credits:bad}:{id:slot});
+    await assert.rejects(prepareVoice('create',{name:'Mi voz',sample,slot},quiet),(e)=>e.message===PRICE_UNAVAILABLE_TEXT);
+    assert.equal(calls.some(c=>c.method==='POST'),false);
+  }
+  mock(({action})=>action==='status'?{id:voice,state:'paused',renewal_credits:18}:options);
+  const own=await prepareVoice('resume',{id:voice},quiet);assert.equal(own.max_credits_authorized,18);assert.deepEqual(calls.map(c=>c.action),['status']);
+  mock(({action})=>action==='status'?{id:voice,state:'paused'}:options);
+  const account=await prepareVoice('resume',{id:voice},quiet);assert.equal(account.max_credits_authorized,15);assert.deepEqual(calls.map(c=>c.action),['status','options']);
+  mock(({action})=>action==='status'?{id:voice,state:'paused'}:{...options,renewal_credits:null});
+  await assert.rejects(prepareVoice('resume',{id:voice},quiet),(e)=>e.message===PRICE_UNAVAILABLE_TEXT);
 });
 test('v4 quote rejects malformed responses and returns the exact server amount',async()=>{
   const payload={input:{version:'v4',text:'hola',voice_id:'public1234567890'}};

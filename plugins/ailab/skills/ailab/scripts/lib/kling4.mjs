@@ -6,8 +6,7 @@
 //
 // El servidor (`gateway_kling4_input` y `gateway_kling4_subjects` en api/wallet/gateway.php) repite
 // todas estas reglas, mide él mismo los vídeos de entrada y es siempre la autoridad. Este módulo solo
-// avisa antes de subir nada y presupuesta al menos lo que el servidor va a reservar: si el máximo
-// autorizado fuera menor, el servidor rechaza con 402 sin cobrar.
+// avisa antes de subir nada; el precio lo da el servidor (price.mjs).
 //
 // Los sujetos de imagen (`elements`) y las voces (`voices`) son listas de objetos. La CLI solo maneja
 // parámetros planos, así que se expresan en ranuras numeradas: `subject_N_name` + `subject_N_images`
@@ -22,8 +21,6 @@ export const KLING4_VOICE_SLOTS = 3;
 const TEN_MB = 10 * 1024 * 1024;
 const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 const SUBJECT_TAGS = ['character', 'animal', 'prop', 'costume', 'scene', 'effect', 'others'];
-// Décimas de crédito Kie por segundo: 28,5 / 42,5 sin vídeo de entrada y 17 / 25,5 con él.
-const TENTHS = { plain: { '720p': 285, '1080p': 425 }, video: { '720p': 170, '1080p': 255 } };
 
 // round() de PHP: redondea el valor decimal tal como se escribe (1.005 -> 1.01), no el binario.
 export function phpRound(value, places) {
@@ -66,21 +63,6 @@ export function kling4MentionError(prompt, names) {
       return 'El prompt menciona @' + token + ', pero ese material no está en la petición. Quita la mención o adjunta el archivo; el carácter @ solo se usa para mencionar materiales adjuntos.' + available;
     }
   }
-}
-
-// Segundos facturables: sin vídeo de entrada, la salida; con él, salida x 2 si la entrada total no
-// supera la salida, y entrada total + salida si la supera.
-export function kling4BilledSeconds(output, inputSeconds) {
-  if (inputSeconds <= 0) return output;
-  return inputSeconds <= output ? 2 * output : inputSeconds + output;
-}
-
-// ceil(cr Kie x 1,02) sobre el total, con enteros para evitar ruido de coma flotante (igual que
-// gateway_kling4_credits). Devuelve null si la combinación no existe.
-export function kling4Credits(resolution, output, inputSeconds) {
-  const tenths = TENTHS[inputSeconds > 0 ? 'video' : 'plain'][resolution];
-  if (!tenths || !Number.isInteger(output) || output < 3 || output > 30) return null;
-  return Math.floor((tenths * kling4BilledSeconds(output, inputSeconds) * 102 + 999) / 1000);
 }
 
 function slotNumbers(prefix, count) {
@@ -244,27 +226,6 @@ export function kling4Inspect(params, fileParams = {}, given = {}) {
 
 export function kling4Problems(params, fileParams = {}, given = {}) {
   return kling4Inspect(params, fileParams, given).problems;
-}
-
-// Presupuesto: nunca por debajo de la reserva del servidor. Con vídeos de entrada es un máximo y el
-// cargo final es el consumo confirmado.
-export function kling4Estimate(model, params, fileParams = {}, given = {}) {
-  // `estimateCredits` recibe los parámetros y las rutas de archivo en un único objeto.
-  const merged = { ...params, ...fileParams };
-  const inspected = kling4Inspect(merged, merged, given);
-  if (inspected.problems.length) return { credits: null, approximate: false, note: inspected.problems[0] };
-  const output = Number(params.duration ?? 5);
-  const resolution = String(params.resolution ?? '720p');
-  const credits = kling4Credits(resolution, output, inspected.inputSeconds);
-  if (credits === null) return { credits: null, approximate: false, note: 'tarifa de Kling 4.0 no disponible para esta combinación' };
-  const billed = kling4BilledSeconds(output, inspected.inputSeconds);
-  return {
-    credits,
-    approximate: inspected.inputSeconds > 0,
-    note: inspected.inputSeconds > 0
-      ? output + ' s de salida + ' + inspected.inputSeconds + ' s de vídeo de entrada: se factura ' + billed + ' s · máximo reservado; el cargo final es el consumo confirmado'
-      : output + ' s de salida · precio exacto',
-  };
 }
 
 // Entrada exacta que normaliza el servidor (`gateway_kling4_input`): nada de campos extra, y

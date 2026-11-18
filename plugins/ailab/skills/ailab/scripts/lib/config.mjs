@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const CLI_VERSION = '2.4.0';
+export const CLI_VERSION = '2.5.0';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // En la instalación completa este módulo vive en scripts/lib/. En las releases
@@ -36,16 +36,18 @@ export const CREDENTIALS_DIR = process.env.AILAB_CREDENTIALS_DIR || process.env.
 export const OUTPUT_DIR = process.env.AILAB_OUTPUT_DIR || process.env.PG_OUTPUT_DIR || path.join(os.homedir(), 'Downloads', 'AILAB');
 
 export const CATALOG_PATH = process.env.AILAB_CATALOG_PATH || process.env.PG_CATALOG_PATH || path.join(SKILL_ROOT, 'catalog', 'catalog.json');
-// La ruta v2 exige el parser 2.3.7; catalog.json conserva el contrato 1.18.0
-// para runtimes anteriores mientras reciben la actualización firmada.
+// Desde la 2.5.0 el catálogo no lleva precios: `catalog-v3.json` es el mismo catálogo sin tarifas. `catalog-v2.json`
+// sigue sirviendo a los runtimes anteriores mientras reciben la actualización firmada.
 export const CATALOG_URL = process.env.AILAB_CATALOG_URL || process.env.PG_CATALOG_URL
-  || BASE_URL + 'api/v1/skill/catalog-v2.json';
+  || BASE_URL + 'api/v1/skill/catalog-v3.json';
 export const SERVER_CONTRACT_VERSION = '2';
 
 export const CUENTA_URL = BASE_URL + 'api/wallet/cuenta.html';
-export const ASSISTANTS_URL = process.env.AILAB_ASSISTANTS_URL || BASE_URL + 'api/v1/skill/assistants.json';
+export const ASSISTANTS_URL = process.env.AILAB_ASSISTANTS_URL || BASE_URL + 'api/v1/skill/assistants-v3.json';
 export const ASSISTANT_ENDPOINT = process.env.AILAB_ASSISTANT_ENDPOINT || BASE_URL + 'api/v1/skill/assistant.php';
 export const TASK_ENDPOINT = process.env.AILAB_TASK_ENDPOINT || BASE_URL + 'api/v1/skill/task.php';
+// Motor de precios del servidor: el único origen de los importes (estimate, info y asistentes).
+export const PRICE_ENDPOINT = process.env.AILAB_PRICE_ENDPOINT || GENERATION_BASE_URL + 'api/v1/skill/price.php';
 export const RELEASE_MANIFEST_URL = process.env.AILAB_RELEASE_MANIFEST_URL || BASE_URL + 'api/v1/skill/releases/stable.json';
 export const UPDATE_CHANNEL = process.env.AILAB_UPDATE_CHANNEL || 'stable';
 

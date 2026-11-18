@@ -31,10 +31,11 @@ test('la CLI reintenta solo rechazos confirmados, respeta límites remotos y con
   const config = path.join(temp, 'config');
   const credentials = path.join(temp, 'credentials');
   const log = path.join(temp, 'requests.ndjson');
+  const priceLog = path.join(temp, 'prices.ndjson');
   fs.mkdirSync(credentials, { recursive: true });
   fs.writeFileSync(path.join(credentials, 'token'), 'ailp_' + 'A'.repeat(48) + '\n', { mode: 0o600 });
   const server = spawn(process.execPath, [path.join(ROOT, 'tests', 'fixtures', 'assistant-cli-mock.mjs')], {
-    env: { ...process.env, AILAB_MOCK_LOG: log },
+    env: { ...process.env, AILAB_MOCK_LOG: log, AILAB_MOCK_PRICE_LOG: priceLog },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   t.after(() => {
@@ -48,17 +49,29 @@ test('la CLI reintenta solo rechazos confirmados, respeta límites remotos y con
     AILAB_SKIP_UPDATE: '1',
     AILAB_BASE_URL: base,
     AILAB_GENERATION_BASE_URL: base,
-    AILAB_ASSISTANTS_URL: base + 'api/v1/skill/assistants.json',
+    AILAB_ASSISTANTS_URL: base + 'api/v1/skill/assistants-v3.json',
     AILAB_ASSISTANT_ENDPOINT: base + 'api/v1/skill/assistant.php',
     AILAB_CONFIG_DIR: config,
     AILAB_CREDENTIALS_DIR: credentials,
   };
   const cli = path.join(ROOT, 'skills', 'ailab', 'scripts', 'ailab.mjs');
+  // La lista y el plan llevan el precio de la cuenta que da price.php; el catálogo v3 no trae ninguno.
+  const listed = await execFileAsync(process.execPath, [cli, 'assistants'], { env });
+  assert.match(listed.stdout, /image-prompter · Image Prompter · ~13 cr orientativos/);
+  assert.match(listed.stdout, /free · Libre · ~3 cr orientativos/);
   const prepared = await execFileAsync(process.execPath, [cli, 'assistant-prepare', 'image-prompter', '--model', 'claude-sonnet-4-6', '--message', 'Mejora este prompt.'], { env });
   assert.match(prepared.stdout, /Modelo fijo: Gemini 3\.5 Flash Lite · OpenRouter · Priority/);
   assert.match(prepared.stdout, /dentro de la autorizacion del encargo/);
+  assert.match(prepared.stdout, /Estimacion: ~13 cr/);
+  assert.match(prepared.stdout, /Maximo autorizado temporalmente: 58 cr/);
   const requestId = /Peticion: ([0-9a-f-]{36})/.exec(prepared.stdout)?.[1];
   assert.ok(requestId);
+  const saved = JSON.parse(fs.readFileSync(path.join(config, 'assistant-requests', requestId + '.json'), 'utf8'));
+  assert.equal(saved.estimated_credits, 13);
+  assert.equal(saved.max_credits_authorized, 58);
+  const prices = fs.readFileSync(priceLog, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+  assert.ok(prices.length >= 2);
+  for (const body of prices) assert.deepEqual(body, { action: 'assistants' });
 
   const submitted = await execFileAsync(process.execPath, [cli, 'assistant-submit', requestId, '--confirmed'], { env });
   assert.match(submitted.stdout, /Reintentando una vez dentro del plan ya autorizado/);
@@ -85,5 +98,17 @@ test('la CLI reintenta solo rechazos confirmados, respeta límites remotos y con
   const status = await execFileAsync(process.execPath, [cli, 'assistant-status', uncertainId], {env});
   assert.match(status.stdout, /Texto recuperado sin otro envío/);
   assert.match(status.stdout, /Consumo verificado: 9 cr/);
+  assert.equal(fs.readFileSync(log,'utf8').trim().split('\n').length, callsBeforeStatus);
+
+  // Sin precio de AILAB no se prepara nada; la lista sigue saliendo, sin importes.
+  await fetch(base + '__price_down', { method: 'POST' });
+  await assert.rejects(execFileAsync(process.execPath, [cli, 'assistant-prepare', 'image-prompter', '--message', 'Sin precio'], { env }), (error) => {
+    assert.match(error.stderr, /No se ha podido obtener el precio de AILAB\. No se ha enviado nada\./);
+    assert.doesNotMatch(error.stdout, /Peticion:/);
+    return true;
+  });
+  const unpriced = await execFileAsync(process.execPath, [cli, 'assistants'], { env });
+  assert.doesNotMatch(unpriced.stdout, /orientativos/);
+  assert.match(unpriced.stdout, /No se ha podido obtener el precio de AILAB/);
   assert.equal(fs.readFileSync(log,'utf8').trim().split('\n').length, callsBeforeStatus);
 });
