@@ -3,6 +3,7 @@
 // catalogo (params validados + fixed) y extrae el resultado del record.
 import { gatewayPost, gatewayGet, apiPost, servicePost, serviceGet } from '../lib/http.mjs';
 import { KLING4_ID, kling4Input } from '../lib/kling4.mjs';
+import { KLING_IMAGE4_ID, klingImage4Input } from '../lib/kling-image4.mjs';
 import { LITE_ID, liteInput } from '../lib/seedance-lite.mjs';
 import { MOTION_CONTROL_IDS } from '../lib/motion-control.mjs';
 import { DRAFTS_ENDPOINT, MAX_DRAFT_PAGES, draftNotFound, draftQuote, draftsRequest } from '../lib/seedance-draft.mjs';
@@ -16,6 +17,7 @@ export function buildPayload(model, params, uploadedByParam) {
   // Kling 4.0 y Seedance 2.5 Lite: el servidor normaliza una forma exacta (sujetos y voces en listas de
   // objetos, campos que solo existen en una modalidad); la construye el módulo del modelo.
   if (model.id === KLING4_ID) return { model: model.id, input: kling4Input(params, uploadedByParam) };
+  if (model.id === KLING_IMAGE4_ID) return { model: model.id, input: klingImage4Input(params, uploadedByParam) };
   if (model.id === LITE_ID) return { model: model.id, input: liteInput(params, uploadedByParam) };
   // Gemini Omni Flash 1.2 (Kie), su Extend y los recursos de Gemini Omni: cada modalidad lleva solo sus campos.
   if (model.id === OMNI12_ID) return { model: model.id, input: omni12Input(params, uploadedByParam) };

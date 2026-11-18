@@ -29,6 +29,14 @@ export function priceCases(F) {
   add('gpt-image-2-5', { ...P, version: 'sunburst', mode: 'i2i', image_urls: [image()], resolution: '2K' });
   grid('gpt-image-2-6', P, { version: ['flare', 'sunburst'], resolution: ['1K', '2K', '4K'] });
   add('gpt-image-2-6', { ...P, version: 'economy', resolution: '1K' });
+  // Kling Image 4.0 (2.4.1): tarifa por imagen y 0,5 cr Kie por referencia o vista en cada imagen, redondeo único del lote.
+  grid('kling-image-4-0', P, { resolution: ['2K', '4K', '8K'] });
+  add('kling-image-4-0', { ...P, output_mode: 'series', count: '10', resolution: '8K' }, 'serie de 10 a 8K');
+  add('kling-image-4-0', { ...P, count: '9', resolution: '4K', aspect_ratio: '21:9' }, 'nueve sueltas a 4K');
+  add('kling-image-4-0', { ...P, mode: 'i2i', image_urls: [image()], resolution: '2K' }, 'una referencia');
+  add('kling-image-4-0', { ...P, mode: 'i2i', count: '9', image_urls: Array.from({ length: 10 }, () => image()), resolution: '8K' }, 'nueve a 8K con diez referencias');
+  add('kling-image-4-0', { ...P, prompt: '@ana en @image_1', mode: 'i2i', output_mode: 'series', count: '3', image_urls: [image()],
+    subject_1_name: 'ana', subject_1_images: [image(), image(800, 600)], resolution: '2K' }, 'serie de 3 con un personaje de 2 vistas');
   add('gpt-image-2-6', { ...P, version: 'flare', mode: 'i2i', image_urls: [image()], resolution: '1K' });
   add('gpt-image-2-6', { ...P, version: 'sunburst', mode: 'i2i', image_urls: [image(), image(800, 600)], resolution: '4K' });
   grid('gpt-image-2', P, { resolution: ['1K', '2K', '4K'] });

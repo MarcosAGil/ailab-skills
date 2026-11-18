@@ -7,6 +7,7 @@ import { CATALOG_PATH, CATALOG_URL, CLI_VERSION, CONFIG_DIR, SERVER_CONTRACT_VER
 import { inspectPricingMetadata } from './files.mjs';
 import { WAN3_ID, wan3Estimate, wan3Problems } from './wan3.mjs';
 import { KLING4_ID, kling4Estimate, kling4Problems } from './kling4.mjs';
+import { KLING_IMAGE4_ID, klingImage4Estimate, klingImage4Problems } from './kling-image4.mjs';
 import { LITE_ID, liteEstimate, liteProblems } from './seedance-lite.mjs';
 import { LIGHT_ID, lightEstimate, lightProblems } from './genjutsu-light.mjs';
 import { SEEDANCE_IDS, seedanceEstimate, seedanceProblems } from './seedance.mjs';
@@ -425,6 +426,11 @@ export function validateParams(model, given) {
     errors.push(...kling4Problems(params, fileParams, given));
     if (params.mode === 'keyframe') { delete params.aspect_ratio; delete params.keep_original_sound; }
   }
+  if (model.id === KLING_IMAGE4_ID) {
+    // Kling Image 4.0: número de imágenes por salida, referencias y personajes (JPG o PNG de hasta 20 MB) y
+    // menciones, con las reglas del servidor. Sin --count, el servidor pide 1 suelta o 2 en serie.
+    errors.push(...klingImage4Problems(params, fileParams));
+  }
   if (DRAFT_MODEL_IDS.includes(model.id)) {
     // Modo draft: `--draft false` equivale a no pedirlo, porque el servidor solo admite `draft: true`. Sin --resolution, 480p.
     if (params.draft === true) {
@@ -550,6 +556,7 @@ export function estimateCredits(model, params, now = Date.now()) {
   }
   if (model.id === WAN3_ID) return wan3Estimate(model, params);
   if (model.id === KLING4_ID) return kling4Estimate(model, params);
+  if (model.id === KLING_IMAGE4_ID) return klingImage4Estimate(model, params);
   if (model.id === LITE_ID) return liteEstimate(model, params);
   if (model.id === OMNI12_ID) return omni12Estimate(model, params);
   if (SEEDANCE_IDS.includes(model.id)) return seedanceEstimate(model, params, (hasVideo) => seedanceRate(e, params, hasVideo, now));

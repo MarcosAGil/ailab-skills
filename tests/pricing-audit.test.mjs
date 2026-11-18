@@ -72,6 +72,7 @@ const WEB_DIFFERENCES = {
   'seedvr2-image-upscaler': 'El servidor reserva 6 cr aunque la salida sea menor; la web muestra el coste por megapíxel.',
   'gpt-image-2-6': 'Flare y Sunburst: la web muestra la reserva según el prompt; la CLI autoriza la reserva máxima por imagen del catálogo.',
   'seed-audio': 'El servidor reserva siempre 100 cr (la duración la decide el modelo); la web muestra el coste de un audio medio.',
+  'kling-image-4-0': 'La tabla genérica de la web muestra el precio por imagen sin el recargo de 0,5 cr por referencia o vista; la web real, la CLI y el servidor lo reservan en cada imagen.',
 };
 
 let results = [];
@@ -167,7 +168,7 @@ test('la tarifa de la web coincide con la de la CLI salvo las diferencias docume
 
 test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un motivo documentado', { skip }, () => {
   const ids = Object.keys(catalog.models);
-  assert.equal(ids.length, 77);
+  assert.equal(ids.length, 78);
   const compared = new Set(results.filter((r) => reference(r) !== null && r.cli !== null).map((r) => r.id));
   const withoutFfmpeg = withFfmpeg ? [] : ['topaz-astra-precise-2-6', 'topaz-astra-creative-2', 'seedvr-video-upscaler'];
   const missing = ids.filter((id) => !compared.has(id) && !NO_SERVER_ESTIMATE[id] && !SERVER_QUOTED[id] && !FREE[id] && id !== 'krea-3' && !withoutFfmpeg.includes(id));
@@ -179,7 +180,7 @@ test('cada modelo del catálogo está auditado, cotiza el servidor o tiene un mo
   for (const id of ['remove-background', 'eleven-speech-to-text', 'suno']) for (const r of results.filter((x) => x.id === id)) assert.equal(r.web.credits, r.cli, describe(r));
 });
 
-test('la skill lista los 77 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
+test('la skill lista los 78 modelos activos: solo un interruptor de servidor documentado puede cerrarlos', { skip }, () => {
   for (const [id, model] of Object.entries(catalog.models)) {
     assert.equal(model.enabled, true, id);
     assert.equal(model.status, 'active', id);

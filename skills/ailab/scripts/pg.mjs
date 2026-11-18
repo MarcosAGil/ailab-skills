@@ -695,7 +695,7 @@ async function doctorClient(add, checks) {
 }
 
 // Modelos con tarifa exacta en local: sin tarifa válida no se prepara y --max-credits se comprueba siempre.
-const EXACT_TARIFF_IDS = ['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control', 'gemini-omni-flash-1-2'];
+const EXACT_TARIFF_IDS = ['flux-3', 'ideogram-v45', 'wan-3-video', 'kling-4-0', 'kling-image-4-0', 'seedance-2-5-lite', 'seedance-2-5', 'seedance-2', 'seedance-2-mini', 'kling-2-6-motion-control', 'kling-3-0-motion-control', 'gemini-omni-flash-1-2'];
 
 // Techo de creditos fijado por el usuario con --max-credits (opcional).
 function creditCeiling(opts) {

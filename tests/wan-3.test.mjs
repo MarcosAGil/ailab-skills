@@ -73,11 +73,11 @@ test('el contrato publicado exige la skill 2.3.12, no añade campos privados y a
 });
 
 test('una CLI anterior a 2.3.12 no ofrece Wan 3.0 en vez de autorizar un precio por debajo del servidor', async () => {
-  assert.equal(modelUsable({...model, min_cli_version: '2.4.1'}).ok, false);
+  assert.equal(modelUsable({...model, min_cli_version: '2.4.2'}).ok, false);
   const config = await import('../skills/ailab/scripts/lib/config.mjs');
-  assert.equal(config.CLI_VERSION, '2.4.0');
+  assert.equal(config.CLI_VERSION, '2.4.1');
   const updater = await import('../skills/ailab/scripts/lib/updater.mjs');
-  assert.equal(updater.BUNDLED_RUNTIME_VERSION, '2.4.0');
+  assert.equal(updater.BUNDLED_RUNTIME_VERSION, '2.4.1');
   // Las CLI 2.3.7 a 2.3.12 siguen validando el catálogo v2 completo (sin claves ni tipos nuevos).
   const canonical = process.env.AILAB_CANONICAL_REPO;
   if (!canonical) return;

@@ -88,7 +88,7 @@ Para **Flux 3** (`flux-3`), consulta [su contrato](references/flux-3.md): `t2i` 
 
 Para **Nano Banana 2.1** (`nano-banana-2-1`), lee [su contrato](references/nano-banana-21.md): `t2i` genera desde texto y `edit` admite de 1 a 14 referencias ordenadas, hasta 30 MB cada una. El prompt admite hasta 20.000 caracteres y la resolución puede ser 1K, 2K o 4K. No añadas lotes, seed ni controles de razonamiento.
 
-Para **Kling 4.0** (`kling-4-0`), lee [su contrato](references/kling-4-0.md): `--mode ref` (también solo texto) o `keyframe`. Menciona los materiales en el prompt con `@image_1`, `@video_1`, `@first_frame` o el nombre de un sujeto o una voz (`@ana`). Los vídeos de referencia se cobran: suman su duración y `prepare` muestra el máximo reservado. **Seedance 2.5 Lite** (`seedance-2-5-lite`) cubre `t2v`, `i2v` y `ref` y no edita vídeo: para editar usa Seedance 2.5.
+Para **Kling 4.0** (`kling-4-0`), lee [su contrato](references/kling-4-0.md): `--mode ref` (también solo texto) o `keyframe`. Menciona los materiales en el prompt con `@image_1`, `@video_1`, `@first_frame` o el nombre de un sujeto o una voz (`@ana`). Los vídeos de referencia se cobran: suman su duración y `prepare` muestra el máximo reservado. **Kling Image 4.0** (`kling-image-4-0`, [contrato](references/kling-image-4-0.md)): `--mode t2i` o `i2i`, `--output_mode series` y personajes con `--subject_N_*`. **Seedance 2.5 Lite** (`seedance-2-5-lite`) cubre `t2v`, `i2v` y `ref` y no edita vídeo: para editar usa Seedance 2.5.
 
 Para **Genjutsu Light** (`higgsfield-genjutsu-light`), lee [su contrato](references/genjutsu.md): hasta 15 s de vídeo y 1080p. `prepare` muestra la cotización del servidor; «pendiente de activación» no cobra y no se reintenta.
 
