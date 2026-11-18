@@ -1,6 +1,6 @@
 # Genjutsu y Genjutsu Light (Higgsfield)
 
-> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+> El precio lo da siempre AILAB para tu cuenta: `prepare` lo cotiza en el servidor.
 
 Dos modelos con el mismo flujo y los mismos dos modos. Los sirve `api/skill/higgsfield.php`: la CLI sube el vídeo y las
 imágenes, el servidor los mide, cotiza (`prepare`) y reserva lo cotizado (`submit`). El servidor repite todas las reglas
@@ -24,13 +24,12 @@ node <skill-dir>/scripts/ailab.mjs prepare higgsfield-genjutsu-light --mode char
 
 ## Precio de Light
 
-La salida dura lo mismo que el vídeo, así que se facturan `2 x ceil(duración medida)` segundos. Equivale a 10,2 / 20,4 /
-40,8 cr por segundo de vídeo en 480p / 720p / 1080p (10 s a 720p son 204 cr; el máximo, 15 s a 1080p, son 612 cr).
+La salida dura lo mismo que el vídeo, así que se factura el doble de la duración medida, redondeada al segundo
+superior, con una tarifa por segundo que sube con la resolución.
 
-- La CLI mide el vídeo en local (`mvhd` de MP4 y MOV, igual que el servidor) y calcula la misma cifra: la ves en
-  `info`, en `validate` y, junto a la cotización, en `prepare`. Un WebM lo mide solo el servidor.
-- La cifra que aprueba el usuario es la cotización del servidor, congelada en el manifiesto. Si la local y la del
-  servidor difieren, `prepare` lo avisa y manda el servidor.
+- La CLI mide el vídeo en local (`mvhd` de MP4 y MOV, igual que el servidor) y AILAB da el importe: lo ves en
+  `validate` y en `prepare`. Un WebM lo mide solo el servidor.
+- La cifra que aprueba el usuario es la cotización del servidor, congelada en el manifiesto.
 - Un vídeo de 15,01 s se redondea a 16 s y se rechaza. `Genjutsu Light usa hasta 15 segundos de vídeo. Recórtalo a 15 s o
   usa la versión Normal.` aparece antes de subir nada y no se cobra.
 - Light usa solo los primeros 15 s del vídeo y conserva su audio.

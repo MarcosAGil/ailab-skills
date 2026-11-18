@@ -1,7 +1,7 @@
 // Capa HTTP normalizada (plan v2.1 §12): HTTP 200 JAMAS implica exito por si solo.
 // Todas las respuestas de la plataforma pasan por normalize() y devuelven
 // { ok, kind, httpStatus, businessCode, message, data, raw }.
-import { GENERATION_BASE_URL, CUENTA_URL, ASSISTANT_ENDPOINT, TASK_ENDPOINT, CLI_VERSION } from './config.mjs';
+import { GENERATION_BASE_URL, CUENTA_URL, ASSISTANT_ENDPOINT, TASK_ENDPOINT, PRICE_ENDPOINT, CLI_VERSION } from './config.mjs';
 import { readCookie, readToken } from './auth.mjs';
 import { cliCommand, networkAdvice } from './environment.mjs';
 import fs from 'node:fs';
@@ -151,8 +151,8 @@ async function doFetch(url, init) {
   return normalized;
 }
 
-// Versión del cliente en TODAS las peticiones a AILAB: el servidor exige 2.4.0 o posterior a las cuentas con
-// un precio distinto del de miembro (HTTP 426). El proyecto del comando en curso viaja en su propia cabecera,
+// Versión del cliente en TODAS las peticiones a AILAB: el servidor exige a las cuentas de cliente la versión mínima
+// de `me.pricing.min_client` (HTTP 426). El proyecto del comando en curso viaja en su propia cabecera,
 // así llega a cotizaciones, subidas y envíos de cualquier adaptador sin tocar sus cuerpos.
 export const CLIENT_HEADER = 'ailab-cli/' + CLI_VERSION;
 let requestProject = null;
@@ -183,6 +183,16 @@ export function errorCode(n) {
     if (typeof value === 'string' && value) return value;
   }
   return null;
+}
+
+// Texto de un rechazo de cuenta: `message` del cuerpo (gateways), luego `error` y por último el del sobre.
+function rejectionMessage(n) {
+  const raw = n && n.raw && typeof n.raw === 'object' ? n.raw : {};
+  const data = raw.data && typeof raw.data === 'object' ? raw.data : {};
+  for (const value of [raw.message, raw.error, data.message, data.error, n.message]) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
 }
 
 function accountRejection(n) {
@@ -300,6 +310,15 @@ export async function assistantPost(body) {
   });
 }
 
+// Motor de precios del servidor (price.php): autenticado como task.php.
+export async function pricePost(body) {
+  return doFetch(PRICE_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function taskLookup(taskId) {
   return doFetch(TASK_ENDPOINT, {
     method: 'POST',
@@ -371,8 +390,10 @@ export function explain(n) {
       const seconds = Number.isFinite(n.retryAfterSeconds) ? Math.max(1, Math.ceil(n.retryAfterSeconds)) : 60;
       return 'AILAB ha limitado temporalmente las peticiones. Espera ' + seconds + ' s y haz un unico reintento; no inicies un bucle.';
     }
-    case 'price_changed': return 'El precio de tu cuenta cambió; vuelve a preparar. No se ha cobrado nada.';
-    case 'client_update_required': return n.message || ('Esta cuenta necesita AILAB 2.4.0 o posterior. Ejecuta ' + cliCommand('update --confirmed') + '. No se ha cobrado nada.');
+    // El 402 por precio trae su propio mensaje del servidor; la CLI no compara precios. En los gateways el sobre es
+    // { code: 402, msg, error_code: 'price_changed', message, credits }: manda `message`.
+    case 'price_changed': return rejectionMessage(n) || 'El precio de tu cuenta ha cambiado desde la cotización. Prepara de nuevo. No se ha cobrado nada.';
+    case 'client_update_required': return n.message || ('Esta cuenta necesita una versión más reciente de AILAB. Ejecuta ' + cliCommand('update --confirmed') + '. No se ha cobrado nada.');
     case 'project_required': return n.message || 'Esta cuenta exige --proyecto en cada generación. No se ha cobrado nada.';
     case 'invalid_project': return n.message || '--proyecto no es válido: de 1 a 64 caracteres entre letras sin tilde, números, punto, guion y guion bajo. No se ha cobrado nada.';
     case 'ambiguous_submit': return (n.message || 'El estado del envio es ambiguo.') + ' No se reintentara con otra UUID. Revisa el historial o usa AILAB doctor.';

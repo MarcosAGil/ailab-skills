@@ -9,11 +9,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { Media } from './helpers/media.mjs';
 import { CANONICAL, canRunParity, php } from './helpers/php.mjs';
+import { handlePrice, estimates } from './helpers/price-server.mjs';
 
 // Kling 4.0 vía Kie (contrato leído el 22/10/2026). La CLI traduce un contrato de parámetros planos
-// (ranuras de sujetos y voces) a la entrada exacta que normaliza el servidor, y presupuesta al menos lo
-// que el servidor reserva. Con AILAB_CANONICAL_REPO las comparaciones se hacen contra el PHP real
-// (gateway_kling4_input, gateway_estimate_credits) con metadatos simulados: sin red ni gasto.
+// (ranuras de sujetos y voces) a la entrada exacta que normaliza el servidor. Desde la 2.5.0 el precio lo da
+// price.php con lo que la CLI mide de cada archivo. Con AILAB_CANONICAL_REPO las comparaciones de entrada se hacen
+// contra el PHP real (gateway_kling4_input) con metadatos simulados: sin red ni gasto.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-kling4-skill-'));
 process.env.AILAB_CONFIG_DIR = path.join(temporary, 'config');
@@ -21,36 +22,29 @@ process.env.AILAB_CREDENTIALS_DIR = path.join(temporary, 'credentials');
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
 const catalogPath = path.join(root, 'skills/ailab/catalog/catalog.json');
-const { validateCatalogShape, validateParams, estimateCredits, modelUsable } = await import('../skills/ailab/scripts/lib/catalog.mjs');
-const { kling4Credits, kling4MentionError, phpRound } = await import('../skills/ailab/scripts/lib/kling4.mjs');
+const { validateCatalogShape, validateParams, modelUsable } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { kling4MentionError, phpRound } = await import('../skills/ailab/scripts/lib/kling4.mjs');
 const { buildPayload } = await import('../skills/ailab/scripts/adapters/jobs-v1.mjs');
+const { measureFile, priceParams } = await import('../skills/ailab/scripts/lib/price.mjs');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
 const model = { id: 'kling-4-0', ...catalog.models['kling-4-0'] };
 const execute = promisify(execFile);
 const media = new Media(path.join(temporary, 'files'));
 
-// Pasos de la CLI: validar, presupuestar y construir el cuerpo con las URLs de subida simuladas.
+// Pasos de la CLI: validar y construir el cuerpo con las URLs de subida simuladas.
 function plan(given) {
   const v = validateParams(model, given);
   if (!v.ok) return { ok: false, errors: v.errors };
-  const estimate = estimateCredits(model, { ...v.params, ...v.fileParams });
   const uploaded = Object.fromEntries(Object.entries(v.fileParams).map(([param, files]) => [param, files.map((file) => media.url(file))]));
   const payload = buildPayload(model, v.params, uploaded);
   const meta = {};
   for (const files of Object.values(v.fileParams)) for (const file of files) meta[media.url(file)] = media.meta[file];
-  return { ok: true, v, estimate, payload, meta };
+  return { ok: true, v, payload, meta };
 }
-
-const TENTHS = { plain: { '720p': 285, '1080p': 425 }, video: { '720p': 170, '1080p': 255 } };
-// Referencia independiente de la fórmula de Kie (cr Kie x 1,02, redondeada al crédito superior).
-const reference = (resolution, output, input) => {
-  const billed = input <= 0 ? output : (input <= output ? 2 * output : input + output);
-  return Math.ceil(Number((TENTHS[input > 0 ? 'video' : 'plain'][resolution] * billed * 1.02 / 10).toFixed(6)));
-};
 
 test('el contrato publicado exige la skill 2.3.13, no expone proveedor y las CLI anteriores lo ignoran', async () => {
   assert.equal(model.min_cli_version, '2.3.13');
-  assert.equal(catalog.min_cli_version, '2.3.7', 'el resto del catálogo sigue disponible para las CLI 2.3.7 a 2.3.12');
+  assert.equal(catalog.min_cli_version, '2.5.0', 'el catálogo sin tarifas solo lo lee la 2.5.0');
   assert.equal(model.driver, 'jobs-v1');
   assert.equal(model.enabled, true);
   assert.deepEqual(model.modes, ['ref', 'keyframe']);
@@ -70,56 +64,39 @@ test('el contrato publicado exige la skill 2.3.13, no expone proveedor y las CLI
   assert.equal(model.params.subject_8_name, undefined);
   for (let n = 1; n <= 3; n += 1) assert.equal(model.params[`voice_${n}_audio`].accept, 'audio');
   assert.equal(model.params.voice_4_name, undefined);
-  assert.equal(model.estimate.kind, 'per_second_table', 'la forma del estimate la conocen todas las CLI 2.3.x');
-  assert.deepEqual(model.estimate.credits_per_second, { '720p': 29.07, '1080p': 43.35 });
-  assert.deepEqual(model.estimate.credits_with_video, { '720p': 17.34, '1080p': 26.01 });
+  assert.equal(model.estimate, undefined, 'desde la 2.5.0 el catálogo no lleva tarifas');
   const text = JSON.stringify(model);
   for (const forbidden of ['kling-4.0/', 'provider_contract', 'callBackUrl', 'KIE', 'api.kie']) assert.equal(text.includes(forbidden), false, forbidden);
   assert.equal(text.includes(String.fromCharCode(0x2014)), false);
   assert.equal(modelUsable(model).ok, true);
-  assert.equal(modelUsable({ ...model, min_cli_version: '2.4.1' }).ok, false);
+  assert.equal(modelUsable({ ...model, min_cli_version: '2.5.1' }).ok, false);
   if (!CANONICAL) return;
   for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12']) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
-    const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
+    // Las CLI anteriores a la 2.5.0 leen catalog-v2.json (con tarifas); el catálogo sin `estimate` es solo para la 2.5.0.
+    const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(path.join(CANONICAL, 'app/api/v1/skill/catalog-v2.json'), 'utf8')));
     assert.equal(old.modelUsable(parsed.models['kling-4-0']).ok, false, 'la CLI ' + version + ' no debe ofrecer un modelo que no sabe ejecutar');
   }
 });
 
-test('sin vídeos de entrada, 2 resoluciones y 28 duraciones dan el precio por segundo exacto', () => {
-  let checked = 0;
-  for (const resolution of ['720p', '1080p']) for (let duration = 3; duration <= 30; duration += 1) {
-    const result = plan({ prompt: 'Plano cenital de una taza', duration, resolution });
-    assert.equal(result.ok, true, result.errors?.join('\n'));
-    assert.equal(result.estimate.credits, reference(resolution, duration, 0), `${resolution} ${duration}`);
-    assert.equal(result.estimate.credits, kling4Credits(resolution, duration, 0));
-    assert.equal(result.estimate.approximate, false);
-    checked += 1;
-  }
-  assert.equal(checked, 56);
-  assert.equal(plan({ prompt: 'x', duration: 5 }).estimate.credits, 146, 'ejemplo del informe: 5 s a 720p');
-  assert.equal(plan({ prompt: 'x', duration: 30, resolution: '1080p' }).estimate.credits, 1301);
-});
-
-test('con vídeos de entrada se factura 2 x salida o entrada + salida, cada vídeo al segundo superior', () => {
-  const clip = (name, seconds, brand) => media.video(name, seconds, brand);
-  // Entrada <= salida: se facturan 2 x salida a la tarifa con vídeo.
-  const small = plan({ prompt: 'Mira @video_1', duration: 10, video_urls: [clip('v7_5.mp4', 7.5)] });
-  assert.equal(small.ok, true, small.errors?.join('\n'));
-  assert.equal(small.estimate.credits, reference('720p', 10, 8));
-  assert.equal(small.estimate.credits, 347);
-  assert.equal(small.estimate.approximate, true);
-  assert.match(small.estimate.note, /10 s de salida \+ 8 s de vídeo de entrada: se factura 20 s/);
-  // Entrada > salida: entrada + salida.
-  const large = plan({ prompt: 'Mira @video_1 y @video_2', duration: 10, resolution: '1080p', video_urls: [clip('v6.mp4', 6), clip('v5_2.mov', 5.2, 'qt')] });
-  assert.equal(large.estimate.credits, reference('1080p', 10, 12));
-  assert.equal(large.estimate.credits, 573);
-  // Los sujetos, las voces y las imágenes no suman segundos: tarifa sin vídeo.
-  const people = plan({ prompt: '@ana habla con @voz', duration: 5, subject_1_name: 'ana', subject_1_images: [media.image('a1.png', 800, 800), media.image('a2.png', 800, 1000)],
-    voice_1_name: 'voz', voice_1_audio: media.wavAudio('voz.wav', 4) });
-  assert.equal(people.estimate.credits, 146);
-  assert.equal(people.estimate.approximate, false);
-  assert.equal(plan({ prompt: 'x', duration: 5, mode: 'keyframe', first_frame_url: media.image('k1.png') }).estimate.credits, 146);
+test('para el precio la CLI mide cada archivo y envía la medida, nunca la ruta', () => {
+  const clip = media.video('v7_5.mp4', 7.5);
+  const mov = media.video('v5_2.mov', 5.2, 'qt');
+  const people = [media.image('a1.png', 800, 800), media.image('a2.png', 800, 1000)];
+  const voice = media.wavAudio('voz.wav', 4);
+  const result = plan({ prompt: 'Mira @video_1 y @video_2 con @ana y @voz', duration: 10, video_urls: [clip, mov],
+    subject_1_name: 'ana', subject_1_images: people, voice_1_name: 'voz', voice_1_audio: voice });
+  assert.equal(result.ok, true, result.errors?.join('\n'));
+  const sent = priceParams(result.v.params, result.v.fileParams);
+  assert.equal(sent.duration, 10);
+  assert.deepEqual(sent.video_urls.map((item) => [item.ok, item.class, item.mime, Math.round(item.duration * 100) / 100]),
+    [[true, 'video', 'video/mp4', 7.5], [true, 'video', 'video/quicktime', 5.2]]);
+  assert.deepEqual(sent.subject_1_images.map((item) => [item.class, item.width, item.height, item.pixels]), [['image', 800, 800, 640000], ['image', 800, 1000, 800000]]);
+  assert.equal(Math.round(sent.voice_1_audio[0].duration), 4);
+  const text = JSON.stringify(sent);
+  assert.equal(text.includes(temporary), false, 'ninguna ruta local viaja a price.php');
+  assert.equal(text.includes('sha'), false);
+  assert.deepEqual(measureFile(path.join(temporary, 'no-existe.mp4')), { ok: false });
 });
 
 test('límites de la CLI: modalidades, materiales, sujetos, voces y menciones', () => {
@@ -294,7 +271,7 @@ const PHP_BACKEND = `
   }
   echo json_encode($out, JSON_UNESCAPED_UNICODE);`;
 
-test('paridad con el PHP real: el servidor acepta lo que envía la CLI, lo devuelve idéntico y reserva lo mismo', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
+test('paridad con el PHP real: el servidor acepta lo que envía la CLI y lo devuelve idéntico', { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }, () => {
   const cases = validCases().map(([name, given]) => ({ name, ...plan(given) }));
   for (const c of cases) assert.equal(c.ok, true, `${c.name}: ${c.errors?.join(' ')}`);
   const results = php(PHP_BACKEND, [JSON.stringify(cases.map((c) => ({ input: c.payload.input, meta: c.meta })))]);
@@ -303,9 +280,6 @@ test('paridad con el PHP real: el servidor acepta lo que envía la CLI, lo devue
     const server = results[index];
     assert.equal(server.ok, true, `${c.name}: ${server.error}`);
     assert.deepEqual(server.input, c.payload.input, `${c.name}: la entrada normalizada del servidor debe ser la de la CLI`);
-    // El máximo autorizado por la CLI nunca puede ser menor que la reserva del servidor, y aquí son iguales.
-    assert.ok(c.estimate.credits >= server.credits, `${c.name}: la CLI autoriza ${c.estimate.credits} y el servidor reserva ${server.credits}`);
-    assert.equal(c.estimate.credits, server.credits, c.name);
   });
   assert.ok(cases.length >= 27);
 });
@@ -377,13 +351,16 @@ test('paridad con el PHP real: ruta del servidor, acceso por token y apertura de
   assert.match(source, /'kling-4-0' && empty\(\$cfg\['KLING_4_0_SUBJECTS_ENABLED'\]\)/);
 });
 
-test('CLI real: prepare mide, sube y autoriza el máximo; submit envía el cuerpo exacto y no repite', async (t) => {
+test('CLI real: prepare pide el precio a AILAB con las medidas y lo congela; submit envía el cuerpo exacto y no repite', async (t) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-kling4-cli-'));
   const credentials = path.join(temp, 'credentials');
   const config = path.join(temp, 'config');
   fs.mkdirSync(credentials);
   fs.writeFileSync(path.join(credentials, 'token'), 'ailp_' + 'K'.repeat(48), { mode: 0o600 });
   const requests = [];
+  // Precio de AILAB para esta solicitud (10 s de salida y 5 s de vídeo de entrada a 1080p).
+  const expected = 573;
+  const state = { prices: { 'kling-4-0': { credits: expected, approximate: true, note: 'Con vídeo de entrada es el máximo reservado.' } } };
   let base;
   const server = http.createServer(async (req, res) => {
     const chunks = [];
@@ -393,6 +370,7 @@ test('CLI real: prepare mide, sube y autoriza el máximo; submit envía el cuerp
     const isJson = /json/.test(req.headers['content-type'] || '');
     const body = isJson ? JSON.parse(raw.toString() || '{}') : {};
     requests.push({ path: url.pathname, query: url.searchParams.get('path'), body });
+    if (handlePrice(state, url.pathname, body, res)) return;
     if (url.pathname === '/result.mp4') { res.writeHead(200, { 'content-type': 'video/mp4' }); return res.end(Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(64)])); }
     let response = { ok: true, user: { email: 'test@example.invalid', tier: 'hub' }, balance: 5000 };
     if (body.action === 'task_costs') response = { ok: true, costs: { 'kling-cli-job': 175 } };
@@ -423,17 +401,29 @@ test('CLI real: prepare mide, sube y autoriza el máximo; submit envía el cuerp
   const args = ['kling-4-0', '--prompt', 'Mueve @video_1 con @ana y @voz', '--duration', '10', '--resolution', '1080p', '--aspect_ratio', '16:9',
     '--video_urls', clip, '--subject_1_name', 'ana', '--subject_1_images', hero[0], '--subject_1_images', hero[1], '--voice_1_name', 'voz', '--voice_1_audio', voice,
     '--keep_original_sound', 'true'];
-  // 10 s de salida y 5 s de vídeo de entrada: 20 s facturables a 1080p con vídeo (25,5 x 1,02 cr/s).
-  const expected = reference('1080p', 10, 5);
   const { stdout } = await exec('prepare', ...args, '--max-credits', String(expected));
   assert.match(stdout, new RegExp(`Estimacion: ~${expected} cr`));
-  assert.match(stdout, /5 s de vídeo de entrada: se factura 20 s/);
+  assert.match(stdout, /máximo reservado/);
+  const asked = estimates(state);
+  assert.equal(asked.length, 1);
+  assert.equal(asked[0].model, 'kling-4-0');
+  assert.equal(asked[0].params.duration, 10);
+  assert.equal(asked[0].params.resolution, '1080p');
+  assert.equal(asked[0].params.video_urls.length, 1);
+  assert.equal(asked[0].params.video_urls[0].class, 'video');
+  assert.equal(Math.round(asked[0].params.video_urls[0].duration), 5);
+  assert.equal(asked[0].params.subject_1_images.length, 2);
+  assert.equal(asked[0].params.subject_1_images[0].width, 800);
+  assert.equal(Math.round(asked[0].params.voice_1_audio[0].duration), 4);
+  assert.equal(JSON.stringify(asked[0]).includes(temporary), false, 'price.php nunca recibe rutas locales');
   const id = /Manifiesto: ([0-9a-f-]{36})/.exec(stdout)?.[1];
   assert.ok(id, stdout);
   assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'manifests', id + '.json'), 'utf8')).max_credits_authorized, expected);
   assert.equal(requests.filter((request) => request.query === '/jobs/createTask').length, 0, 'prepare no envía nada');
-  // Un tope del usuario por debajo del máximo se respeta antes de subir nada.
+  // Un tope del usuario por debajo del precio de AILAB se respeta antes de subir nada.
+  const uploadsBefore = requests.filter((request) => request.path.endsWith('/upload.php')).length;
   await assert.rejects(exec('prepare', ...args, '--max-credits', String(expected - 1)), /supera el m[aá]ximo/i);
+  assert.equal(requests.filter((request) => request.path.endsWith('/upload.php')).length, uploadsBefore);
   const done = await exec('submit', id, '--confirmed');
   assert.match(done.stdout, /Coste real: 175 cr/);
   const sends = requests.filter((request) => request.query === '/jobs/createTask');

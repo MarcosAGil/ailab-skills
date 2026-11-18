@@ -25,7 +25,9 @@ process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 const config = await import('../skills/ailab/scripts/lib/config.mjs');
 assert.equal(config.CONFIG_DIR, testConfig);
 assert.equal(config.CREDENTIALS_DIR, testCredentials);
-const { estimateCredits, validateCatalogShape, validateParams } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { validateCatalogShape, validateParams } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { priceEstimate } = await import('../skills/ailab/scripts/lib/price.mjs');
+const { priceResponse, estimates } = await import('./helpers/price-server.mjs');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync('skills/ailab/catalog/catalog.json', 'utf8')));
 const adapter = await import('../skills/ailab/scripts/adapters/topaz-v1.mjs');
 test.after(() => {
@@ -47,12 +49,26 @@ test('los cuatro contratos Topaz usan el driver y las mediciones internas correc
   }
 });
 
-test('el precio local replica los tramos y la conversión del gateway', () => {
-  assert.equal(estimateCredits(catalog.models['topaz-bloom-2'], { output_megapixels: 4 }).credits, 29);
-  assert.equal(estimateCredits(catalog.models['topaz-wonder-3-5'], { output_megapixels: 4 }).credits, 15);
-  assert.equal(estimateCredits(catalog.models['topaz-astra-precise-2-6'], { frame_count: 27, output_resolution: '1080p' }).credits, 29);
-  assert.equal(estimateCredits(catalog.models['topaz-astra-creative-2'], { frame_count: 10, output_resolution: '4K' }).credits, 29);
-  assert.equal(estimateCredits(catalog.models['topaz-bloom-2'], { output_megapixels: 100.01 }).credits, null);
+// Los tramos de Topaz los aplica AILAB: la CLI le manda las mediciones internas (megapíxeles o fotogramas).
+test('price.php recibe las mediciones internas de Topaz y devuelve el importe de la cuenta', async () => {
+  const state = { prices: { 'topaz-bloom-2': 29, 'topaz-astra-precise-2-6': null } };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => priceResponse(state, url, init) || Response.json({ ok: false }, { status: 404 });
+  try {
+    const bloom = await priceEstimate('topaz-bloom-2', { output_megapixels: 4, upscale_factor: 2 }, {});
+    assert.equal(bloom.ok, true);
+    assert.equal(bloom.price.credits, 29);
+    const astra = await priceEstimate('topaz-astra-precise-2-6', { frame_count: 27, output_resolution: '1080p' }, {});
+    assert.equal(astra.ok, true);
+    assert.equal(astra.price.credits, null);
+    assert.deepEqual(estimates(state).map((r) => [r.model, r.params]), [
+      ['topaz-bloom-2', { output_megapixels: 4, upscale_factor: 2 }],
+      ['topaz-astra-precise-2-6', { frame_count: 27, output_resolution: '1080p' }],
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  for (const id of ids) assert.equal(catalog.models[id].estimate, undefined, id);
 });
 
 test('la validación rechaza límites de imagen y Astra Creative sin subir nada', () => {

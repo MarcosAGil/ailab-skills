@@ -42,10 +42,10 @@ proyecto del usuario. Los resultados se guardan por defecto en
    `~/.config/ailab/`. No borres una operación ambigua para ocultarla.
 8. No llames directamente a proveedores ni inventes endpoints o parámetros. Usa la
    CLI y el catálogo validado.
-9. Para dar un precio al usuario usa el presupuesto de la CLI (`prepare`, o la
-   estimación que `info <modelo>` ya calcula para hoy). Nunca leas ni cites tablas de
-   tarifas a mano: cambian y las promociones caducan. Las cifras fijas de esta guía y
-   sus referencias son precio de miembro; el de cada cuenta lo da `prepare`.
+9. El precio lo da siempre AILAB para la cuenta: `prepare` (o `assistant-prepare`)
+   para una solicitud concreta e `info <modelo>` para sus tarifas de hoy. Esta guía y
+   sus referencias no llevan cifras: nunca calcules tarifas a mano ni des importes de
+   memoria. Si AILAB no responde al pedir el precio, no se envía nada.
 
 ## Guía actualizada
 
@@ -78,7 +78,7 @@ guía](references/flujos.md)) y, si AILAB le activa el plugin, el Playground.
 
 Para **Krea 3** (`krea-3`), consulta [su contrato](references/krea-3.md). Texto y edición tienen Berry o Jam; solo Berry admite prompt negativo. `prepare` sube las referencias y obtiene del servidor una cotización vinculada a sus dimensiones, modalidad y parámetros. El razonamiento Alto solo existe en edición y añade coste. No añadas semilla ni repitas un envío incierto.
 
-Para **Wan 3.0 Video** (`wan-3-video`, `normal` y `prime`), consulta [su contrato](references/wan-3.md): Kie factura también los vídeos de referencia (1 a 15 s cada uno, 15 s en total; con la salida, 30 s). `prepare` los mide y el precio con vídeo es un máximo. No uses `--duration -1`.
+Para **Wan 3.0 Video** (`wan-3-video`, `normal` y `prime`), consulta [su contrato](references/wan-3.md): también se cobran los vídeos de referencia (1 a 15 s cada uno, 15 s en total; con la salida, 30 s). `prepare` los mide y el precio con vídeo es un máximo. No uses `--duration -1`.
 
 Para voz individual con v4, aplica [el contrato y la recuperación de v4](references/eleven-v4.md). Para buscar voces, clonar una grabación autorizada, diseñar por prompt o gestionar Mis voces, lee [ElevenLabs y voces privadas](references/eleven-voices.md). El catálogo y los permisos del servidor deciden qué está disponible.
 
@@ -120,8 +120,8 @@ del MP4, o dimensiones y megapíxeles de la imagen, y rechaza límites antes de
 subir. No pases `frame_count` ni `output_megapixels`: son mediciones internas.
 
 Para `lipsync-veed-v2`, adjunta un vídeo con el rostro y el audio que debe
-sincronizarse. La duración se mide localmente a partir del vídeo y el coste se
-calcula a 14 créditos por segundo, con un mínimo de 14; no inventes ese valor.
+sincronizarse. La duración se mide localmente a partir del vídeo y AILAB calcula el
+coste por segundo con esa medida; no inventes la duración ni el importe.
 
 `SOUL 2` (`soul-2`) exige prompt y admite 720p o 1080p con `batch_size` de 1 o 4;
 usa `style_id` para fijar el estilo y cotiza antes de confirmar. `Genjutsu`
@@ -129,7 +129,7 @@ usa `style_id` para fijar el estilo y cotiza antes de confirmar. `Genjutsu`
 Transfer y `--mode object_swap` es Cambio de objeto, con endpoints distintos. Su
 prompt es opcional, parte de un vídeo propio y de 1 a 8 imágenes, admite 480p o
 720p y el servidor verifica que la duración redondeada no supere 30 segundos, con
-un techo específico de ese modelo de 2100 créditos. Si la cotización caduca,
+un techo de créditos propio de ese modelo que fija AILAB. Si la cotización caduca,
 vuelve a preparar; ante un envío ambiguo no reintentes automáticamente.
 
 `SOUL Cinema` (`higgsfield-soul-cinema`) genera imagen cinematográfica solo desde texto,
@@ -163,7 +163,7 @@ Lista los asistentes disponibles:
 node <skill-dir>/scripts/ailab.mjs assistants
 ```
 
-Todos usan siempre Gemini 3.5 Flash Lite multimodal mediante OpenRouter Priority.
+Todos usan siempre Gemini 3.5 Flash Lite multimodal.
 No elijas otro modelo conversacional ni llames al proveedor directamente. Image,
 Audio y Video Prompter cargan en el servidor su documentación canónica más reciente,
 por lo que una actualización documental no exige reinstalar la skill.
@@ -197,7 +197,7 @@ Si el usuario ya aprobó un flujo que incluía usar esa respuesta como prompt de
 modelo generativo, prepara y envía la generación directamente, sin solicitar otra
 confirmación. Si el plan solo autorizaba obtener o revisar el prompt, muéstralo y
 detente. El coste mostrado antes de enviar es orientativo: el servidor reserva un
-máximo temporal y cobra únicamente el consumo real devuelto por OpenRouter.
+máximo temporal y cobra únicamente el consumo real del modelo.
 
 ## Recuperar tareas
 

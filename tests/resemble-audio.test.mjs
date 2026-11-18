@@ -4,7 +4,6 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { estimateCredits } from '../skills/ailab/scripts/lib/catalog.mjs';
 import { inspectFile, inspectPricingMetadata } from '../skills/ailab/scripts/lib/files.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,8 +18,7 @@ test('la skill publica Audio Enhancement con su driver opaco y tres tratamientos
   assert.equal(model.params.normalize.default, true);
   assert.equal(model.params.studio_sound.default, true);
   assert.equal(model.params.duration_seconds.internal, true);
-  assert.equal(estimateCredits(model, { duration_seconds: 60 }).credits, 19);
-  assert.equal(estimateCredits(model, { duration_seconds: 600 }).credits, 184);
+  assert.equal(model.estimate, undefined, 'el precio por duración lo da AILAB');
 });
 
 test('reconoce OGG, AAC y M4A/MP4 y mide su duración antes de autorizar', (t) => {

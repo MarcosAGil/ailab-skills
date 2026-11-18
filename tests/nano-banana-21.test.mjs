@@ -10,21 +10,22 @@ process.env.AILAB_BASE_URL = 'https://ailendra.invalid/ailab/';
 process.env.AILAB_GENERATION_BASE_URL = process.env.AILAB_BASE_URL;
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(()=>fs.rmSync(isolated,{recursive:true,force:true}));
-const {validateCatalogShape,validateParams,estimateCredits} = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const {validateCatalogShape,validateParams} = await import('../skills/ailab/scripts/lib/catalog.mjs');
 const {buildPayload,check} = await import('../skills/ailab/scripts/adapters/jobs-v1.mjs');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync('skills/ailab/catalog/catalog.json','utf8')));
 const model = catalog.models['nano-banana-2-1'];
 const reference = path.join(isolated,'reference.png');
 fs.writeFileSync(reference,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7r8AAAAASUVORK5CYII=','base64'));
-test('Nano 2.1: 90 combinaciones, precios y referencias ordenadas',()=>{
+// El precio por resolución lo da AILAB (price.php): aquí solo contrato y referencias.
+test('Nano 2.1: 90 combinaciones y referencias ordenadas',()=>{
   assert.equal(model.driver,'jobs-v1');
+  assert.equal(model.estimate,undefined);
   let count=0;
   for(const mode of ['t2i','edit']) for(const resolution of ['1K','2K','4K']) for(const aspect_ratio of model.params.aspect_ratio.values){
     const given={mode,resolution,aspect_ratio,prompt:'Prueba Nano 2.1'};
     if(mode==='edit') given.image_urls=Array(14).fill(reference);
     const valid=validateParams(model,given);
     assert.equal(valid.ok,true,valid.errors.join('\n'));
-    assert.equal(estimateCredits(model,valid.params).credits,{'1K':5,'2K':7,'4K':10}[resolution]);
     const images=Array.from({length:14},(_,i)=>`https://uploads.example/${i}.png`);
     const payload=buildPayload(model,valid.params,mode==='edit'?{image_urls:images}:{});
     assert.equal(payload.model,model.id);

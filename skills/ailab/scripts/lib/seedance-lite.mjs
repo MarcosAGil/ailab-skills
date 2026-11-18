@@ -6,23 +6,15 @@
 // 10 vídeos y 10 audios). Lite no edita vídeo ni genera drafts (eso sigue en Seedance 2.5 Normal), no combina
 // fotogramas con referencias y no tiene duración automática.
 //
-// El precio es tarifa de VideoRouter x 1,02 por segundo. Con vídeo de referencia el servidor reserva salida +
-// entrada a la tarifa con vídeo (cada vídeo al segundo superior), sin el mínimo de 5/3 que aplicaba Sume, y cobra
-// el coste real; aquí se presupuesta esa misma reserva para que el máximo autorizado nunca quede por debajo (si lo
-// hiciera, el servidor rechaza con 402).
+// Los vídeos de referencia cuentan en el precio, que da el servidor con las duraciones que mide la CLI.
 import { inspectPricingMetadata } from './files.mjs';
-import { items, measureAudios, measureVideos, seedanceCredits } from './seedance.mjs';
+import { items, measureAudios, measureVideos } from './seedance.mjs';
 
 export const LITE_ID = 'seedance-2-5-lite';
 
 const LABEL = 'Seedance 2.5 Lite';
 const REFERENCE_SECONDS = 30.2;
 const MAX_REFERENCES = 10;
-
-// Salida + entrada, con enteros: `vr_seedance_billed_seconds` con vídeo de referencia.
-export function liteBilledSeconds(output, inputSeconds) {
-  return output + Math.max(0, inputSeconds);
-}
 
 // Valida lo que la CLI puede comprobar en local y mide los materiales de referencia. Devuelve
 // { problems, inputSeconds }.
@@ -68,31 +60,6 @@ export function liteInspect(params, fileParams = {}) {
 
 export function liteProblems(params, fileParams = {}) {
   return liteInspect(params, fileParams).problems;
-}
-
-// La misma cuenta que gateway_estimate_credits: sin vídeo, la salida; con vídeo, la tarifa con vídeo y los
-// segundos de `liteBilledSeconds`.
-export function liteEstimate(model, params, fileParams = {}) {
-  const e = model.estimate || {};
-  // `estimateCredits` recibe los parámetros y las rutas de archivo en un único objeto.
-  const merged = { ...params, ...fileParams };
-  const inspected = liteInspect(merged, merged);
-  if (inspected.problems.length) return { credits: null, approximate: false, note: inspected.problems[0] };
-  const output = Number(params.duration ?? 5);
-  const hasVideo = items(merged.reference_video_urls).length > 0;
-  const table = hasVideo ? e.credits_with_video : e.credits_per_second;
-  const rate = Number(table && table[String(params.resolution ?? '720p')]);
-  if (!Number.isInteger(output) || output < 4 || output > 30 || !Number.isFinite(rate) || rate <= 0) {
-    return { credits: null, approximate: false, note: 'tarifa de Seedance 2.5 Lite no disponible para esta combinación' };
-  }
-  if (!hasVideo) return { credits: seedanceCredits(rate, output), approximate: false, note: output + ' s de salida · máximo reservado; se cobra el coste real del proveedor, nunca más' };
-  const billed = liteBilledSeconds(output, inspected.inputSeconds);
-  return {
-    credits: seedanceCredits(rate, billed),
-    approximate: true,
-    note: output + ' s de salida + ' + inspected.inputSeconds + ' s de vídeo de referencia = ' + billed + ' s'
-      + ' · máximo reservado; se cobra el coste real del proveedor, nunca más',
-  };
 }
 
 // Entrada tal como la espera el servidor. `aspect_ratio` y `generate_audio` son obligatorios en el

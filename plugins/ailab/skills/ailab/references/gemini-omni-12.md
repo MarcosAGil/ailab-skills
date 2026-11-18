@@ -1,8 +1,8 @@
 # Gemini Omni Flash 1.2
 
-> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+> El precio lo da siempre AILAB para tu cuenta: `info` y `prepare` lo muestran.
 
-Vídeo con audio de Google servido por Kie. Necesita la skill 2.3.19. El servidor de AILAB repite todas las comprobaciones
+Vídeo con audio de Google. Necesita la skill 2.3.19. El servidor de AILAB repite todas las comprobaciones
 y tiene la última palabra; si algo no cuadra, rechaza antes de cobrar.
 
 ## 1. Generar (`gemini-omni-flash-1-2`)
@@ -26,8 +26,7 @@ node <skill-dir>/scripts/ailab.mjs prepare gemini-omni-flash-1-2 --mode edit --v
 - Imágenes JPG, PNG o WebP de hasta 20 MB. El prompt admite hasta 20.000 caracteres.
 - Los Character IDs deben haberse creado con la cuenta del usuario. 1.2 no admite Voice IDs sueltos: la voz va dentro
   de un Character ID.
-- Precio: tarifa de Kie x 1,02 por segundo (4,08 cr a 360p, 9,18 a 720p, 10,2 a 1080p y 22,44 a 4K), redondeado al
-  crédito superior. Al editar se cobra la duración del vídeo de entrada: la CLI lo mide (cada vídeo al segundo
+- Precio: por segundo, con una tarifa que sube con la resolución. Al editar se cobra la duración del vídeo de entrada: la CLI lo mide (cada vídeo al segundo
   superior, como el servidor) y rechaza uno de más de 15 s antes de subir nada. `prepare` da la cifra, que es el máximo
   reservado; se cobra el consumo real y nunca más.
 

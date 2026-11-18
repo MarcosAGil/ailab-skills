@@ -42,6 +42,8 @@ export async function startPriceBank({ canonical, skillRoot, workers = 4, balanc
   fs.mkdirSync(path.join(temp, 'app/api/v1/skill'), { recursive: true });
   for (const file of ['upload.php', 'higgsfield.php']) fs.copyFileSync(path.join(canonical, 'app/api/skill', file), path.join(temp, 'app/api/skill', file));
   fs.copyFileSync(path.join(canonical, 'app/api/v1/skill/task.php'), path.join(temp, 'app/api/v1/skill/task.php'));
+  // Desde la 2.5.0 el precio lo da el servidor: price.php real (sus tarifas y su motor viven en app/api/wallet).
+  fs.copyFileSync(path.join(canonical, 'app/api/v1/skill/price.php'), path.join(temp, 'app/api/v1/skill/price.php'));
 
   const dead = 'http://127.0.0.1:9';
   const settings = {

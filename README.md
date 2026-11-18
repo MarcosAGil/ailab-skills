@@ -74,16 +74,17 @@ la página. Al publicar una skill nueva, actualiza ambos catálogos y sincroniza
 
 ## Cambios relevantes
 
+- 2.5.0: el precio lo da siempre el servidor (`price.php`) y catálogo y asistentes (v3) no llevan tarifas; `proyectos` y `proyecto <id>` muestran el historial; `flow open` admite `--proyecto` y `--titulo`.
 - 2.4.0: precio por cuenta congelado en el manifiesto, `--proyecto` y comandos de proyectos, cabecera `X-AILAB-Client` y comando `flow` de las cuentas de cliente.
-- 2.3.19: Gemini Omni Flash 1.2 pasa a Kie (tarifa de Kie x 1,02: 4,08 / 9,18 / 10,2 / 22,44 cr/s) con referencias, Character IDs, semilla y edición de vídeo (se cobra la duración del vídeo, medida en local); Extend (`gemini-omni-flash-1-2-extend` y el comando `omni12-videos`) y creación gratuita de Character IDs y Voice IDs (`gemini-omni-character`, `gemini-omni-audio`); catálogo 1.32.0.
-- 2.3.18: Seedance 2.5 Lite pasa a VideoRouter (tarifa de VideoRouter x 1,02: 19,482 / 41,922 / 103,122 cr/s; con vídeo, salida + entrada sin el mínimo de 5/3) y deja de tener draft; ayuda de `--voice_id` en el Voice Changer; catálogo 1.31.0 con GPT Image 2.6, Seedream 5.5 y Gemini Omni Flash 1.2.
-- 2.3.17: tarifas de Kling de Kie del 4 de noviembre de 2026 x 1,02 en Kling 3.0 (23,154 / 30,804 / 77,01 cr/s), Kling O3 y Kling 2.6 y 3.0 Motion Control; Kling 2.5 Turbo no cambia.
+- 2.3.19: Gemini Omni Flash 1.2 pasa a Kie con referencias, Character IDs, semilla y edición de vídeo (se cobra la duración del vídeo, medida en local); Extend (`gemini-omni-flash-1-2-extend` y el comando `omni12-videos`) y creación gratuita de Character IDs y Voice IDs (`gemini-omni-character`, `gemini-omni-audio`); catálogo 1.32.0.
+- 2.3.18: Seedance 2.5 Lite pasa a VideoRouter (con vídeo se factura salida más entrada) y deja de tener draft; ayuda de `--voice_id` en el Voice Changer; catálogo 1.31.0 con GPT Image 2.6, Seedream 5.5 y Gemini Omni Flash 1.2.
+- 2.3.17: tarifas de Kling de Kie del 4 de noviembre de 2026 en Kling 3.0, Kling O3 y Kling 2.6 y 3.0 Motion Control; Kling 2.5 Turbo no cambia.
 - 2.3.16: modo draft de Seedance 2.5 Normal y Lite (`--draft true`), comando `drafts` y `seedance-2-5-draft-1080p` para generar un draft a 1080p al precio que fija el servidor.
 - 2.3.15: precios exactos de Seedance 2.5 Normal y Lite, 10 vídeos y 10 audios de referencia en ambos; Seedance 2.5, 2.0 y Mini miden los vídeos de referencia y presupuestan (salida + entrada) con la tarifa con vídeo; Editar vídeo cobra 2 x segundos del clip. Kling 2.6 y 3.0 Motion Control cobran por el vídeo medido, no por `--duration`.
 - 2.3.14: Genjutsu Light (`higgsfield-genjutsu-light`); Higgsfield termina las tareas `nsfw` y `rejected` con su motivo, y un 429 o 5xx al consultar espera con retroceso.
-- 2.3.13: `guide` devuelve la guía de uso vigente; Seed Audio reserva 100 cr y cobra la duración
-  real (0,625 cr/s, nunca más de 100 cr); el arranque avisa de plugin antiguo, doble instalación y
-  sandbox de Codex; nuevos Kling 4.0 (referencias, sujetos, voces y fotogramas clave) y Seedance 2.5 Lite; `info` muestra la tarifa vigente de hoy (una promoción solo mientras esté activa, con su fecha de fin) y los precios se auditan contra el servidor. Las versiones anteriores están en el historial de Git.
+- 2.3.13: `guide` devuelve la guía de uso vigente; Seed Audio cobra la duración
+  real, con un máximo reservado; el arranque avisa de plugin antiguo, doble instalación y
+  sandbox de Codex; nuevos Kling 4.0 (referencias, sujetos, voces y fotogramas clave) y Seedance 2.5 Lite; `info` muestra la tarifa vigente de hoy. Las versiones anteriores están en el historial de Git.
 
 Una fuente nueva requiere empaquetado, publicación firmada y verificación del catálogo servido: no
 acredita por sí sola disponibilidad en producción.

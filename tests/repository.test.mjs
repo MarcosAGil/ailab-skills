@@ -6,7 +6,8 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { validateRepository } from '../tools/validate.mjs';
-import { estimateCredits, validateCatalogShape } from '../skills/ailab/scripts/lib/catalog.mjs';
+import { validateCatalogShape } from '../skills/ailab/scripts/lib/catalog.mjs';
+import { priceParams } from '../skills/ailab/scripts/lib/price.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -55,24 +56,30 @@ test('el instalador copia y verifica AILAB de forma aislada', (t) => {
     timeout: 30000,
   });
   assert.equal(installed.status, 0, installed.stderr || installed.stdout);
-  assert.match(installed.stdout, /Instalada ailab 2\.4\.0/);
+  assert.match(installed.stdout, /Instalada ailab 2\.5\.0/);
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'SKILL.md')));
   assert.ok(fs.existsSync(path.join(destination, 'ailab', 'scripts', 'ailab.mjs')));
 });
 
-test('la skill empaquetada supera su autodiagnóstico sin red de actualización', () => {
+test('la skill empaquetada supera su autodiagnóstico sin red de actualización', (t) => {
+  // Estado aislado: el arranque borra la caché de precio de la 2.4.0 y no debe tocar la configuración real.
+  const state = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-self-test-'));
+  t.after(() => fs.rmSync(state, { recursive: true, force: true }));
   const checked = spawnSync(process.execPath, ['skills/ailab/scripts/ailab.mjs', 'self-test'], {
     cwd: ROOT,
     encoding: 'utf8',
     env: {
       ...process.env,
       AILAB_SKIP_UPDATE: '1',
+      AILAB_CONFIG_DIR: path.join(state, 'config'),
+      AILAB_CREDENTIALS_DIR: path.join(state, 'credentials'),
+      AILAB_BASE_URL: 'http://127.0.0.1:9/',
       AILAB_CATALOG_PATH: path.join(ROOT, 'skills', 'ailab', 'catalog', 'catalog.json'),
     },
     timeout: 30000,
   });
   assert.equal(checked.status, 0, checked.stderr || checked.stdout);
-  assert.match(checked.stdout, /SELF_TEST_OK 2\.4\.0 · 77 modelos/);
+  assert.match(checked.stdout, /SELF_TEST_OK 2\.5\.0 · 77 modelos/);
 });
 
 test('Seedance conserva 20.000 caracteres en 2.0 y admite 30.000 en 2.5', () => {
@@ -83,13 +90,13 @@ test('Seedance conserva 20.000 caracteres en 2.0 y admite 30.000 en 2.5', () => 
   assert.match(catalog.models['seedance-2-5'].params.aspect_ratio.help, /adaptive/i);
 });
 
-test('Seedance sin vídeo cobra la salida y un vídeo que no se puede medir no autoriza nada', () => {
+test('Seedance sin tarifa local: un vídeo que no se puede medir llega a price.php como medida fallida, nunca con su ruta', () => {
   const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(path.join(ROOT, 'skills', 'ailab', 'catalog', 'catalog.json'), 'utf8')));
   const model = catalog.models['seedance-2-5'];
-  assert.equal(model.estimate.duration_by_mode, undefined, 'la edición ya no reserva una duración fija');
-  assert.equal(estimateCredits(model, { mode: 't2v', resolution: '720p', duration: 5 }).credits, 322);
-  assert.equal(estimateCredits(model, { mode: 'ref', resolution: '720p', duration: 5, reference_video_urls: ['no-existe.mp4'] }).credits, null);
-  assert.equal(estimateCredits(model, { mode: 'edit', resolution: '720p', duration: 5, reference_video_urls: ['no-existe.mp4'] }).credits, null);
+  assert.equal(model.estimate, undefined, 'el precio lo da AILAB');
+  const params = priceParams({ mode: 'ref', resolution: '720p', duration: 5 }, { reference_video_urls: ['no-existe.mp4'] });
+  assert.deepEqual(params.reference_video_urls, [{ ok: false }]);
+  assert.equal(JSON.stringify(params).includes('no-existe'), false);
 });
 
 test('FLUX Video Upscale exige un tramo medido y documenta ffprobe', () => {
@@ -115,7 +122,7 @@ test('el paquete es reproducible y contiene una única carpeta raíz', (t) => {
   });
   const first = build();
   assert.equal(first.status, 0, first.stderr || first.stdout);
-  const archive = path.join(destination, 'ailab-skill-v2.4.0-beta.zip');
+  const archive = path.join(destination, 'ailab-skill-v2.5.0-beta.zip');
   const firstBytes = fs.readFileSync(archive);
   const second = build();
   assert.equal(second.status, 0, second.stderr || second.stdout);

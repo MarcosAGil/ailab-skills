@@ -1,6 +1,6 @@
 # Kling 4.0 (`kling-4-0`)
 
-> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+> El precio lo da siempre AILAB para tu cuenta: `info` y `prepare` lo muestran.
 
 Vídeo de 3 a 30 s con audio nativo, 720p o 1080p. Contrato del servidor: `gateway_kling4_input` y
 `gateway_kling4_subjects` en AILAB. La CLI valida lo mismo en local antes de subir nada, pero el servidor
@@ -45,11 +45,11 @@ mide WebM).
 
 ## Precio
 
-`ceil(tarifa Kie x 1,02)` sobre los segundos facturables. Sin vídeos de entrada se factura la salida y el precio es
-exacto (5 s a 720p son 146 cr). Con vídeos, cada uno se redondea al segundo superior: si la entrada total no
+Se factura por segundos facturables. Sin vídeos de entrada se factura la salida y el precio es
+exacto. Con vídeos, cada uno se redondea al segundo superior: si la entrada total no
 supera la salida se facturan 2 x salida, y si la supera, entrada + salida, a la tarifa con vídeo. `prepare`
 autoriza ese máximo y el cargo final es el consumo confirmado. El servidor rechaza con 402 si el máximo autorizado
-fuera menor, por eso la CLI nunca presupuesta por debajo.
+fuera menor, por eso el presupuesto de AILAB nunca queda por debajo.
 
 Si el servidor devuelve 403 («en piloto» o «sujetos en prueba»), el modelo o los sujetos están cerrados en esa
 instalación: no hay forma de saltarlo desde la CLI.

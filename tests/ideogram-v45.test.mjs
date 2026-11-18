@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import test from 'node:test';
 
 // Importar con credenciales vacías: ningún mock necesita el estado del usuario.
@@ -13,43 +12,19 @@ process.env.AILAB_BASE_URL = 'https://ailendra.invalid/ailab/';
 process.env.AILAB_GENERATION_BASE_URL = process.env.AILAB_BASE_URL;
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(() => fs.rmSync(isolated, { recursive: true, force: true }));
-const { estimateCredits, validateCatalogShape, validateParams } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { validateCatalogShape, validateParams } = await import('../skills/ailab/scripts/lib/catalog.mjs');
 const { buildPayload } = await import('../skills/ailab/scripts/adapters/labs-queue-v1.mjs');
 
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync('skills/ailab/catalog/catalog.json', 'utf8')));
 const model = catalog.models['ideogram-v45'];
 
-test('Ideogram 4.5 valida catálogo y tarifas exactas por modo/calidad/lote', () => {
+// Desde la 2.5.0 el precio por modo, calidad y lote lo da AILAB (price.php); su paridad la prueba el servidor.
+test('Ideogram 4.5 está en el catálogo sin tarifas locales', () => {
   assert.ok(model);
-  assert.equal(estimateCredits(model, { mode: 't2i', quality: 'low', num_images: 8 }).credits, 48);
-  assert.equal(estimateCredits(model, { mode: 't2i', quality: 'high', num_images: 1 }).credits, 44);
-  assert.equal(estimateCredits(model, { mode: 'edit', quality: 'very_low', num_images: 8 }).credits, 13);
-  assert.equal(estimateCredits(model, { mode: 'edit', quality: 'very_low', num_images: 1 }).credits, 2);
-  assert.equal(estimateCredits(model, { mode: 'edit', quality: 'unknown', num_images: 1 }).credits, null);
-  assert.equal(estimateCredits(model, { mode: 't2i', quality: 'very_low', num_images: 1 }).credits, null);
-  for (const num_images of [0, -1, 1.5, 9]) assert.equal(estimateCredits(model, { mode: 'edit', quality: 'low', num_images }).credits, null);
-});
-
-test('Ideogram: 88 combinaciones coinciden entre skill, catálogo canónico y web', t => {
-  const canonicalRoot = process.env.AILAB_CANONICAL_REPO;
-  if (!canonicalRoot) return t.skip('Define AILAB_CANONICAL_REPO para la comprobación cruzada de release.');
-  const canonical = JSON.parse(fs.readFileSync(path.join(canonicalRoot, 'config/ailab-model-additions.json'), 'utf8')).models.find(candidate => candidate.id === 'ideogram-v45');
-  assert.deepEqual(model.estimate.credits_per_unit_by_value, canonical.estimate.credits_per_unit_by_value);
-  const adapter = createRequire(import.meta.url)(path.join(canonicalRoot, 'app/ailab-image-models-live.js')).get('ideogram-v45');
-  let cases = 0;
-  for (const mode of ['t2i', 'edit']) {
-    const qualities = mode === 't2i' ? ['low', 'medium', 'high'] : ['very_low', 'low', 'medium', 'high'];
-    const precisions = mode === 'edit' ? ['regular', 'high'] : [null];
-    for (const quality of qualities) for (const precision of precisions) for (let num_images = 1; num_images <= 8; num_images++) {
-      const params = { prompt: 'Pricing contract audit', mode, quality, num_images };
-      if (mode === 'edit') Object.assign(params, { image_urls: ['base.png', 'reference.png'], image_size: 'auto', edit_precision: precision });
-      const validated = validateParams(model, params);
-      assert.equal(validated.ok, true, validated.errors.join('\n'));
-      assert.equal(estimateCredits(model, validated.params).credits, adapter.estimateCredits(params), mode + ':' + quality + ':' + precision + ':' + num_images);
-      cases++;
-    }
+  assert.equal(model.estimate, undefined);
+  for (const quality of ['very_low', 'low', 'medium', 'high']) {
+    assert.equal(validateParams(model, { mode: 'edit', prompt: 'Edit', image_urls: ['base.png'], quality, num_images: 8 }).ok, true, quality);
   }
-  assert.equal(cases, 88);
 });
 
 test('Ideogram distingue modalidades y conserva seed opcional en la CLI', () => {

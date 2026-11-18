@@ -1,7 +1,8 @@
 // Prueba de integracion SIN COSTE del flujo Higgsfield (SOUL 2) contra un falso
 // servidor AILAB en localhost. Arranca la CLI real (prepare -> submit) con
 // AILAB_CONFIG_DIR y AILAB_CREDENTIALS_DIR temporales y comprueba el contrato de
-// dos fases: el quote se pide con el tope de seguridad (1000) y el create viaja
+// dos fases: price.php (falso) indica que el modelo lo cotiza el servidor y el techo de la cuenta (1000), el quote se
+// pide con ese techo y el create viaja
 // con el importe APROBADO en el manifiesto (50), la misma cotizacion verificada y
 // el mismo client_request_id. Nunca se llama al proveedor real.
 import assert from 'node:assert/strict';
@@ -14,6 +15,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { handlePrice } from './helpers/price-server.mjs';
 
 const execute = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -33,7 +35,7 @@ const json = (res, body, status = 200) => {
 // Higgsfield devuelve el sobre doble del endpoint real: {ok, code, msg, data}.
 const gateway = (res, data, msg = 'Presupuesto calculado.') => json(res, { ok: true, code: 200, msg, data });
 
-async function harness(t, { balance = 1000, quoteFailure = null } = {}) {
+async function harness(t, { balance = 1000, quoteFailure = null, price = { credits: null, server_quote: true, max_credits: 1000 }, priceDown = false } = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-higgsfield-flow-'));
   const credentials = path.join(temp, 'credentials');
   const config = path.join(temp, 'config');
@@ -41,6 +43,8 @@ async function harness(t, { balance = 1000, quoteFailure = null } = {}) {
   fs.writeFileSync(path.join(credentials, 'token'), 'ailp_' + 'H'.repeat(48), { mode: 0o600 });
 
   const requests = [];
+  // Todos los modelos Higgsfield: los cotiza el servidor y AILAB da el techo de la cuenta en `max_credits`.
+  const priceState = { defaultCredits: price, priceDown };
   let base;
   const server = http.createServer(async (req, res) => {
     try {
@@ -52,6 +56,7 @@ async function harness(t, { balance = 1000, quoteFailure = null } = {}) {
       try { body = raw.length ? JSON.parse(raw.toString('utf8')) : {}; } catch { body = { unreadable: true }; }
       requests.push({ method: req.method, pathname: url.pathname, query: url.search, body, host: url.hostname });
 
+      if (handlePrice(priceState, url.pathname, body, res)) return;
       if (url.pathname === '/assets/soul-2.png') {
         res.writeHead(200, { 'Content-Type': 'image/png' });
         return res.end(PNG);
@@ -107,7 +112,7 @@ async function harness(t, { balance = 1000, quoteFailure = null } = {}) {
   const readManifest = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
   const writeManifest = (file, value) => fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
   const of = (action) => requests.filter((r) => r.pathname === '/api/skill/higgsfield.php' && r.body.action === action);
-  return { base, requests, run, manifestOf, readManifest, writeManifest, of, output };
+  return { base, requests, run, manifestOf, readManifest, writeManifest, of, output, priceState };
 }
 
 test('SOUL 2: prepare cotiza con el tope y submit envia solo el importe aprobado', async (t) => {
@@ -117,7 +122,9 @@ test('SOUL 2: prepare cotiza con el tope y submit envia solo el importe aprobado
   assert.match(prepared, /Cotizacion del servidor/);
   assert.match(prepared, /coste cotizado 50 cr \(importe que se aprueba\) · techo de seguridad del servidor 1000 cr/);
 
-  // prepare: un unico quote, con el tope de seguridad (1000), nunca con el coste.
+  // prepare: un unico estimate a price.php y un unico quote, con el techo que dio AILAB (1000), nunca con el coste.
+  assert.deepEqual(h.priceState.priceRequests.map((r) => [r.action, r.model]), [['estimate', 'soul-2']]);
+  assert.equal(h.priceState.priceRequests[0].params.prompt, 'portrait');
   const quotes = h.of('quote');
   assert.equal(quotes.length, 1);
   assert.equal(quotes[0].body.max_credits_authorized, 1000);
@@ -189,7 +196,7 @@ test('SOUL 2: una aprobacion por encima del tope del contrato no llega al provee
   const manifest = h.manifestOf(prepared);
   const frozen = h.readManifest(manifest.file);
   h.writeManifest(manifest.file, { ...frozen, max_credits_authorized: 5000, quote_max_credits: 5000 });
-  await assert.rejects(h.run('submit', manifest.id, '--confirmed'), /supera el tope del contrato/);
+  await assert.rejects(h.run('submit', manifest.id, '--confirmed'), /supera el techo de la cotizacion/);
   assert.equal(h.of('create').length, 0);
 });
 
@@ -223,4 +230,27 @@ test('Marketing Studio Image y SOUL Cinema: un interruptor cerrado en el servido
     });
     assert.equal(h.of('create').length, 0, id + ': sin cotizacion no hay envio');
   }
+});
+
+test('Higgsfield: sin techo de AILAB ni --max-credits no se cotiza; con --max-credits el quote usa el menor', async (t) => {
+  const none = await harness(t, { price: { credits: null, server_quote: true } });
+  await assert.rejects(none.run('prepare', 'soul-2', '--prompt', 'portrait'), /no ha indicado el techo de creditos/);
+  assert.equal(none.of('quote').length, 0);
+  const own = await harness(t, { price: { credits: null, server_quote: true } });
+  const prepared = (await own.run('prepare', 'soul-2', '--prompt', 'portrait', '--max-credits', '300')).stdout;
+  own.manifestOf(prepared);
+  assert.equal(own.of('quote')[0].body.max_credits_authorized, 300);
+  const both = await harness(t);
+  both.manifestOf((await both.run('prepare', 'soul-2', '--prompt', 'portrait', '--max-credits', '2000')).stdout);
+  assert.equal(both.of('quote')[0].body.max_credits_authorized, 1000, 'nunca por encima del techo de la cuenta');
+});
+
+test('Higgsfield: si AILAB no da precio no se cotiza ni se envía nada', async (t) => {
+  const h = await harness(t, { priceDown: true });
+  await assert.rejects(h.run('prepare', 'soul-2', '--prompt', 'portrait'), (error) => {
+    assert.match(String(error.stderr), /No se ha podido obtener el precio de AILAB\. No se ha enviado nada\./);
+    return true;
+  });
+  assert.equal(h.of('quote').length, 0);
+  assert.equal(h.of('create').length, 0);
 });

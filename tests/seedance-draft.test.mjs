@@ -10,9 +10,10 @@ import test from 'node:test';
 import { Media } from './helpers/media.mjs';
 import { CANONICAL, canRunParity, php } from './helpers/php.mjs';
 import { startPriceBank } from './helpers/price-bank.mjs';
+import { handlePrice, estimates } from './helpers/price-server.mjs';
 
 // Modo draft de Seedance 2.5 en la skill 2.3.16. Contrato: docs/operations/seedance-25-draft-precios-2026-10-31.md en AILAB,
-// sección 5. Con AILAB_CANONICAL_REPO se usa el PHP real con proveedores apagados: sin red, sin claves y sin gasto.
+// sección 5. Desde la 2.5.0 el precio de un draft lo da price.php y el de 1080p sigue saliendo del listado (server_quote). Con AILAB_CANONICAL_REPO se usa el PHP real con proveedores apagados: sin red, sin claves y sin gasto.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-seedance-draft-'));
 process.env.AILAB_CONFIG_DIR = path.join(temporary, 'config');
@@ -20,9 +21,9 @@ process.env.AILAB_CREDENTIALS_DIR = path.join(temporary, 'credentials');
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
 const catalogPath = path.join(root, 'skills/ailab/catalog/catalog.json');
-const { validateCatalogShape, validateParams, estimateCredits, modelUsable, requiresServerQuote } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { validateCatalogShape, validateParams, modelUsable } = await import('../skills/ailab/scripts/lib/catalog.mjs');
 const { buildPayload } = await import('../skills/ailab/scripts/adapters/jobs-v1.mjs');
-const { pricingLines } = await import('../skills/ailab/scripts/lib/pricing.mjs');
+const { priceParams } = await import('../skills/ailab/scripts/lib/price.mjs');
 const { DRAFT_UPGRADE_ID, draftLines, draftQuote, decodeDraftCursor, encodeDraftCursor } = await import('../skills/ailab/scripts/lib/seedance-draft.mjs');
 const { guideText } = await import('../skills/ailab/scripts/lib/guide.mjs');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
@@ -33,7 +34,6 @@ const parity = { skip: !canRunParity() && 'sin AILAB_CANONICAL_REPO o sin PHP' }
 const NORMAL = 'seedance-2-5';
 const LITE = 'seedance-2-5-lite';
 const UPGRADE = DRAFT_UPGRADE_ID;
-const OLD_RUNTIMES = ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12', '2.3.13', '2.3.14', '2.3.15'];
 const CHARGED = ' No se ha cobrado nada.';
 const NO_EDIT = 'El modo draft de Seedance 2.5 no admite Editar vídeo.' + CHARGED;
 const ONLY_480 = 'El modo draft de Seedance 2.5 solo admite 480p.' + CHARGED;
@@ -45,23 +45,15 @@ const clip = (seconds) => {
   if (!clips.has(seconds)) clips.set(seconds, media.video(`draft-${seconds}.mp4`, seconds));
   return clips.get(seconds);
 };
-// Vídeos que facturan exactamente `seconds`. Por encima de 30 s hacen falta varios: cada uno sube al segundo superior.
-function videosBilling(seconds) {
-  if (seconds <= 30) return [clip(seconds)];
-  const count = Math.min(10, seconds - 29);
-  const base = Math.floor(seconds / count);
-  return range(1, count).map((index) => clip(Number((base + (index <= seconds % count ? 1 : 0) - 1 + 0.01).toFixed(2))));
-}
-
 function plan(id, given) {
   const model = { id, ...catalog.models[id] };
   const v = validateParams(model, given);
   if (!v.ok) return { ok: false, errors: v.errors };
   const uploaded = Object.fromEntries(Object.entries(v.fileParams).map(([param, files]) => [param, files.map((file) => media.url(file))]));
-  return { ok: true, id, params: v.params, estimate: estimateCredits(model, { ...v.params, ...v.fileParams }), payload: buildPayload(model, v.params, uploaded), files: Object.values(v.fileParams).flat() };
+  return { ok: true, id, params: v.params, fileParams: v.fileParams, payload: buildPayload(model, v.params, uploaded), files: Object.values(v.fileParams).flat() };
 }
 
-// El camino del gateway para un draft: puerta, normalización, contrato, medición en el servidor y estimación. Solo se simula
+// El camino del gateway para un draft: puerta, normalización, contrato y medición en el servidor. Solo se simula
 // la consulta de metadatos de la subida.
 const PHP_DRAFT = `
   $cfg = wallet_config(); $cases = json_decode($argv[1], true); $meta = json_decode($argv[2], true); $out = [];
@@ -85,7 +77,7 @@ const PHP_DRAFT = `
     foreach ($route['strip_input'] ?? [] as $key) { unset($forward[$key]); }
     $billing = ['_billing_input_seconds' => $seconds];
     if ($model === 'seedance-2-5') { $billing['_billing_edit'] = false; }
-    $out[] = ['ok' => true, 'seconds' => $seconds, 'credits' => gateway_estimate_credits($route['gateway_model'], array_merge($forward, $billing)), 'forward' => $forward];
+    $out[] = ['ok' => true, 'seconds' => $seconds, 'forward' => $forward];
   }
   echo json_encode($out, JSON_UNESCAPED_UNICODE);`;
 
@@ -108,7 +100,7 @@ test('catálogo: draft sin valor por defecto, una adición que entienden los par
   }
   assert.equal(catalog.models[NORMAL].min_cli_version, '2.3.15', 'la 2.3.15 envía draft tal cual: funciona o falla sin cobro');
   assert.equal(catalog.models[LITE].min_cli_version, '2.3.18', 'una CLI que aún ofrezca draft en Lite no debe usarlo');
-  assert.equal(catalog.min_cli_version, '2.3.7');
+  assert.equal(catalog.min_cli_version, '2.5.0');
   const model = catalog.models[UPGRADE];
   assert.equal(model.id, UPGRADE);
   assert.equal(model.min_cli_version, '2.3.16');
@@ -119,9 +111,8 @@ test('catálogo: draft sin valor por defecto, una adición que entienden los par
   assert.equal(model.expensive, true);
   assert.deepEqual(Object.keys(model.params), ['draft_task_id']);
   assert.equal(model.params.draft_task_id.required, true);
-  assert.deepEqual(Object.keys(model.estimate).sort(), ['approximate', 'credits', 'kind', 'note']);
-  assert.equal(model.estimate.kind, 'flat_credits');
-  assert.equal(model.estimate.credits, 6687);
+  assert.equal(model.estimate, undefined, 'desde la 2.5.0 el catálogo no lleva tarifas');
+  assert.equal(catalog.models[NORMAL].estimate, undefined);
   assert.equal(modelUsable(model).ok, true);
   const text = JSON.stringify([catalog.models[NORMAL].params.draft, model]);
   for (const forbidden of ['bytedance/', 'provider_contract', 'callBackUrl', 'SUME_API_KEY', 'borrador', String.fromCharCode(0x2014)]) assert.equal(text.toLowerCase().includes(forbidden.toLowerCase()), false, forbidden);
@@ -139,7 +130,7 @@ test('sin --draft el cuerpo no cambia: ni draft ni 480p, y --draft false equival
   assert.match(plan(LITE, { prompt: 'x', draft: 'false' }).errors.join(' '), /Parametro desconocido: --draft/);
 });
 
-test('draft: 480p, cuerpo exacto y el mismo precio que 480p, con y sin vídeo', () => {
+test('draft: 480p y cuerpo exacto, con y sin vídeo; a price.php viajan draft y la resolución', () => {
   const image = media.image('marco.png', 1024, 768);
   for (const id of [NORMAL]) {
     const combos = [
@@ -156,15 +147,15 @@ test('draft: 480p, cuerpo exacto y el mismo precio que 480p, con y sin vídeo', 
       assert.equal(draft.params.resolution, '480p', 'sin --resolution, draft es 480p');
       assert.equal(draft.payload.input.draft, true);
       assert.equal(draft.payload.input.resolution, '480p');
-      assert.equal(draft.estimate.credits, same.estimate.credits, id + ' ' + JSON.stringify(given));
-      assert.equal(draft.estimate.approximate, same.estimate.approximate);
+      const sent = priceParams(draft.params, draft.fileParams);
+      assert.equal(sent.draft, true, 'el servidor distingue el draft al poner precio');
+      assert.equal(sent.resolution, '480p');
       assert.deepEqual({ ...draft.payload.input, draft: undefined }, { ...same.payload.input, draft: undefined });
     }
     assert.equal(plan(id, { prompt: 'x', draft: 'true', resolution: '480p' }).ok, true, 'también con --resolution 480p explícito');
   }
   // El argumento suelto `--draft` llega como true.
   assert.equal(plan(NORMAL, { prompt: 'x', draft: true }).payload.input.draft, true);
-  assert.equal(plan(NORMAL, { prompt: 'x', draft: true, duration: 5 }).estimate.credits, 143, 'ceil(28,56 x 5)');
   assert.match(plan(LITE, { prompt: 'x', draft: true, duration: 6 }).errors.join(' '), /Parametro desconocido: --draft/);
   // La CLI revalida lo congelado en el manifiesto al enviar: mismo resultado.
   const frozen = plan(NORMAL, { prompt: 'x', draft: true, duration: 6 }).params;
@@ -195,37 +186,9 @@ test('combinaciones inválidas: la CLI las rechaza sin red', () => {
   assert.match(plan(UPGRADE, { draft_task_id: 't', prompt: 'x' }).errors.join(' '), /Parametro desconocido: --prompt/);
 });
 
-test('el precio de 1080p no sale de la CLI', () => {
-  const model = { id: UPGRADE, ...catalog.models[UPGRADE] };
-  assert.equal(requiresServerQuote(model, {}), true);
-  const estimate = estimateCredits(model, { draft_task_id: 'tarea' });
-  assert.equal(estimate.credits, null);
-  assert.equal(estimate.server_quote, true);
-  const info = pricingLines(model).join('\n');
-  assert.match(info, /lo cotiza el servidor para cada draft/);
-  assert.doesNotMatch(info, /6687/);
+test('el precio de 1080p no sale de la CLI: el catálogo no lo lleva y el cuerpo es solo el draft', () => {
+  assert.equal(JSON.stringify(catalog.models[UPGRADE]).includes('6687'), false);
   assert.deepEqual(plan(UPGRADE, { draft_task_id: ' tarea-1 ' }).payload, { model: UPGRADE, input: { draft_task_id: 'tarea-1' } });
-});
-
-test('regla de oro con el PHP real: draft reserva lo mismo que estima la CLI en cada duración y entrada (Normal por Kie)', parity, () => {
-  const cases = [];
-  const add = (id, given) => {
-    const planned = plan(id, { prompt: 'Una escena', draft: 'true', ...given });
-    assert.equal(planned.ok, true, id + ' ' + planned.errors?.join(' '));
-    cases.push({ ...planned, label: id + ' ' + JSON.stringify(given) });
-  };
-  for (const duration of range(4, 30)) {
-    for (const input of range(0, 39)) add(NORMAL, { duration, ...(input ? { mode: 'ref', reference_video_urls: videosBilling(input) } : {}) });
-  }
-  const results = askServer(cases);
-  assert.equal(results.length, cases.length);
-  cases.forEach((c, index) => {
-    const server = results[index];
-    assert.equal(server.ok, true, `${c.label}: ${server.error}`);
-    assert.equal(c.estimate.credits, server.credits, c.label);
-    assert.equal(server.forward.draft, true, c.label);
-  });
-  assert.equal(cases.length, 1080);
 });
 
 test('paridad con el PHP real: lo que la CLI rechaza el servidor lo rechaza con el mismo texto, y al revés lo acepta', parity, () => {
@@ -257,13 +220,12 @@ test('paridad con el PHP real: lo que la CLI rechaza el servidor lo rechaza con 
   const answers = askServer(accepted);
   accepted.forEach((c, index) => {
     assert.equal(answers[index].ok, true, answers[index].error);
-    assert.equal(answers[index].credits, c.estimate.credits);
     for (const key of ['prompt', 'resolution', 'draft', 'first_frame_url', 'last_frame_url', 'reference_image_urls', 'reference_video_urls']) assert.deepEqual(answers[index].forward[key], c.payload.input[key], key);
     assert.equal('auto_duration' in answers[index].forward, false, 'la duración automática no viaja');
   });
 });
 
-test('paso a 1080p con el PHP real: la puerta acepta el cuerpo de la CLI, y listado, reserva y cota del catálogo cuadran', parity, () => {
+test('paso a 1080p con el PHP real: la puerta acepta el cuerpo de la CLI, y listado y reserva cuadran', parity, () => {
   const payload = plan(UPGRADE, { draft_task_id: 'tarea-1' }).payload;
   const body = { ...payload, client_request_id: '11111111-1111-4111-8111-111111111111', max_credits_authorized: 806 };
   const [open, extraBody, extraInput, closed, noMax] = php(`$body = json_decode($argv[1], true); echo json_encode([
@@ -287,7 +249,7 @@ test('paso a 1080p con el PHP real: la puerta acepta el cuerpo de la CLI, y list
       if ($provider === 'kie' && $input > 39) { continue; }
       $max = max($max, $listed); $rows++;
     } echo json_encode(['max' => $max, 'rows' => $rows]);`);
-  assert.equal(maximum.max, catalog.models[UPGRADE].estimate.credits, 'la cota del catálogo es el máximo real: ninguna reserva la supera');
+  assert.ok(maximum.max > 0);
   assert.equal(maximum.rows, 2 * 27 + 27 * 40 + 27 * 41);
 });
 
@@ -313,7 +275,11 @@ test('el cursor del listado viaja como texto opaco y uno inválido se rechaza', 
 const fakeDraft = (index, patch = {}) => ({ task_id: 'draft-' + index, version: 'normal', provider: 'kie', video_url: 'https://cdn.example.test/draft-' + index + '.mp4', aspect_ratio: '16:9', output_seconds: 5,
   input_seconds: 0, with_video: false, created_at: '2026-10-31 10:00:00', expires_at: '2026-11-07 09:00:00', status: 'ready', upgrade_task_id: null, upgrade_video_url: null, credits: 806, approximate: false, ...patch });
 
+// Precio de AILAB en el servidor falso: un draft de 5 s cuesta 143 cr y el paso a 1080p lo cotiza el servidor desde el listado.
+const PRICES = { [NORMAL]: (params) => (params.draft ? 143 : 322), [UPGRADE]: { credits: null, server_quote: true, expensive: true } };
+
 async function fakePlatform(t, drafts) {
+  const state = { prices: { ...PRICES } };
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-draft-cli-'));
   const credentials = path.join(temp, 'credentials');
   fs.mkdirSync(credentials);
@@ -326,6 +292,7 @@ async function fakePlatform(t, drafts) {
     const url = new URL(req.url, base);
     const body = /json/.test(req.headers['content-type'] || '') ? JSON.parse(Buffer.concat(chunks).toString() || '{}') : {};
     requests.push({ path: url.pathname, query: url.searchParams.get('path'), body });
+    if (handlePrice(state, url.pathname, body, res)) return;
     if (url.pathname === '/result.mp4') { res.writeHead(200, { 'content-type': 'video/mp4' }); return res.end(Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(64)])); }
     let response = { ok: true, user: { email: 'test@example.invalid', tier: 'hub' }, balance: 500000 };
     if (body.action === 'task_costs') response = { ok: true, costs: { 'tarea-1080p': 700 } };
@@ -355,7 +322,7 @@ async function fakePlatform(t, drafts) {
     try { return { code: 0, ...await execute(process.execPath, [cli, ...args], { env, timeout: 30000 }) }; }
     catch (error) { return { code: error.code || 1, stdout: error.stdout || '', stderr: error.stderr || '' }; }
   };
-  return { exec, requests, sends: () => requests.filter((request) => request.query === '/jobs/createTask'), temp };
+  return { exec, requests, state, sends: () => requests.filter((request) => request.query === '/jobs/createTask'), temp };
 }
 
 const manifestOf = (stdout) => /Manifiesto: ([0-9a-f-]{36})/.exec(stdout)?.[1];
@@ -403,6 +370,10 @@ test('generar un draft: prepare con presupuesto, sin --confirmed no se envía y 
     assert.match(prepared.stdout, new RegExp('Estimacion: ~' + credits + ' cr'));
     assert.match(prepared.stdout, /draft: true/);
     assert.match(prepared.stdout, /resolution: "480p"/);
+    const asked = estimates(p.state).at(-1);
+    assert.equal(asked.model, id);
+    assert.equal(asked.params.draft, true);
+    assert.equal(asked.params.resolution, '480p');
     const before = p.sends().length;
     const refused = await p.exec('submit', manifestOf(prepared.stdout));
     assert.notEqual(refused.code, 0);
@@ -434,6 +405,7 @@ test('generar a 1080p: el coste sale del listado, se autoriza esa cifra exacta y
   assert.match(prepared.stdout, /Draft Normal de 5 s/);
   assert.equal(p.requests.filter((r) => r.path.endsWith('/history.php')).length, 2);
   assert.equal(p.sends().length, 0, 'prepare no envía nada');
+  assert.deepEqual(estimates(p.state).at(-1), { action: 'estimate', model: UPGRADE, params: { draft_task_id: 'draft-23' } });
 
   const lite = await p.exec('prepare', UPGRADE, '--draft_task_id', 'draft-25');
   assert.match(lite.stdout, /coste cotizado 764 cr/);
@@ -484,28 +456,6 @@ test('generar a 1080p: el coste sale del listado, se autoriza esa cifra exacta y
   assert.equal(p.sends().length, 1);
 });
 
-test('compatibilidad: los parsers 2.3.7 a 2.3.15 aceptan el catálogo; solo la 2.3.15 ofrece Normal, y ninguna Lite ni 1080p', parity, async () => {
-  const needs = { [LITE]: '2.3.18', [UPGRADE]: '2.3.16' };
-  const raw = fs.readFileSync(catalogPath, 'utf8');
-  for (const version of OLD_RUNTIMES) {
-    const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
-    const parsed = old.validateCatalogShape(JSON.parse(raw));
-    assert.equal(Object.keys(parsed.models).length, Object.keys(catalog.models).length, version);
-    assert.equal(old.catalogCompatible(parsed).ok, true, version);
-    for (const id of [LITE, UPGRADE]) {
-      const usable = old.modelUsable(parsed.models[id]);
-      assert.equal(usable.ok, false, `la CLI ${version} no debe ofrecer ${id}`);
-      assert.ok(usable.reason.includes('Actualiza la skill') && usable.reason.includes(needs[id]), `${version} ${id}: ${usable.reason}`);
-    }
-    assert.equal(old.modelUsable(parsed.models[NORMAL]).ok, version === '2.3.15', `${version} ${NORMAL}`);
-    // Sin --draft nada cambia para esa CLI: `draft` no tiene valor por defecto y no aparece en sus parámetros.
-    const model = { id: NORMAL, ...parsed.models[NORMAL] };
-    const v = old.validateParams(model, { prompt: 'x' });
-    assert.equal(v.ok, true, version);
-    assert.equal('draft' in v.params, false, version);
-  }
-});
-
 test('por qué Lite sube a 2.3.16: el `liteInput` de la 2.3.15 descartaría draft y por qué Normal no lo necesita', parity, () => {
   const bundle = fs.readFileSync(path.join(CANONICAL, 'app/api/v1/skill/releases/2.3.15/scripts/pg.mjs'), 'utf8');
   const lite = /function liteInput\([\s\S]*?\n}\n/.exec(bundle);
@@ -548,7 +498,8 @@ test('extremo a extremo con el PHP real: token, listado, autorización igual a l
     assert.match(prepared.stdout, new RegExp('coste cotizado ' + credits + ' cr'), id);
     const refused = await bank.cliForced('submit', manifestOf(prepared.stdout), '--confirmed');
     assert.notEqual(refused.code, 0, id);
-    assert.match(refused.stderr + refused.stdout, new RegExp('La estimacion de ' + credits + ' creditos supera el maximo autorizado de 1'), id);
+    // Contrato, sección 6: por debajo del importe vigente, 402 `price_changed` con el texto del servidor.
+    assert.match(refused.stderr + refused.stdout, /El precio de tu cuenta ha cambiado desde la cotización\. Prepara de nuevo\. No se ha cobrado nada\./, id);
     assert.equal(bank.reservationFor(manifestOf(prepared.stdout)), null, id);
   }
   // La cifra autorizada es exactamente la que reserva el servidor. Kie está apagado: el envío queda ambiguo y la reserva retenida.

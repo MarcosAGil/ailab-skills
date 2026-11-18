@@ -28,30 +28,29 @@ export function buildPayload(model, params, uploadedByParam) {
     input[k] = spec.type === 'file' ? urls[0] : urls;
   }
   const payload = { model: model.id, input };
-  // Seedance 2.5: la duración automática se pide con duration -1 (como la web). El servidor reserva 30 s en ese caso, que es
-  // lo que presupuesta la CLI; con `auto_duration` suelto reservaba la duración numérica y generaba otra cosa.
+  // Seedance 2.5: la duración automática se pide con duration -1 (como la web). El servidor reserva 30 s en ese caso;
+  // con `auto_duration` suelto reservaba la duración numérica y generaba otra cosa.
   if (model.id === 'seedance-2-5' && input.auto_duration === true) {
     input.duration = -1;
     delete input.auto_duration;
   }
   // Kling O3 Transformación: la duración la marca el vídeo de origen, que mide el servidor, y la web no envía `duration`.
-  // La CLI autoriza la cota de 16 s, que cubre cualquier reserva.
   if (model.id === 'kling-o3' && input.mode === 'transform') delete input.duration;
-  // Motion Control: la duración no viaja al proveedor y tampoco fija el precio: el servidor mide el vídeo, igual que la CLI.
+  // Motion Control: la duración no viaja al proveedor: la salida dura lo que el vídeo, que mide el servidor.
   if (MOTION_CONTROL_IDS.includes(model.id)) delete input.duration;
   return payload;
 }
 
 // Extend de Gemini Omni Flash 1.2: la cotización es la cifra que el servidor da para ese vídeo y esa duración en el
 // listado de vídeos extensibles (`credits_by_duration`), la misma que reserva al enviar.
-async function omni12ExtendQuoteFor(payload, factor = 1) {
+async function omni12ExtendQuoteFor(payload) {
   let cursor = null;
   for (let page = 0; page < OMNI12_MAX_PAGES; page++) {
     const n = await servicePost(OMNI12_VIDEOS_ENDPOINT, omni12VideosRequest(cursor));
     if (!n.ok) return { ok: false, normalized: n };
     const videos = Array.isArray(n.data?.videos) ? n.data.videos : [];
     const found = videos.find((video) => video.task_id === payload.input.task_id);
-    if (found) return omni12ExtendQuote(found, payload.input.duration, Date.now(), factor);
+    if (found) return omni12ExtendQuote(found, payload.input.duration, Date.now());
     if (!n.data?.has_more || !n.data?.next_cursor) break;
     cursor = n.data.next_cursor;
   }
@@ -60,9 +59,9 @@ async function omni12ExtendQuoteFor(payload, factor = 1) {
 
 // Paso a 1080p de un draft: la cotización es el `credits` que el servidor da para ese draft en el listado. No hay endpoint de
 // cotización: la puerta del gateway solo admite model, input, client_request_id y max_credits_authorized.
-// El listado del servidor ya da el precio de la cuenta; el factor solo sirve para comparar con la tarifa local.
-export async function quote(model, payload, intent = {}, context = {}) {
-  if (model.id === OMNI12_EXTEND_ID) return omni12ExtendQuoteFor(payload, context.priceFactor ?? 1);
+// El listado del servidor ya da el precio de la cuenta.
+export async function quote(model, payload) {
+  if (model.id === OMNI12_EXTEND_ID) return omni12ExtendQuoteFor(payload);
   let cursor = null;
   for (let page = 0; page < MAX_DRAFT_PAGES; page++) {
     const n = await servicePost(DRAFTS_ENDPOINT, draftsRequest(cursor));

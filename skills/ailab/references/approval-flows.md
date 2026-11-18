@@ -1,11 +1,9 @@
 # Autorización del encargo, no de cada manifiesto
 
-> Cifras: precio de miembro; el de tu cuenta lo da `prepare`.
-
 Consulta contratos, archivos y saldo sin coste. Antes del primer envío de pago,
 informa brevemente de objetivo, modelos/asistentes, modalidad, referencias,
-parámetros, número de resultados y coste estimado. Distingue gasto estimado de
-reservas temporales. No uses precios de ejemplos como tarifas actuales.
+parámetros, número de resultados y el coste que da `prepare`. Distingue gasto estimado de
+reservas temporales. El precio lo da siempre AILAB para la cuenta: no lo calcules ni lo recuerdes.
 
 ## Ejecutar sin preguntas repetidas
 
@@ -22,7 +20,7 @@ el asistente, resultados extra, otro modelo, otra voz ni regeneraciones cobradas
 
 ## Presupuesto opcional
 
-- **Techo explícito:** si el usuario fija «máximo 200 créditos», o acepta un plan
+- **Techo explícito:** si el usuario fija un máximo de créditos («máximo N créditos»), o acepta un plan
   formulado expresamente como un máximo, respétalo. Cuenta cargos liquidados y
   reservas pendientes. Pide ampliar solo antes de superar ese techo.
 - **Sin techo explícito:** la orden de ejecutar autoriza los costes del alcance
@@ -33,9 +31,9 @@ el asistente, resultados extra, otro modelo, otra voz ni regeneraciones cobradas
   para el mismo encargo. No elimina saldo, integridad, seguridad ni idempotencia.
 
 Ejemplo: el usuario pide el workflow completo y luego dice «perfecto, guarda
-todo ordenado». Ejecuta todas las etapas previstas. Si estimaste 5 créditos para
-una etapa y el precio válido es 11, informa y sigue sin otra pregunta cuando
-no exista techo explícito. Si aceptó expresamente «máximo 227», ese techo sí rige.
+todo ordenado». Ejecuta todas las etapas previstas. Si una etapa resulta
+más cara de lo estimado y el precio es válido, informa y sigue sin otra pregunta cuando
+no exista techo explícito. Si aceptó expresamente un máximo, ese techo sí rige.
 
 ## Manifiestos técnicos
 

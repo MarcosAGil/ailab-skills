@@ -60,22 +60,86 @@ test('SKILL.md conserva las reglas criticas, las rutas portables y la referencia
   assert.equal(skill.includes(LONG_DASH), false);
 });
 
-test('Seed Audio presupuesta la reserva maxima de 100 cr y conserva estimated_duration_seconds', async () => {
-  const { estimateCredits, validateParams, validateCatalogShape } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+// Desde la 2.5.0 el catálogo no lleva tarifas: `info` y `validate` piden el precio a price.php con la sesión de la cuenta.
+// El falso servidor vive en este proceso: la CLI se lanza de forma asíncrona para no bloquearlo.
+function cliAsync(box, args, extra = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [path.join(SKILL, 'scripts', 'ailab.mjs'), ...args], { env: baseEnv(box, extra), cwd: box.home });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('close', (status) => resolve({ status, stdout, stderr }));
+  });
+}
+
+async function priceServer(t, state) {
+  const { handlePrice } = await import('./helpers/price-server.mjs');
+  const server = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    let body = {};
+    try { body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch { body = {}; }
+    if (handlePrice(state, new URL(req.url, 'http://x/').pathname, body, res)) return;
+    state.other = (state.other || 0) + 1;
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end('{"ok":false}');
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  return 'http://127.0.0.1:' + server.address().port + '/';
+}
+
+test('Seed Audio: el catálogo no lleva precio y estimated_duration_seconds viaja a price.php sin cambiar la reserva', async (t) => {
+  const { validateCatalogShape } = await import('../skills/ailab/scripts/lib/catalog.mjs');
   const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(path.join(SKILL, 'catalog', 'catalog.json'), 'utf8')));
   const model = catalog.models['seed-audio'];
-  assert.deepEqual({ ...model.estimate, note: undefined }, { kind: 'flat_credits', credits: 100, approximate: true, note: undefined });
-  assert.equal(model.estimate.note, 'reserva maxima: la duracion la decide el modelo y no se puede fijar. Se cobra la duracion real a 0,625 cr/s (10 s = 7 cr, 1 min = 38 cr) y nunca mas de 100 cr. estimated_duration_seconds no cambia ni la duracion ni la reserva.');
+  assert.equal('estimate' in model, false);
   assert.equal(model.params.estimated_duration_seconds.default, 60);
-  for (const seconds of [1, 5, 60, 160]) {
-    const valid = validateParams(model, { prompt: 'voz cercana', estimated_duration_seconds: seconds });
-    assert.equal(valid.ok, true, valid.errors?.join('\n'));
-    const estimate = estimateCredits(model, { ...valid.params, ...valid.fileParams });
-    assert.equal(estimate.credits, 100, 'la reserva no depende de estimated_duration_seconds');
-    assert.equal(estimate.approximate, true);
+  const state = { prices: { 'seed-audio': { credits: 100, approximate: true, note: 'reserva maxima' } }, priceInfo: { 'seed-audio': ['Precio: reserva maxima de AILAB, se cobra la duracion real.'] } };
+  const base = await priceServer(t, state);
+  const box = sandbox('seed-audio-price');
+  fs.mkdirSync(box.credentials, { recursive: true });
+  fs.writeFileSync(path.join(box.credentials, 'token'), 'ailp_' + 'S'.repeat(48), { mode: 0o600 });
+  const env = { AILAB_BASE_URL: base, AILAB_GENERATION_BASE_URL: base, AILAB_CATALOG_PATH: path.join(SKILL, 'catalog', 'catalog.json'), AILAB_SKIP_NOTICES: '1' };
+  for (const seconds of [1, 60, 160]) {
+    const result = await cliAsync(box, ['validate', 'seed-audio', '--prompt', 'voz cercana', '--estimated_duration_seconds', String(seconds)], env);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /estimacion ~100 cr/);
+    const sent = state.priceRequests.at(-1);
+    assert.equal(sent.action, 'estimate');
+    assert.equal(sent.model, 'seed-audio');
+    assert.equal(sent.params.estimated_duration_seconds, seconds);
   }
-  assert.equal(Math.ceil(10 * 0.625), 7);
-  assert.equal(Math.ceil(60 * 0.625), 38);
+  const info = await cliAsync(box, ['info', 'seed-audio'], env);
+  assert.equal(info.status, 0, info.stderr);
+  assert.match(info.stdout, /Precio: reserva maxima de AILAB, se cobra la duracion real\./);
+  assert.deepEqual(state.priceRequests.at(-1), { action: 'info', model: 'seed-audio' });
+  assert.equal(state.other || 0, 0, 'validate e info solo llaman a price.php');
+});
+
+test('info y validate sin sesión no llaman a la red; sin price.php, info falla sin enviar nada', async (t) => {
+  const state = { priceDown: true };
+  const base = await priceServer(t, state);
+  const env = { AILAB_BASE_URL: base, AILAB_GENERATION_BASE_URL: base, AILAB_CATALOG_PATH: path.join(SKILL, 'catalog', 'catalog.json'), AILAB_SKIP_NOTICES: '1' };
+  const anonymous = sandbox('price-anonymous');
+  const info = await cliAsync(anonymous, ['info', 'nano-banana-2'], env);
+  assert.equal(info.status, 0, info.stderr);
+  assert.match(info.stdout, /Precio: lo da AILAB con tu sesión/);
+  assert.doesNotMatch(info.stdout, /\d+ cr\b/);
+  const valid = await cliAsync(anonymous, ['validate', 'nano-banana-2', '--prompt', 'x'], env);
+  assert.equal(valid.status, 0, valid.stderr);
+  assert.match(valid.stdout, /el precio lo da `prepare`/);
+  assert.equal((state.priceRequests || []).length, 0);
+  const logged = sandbox('price-down');
+  fs.mkdirSync(logged.credentials, { recursive: true });
+  fs.writeFileSync(path.join(logged.credentials, 'token'), 'ailp_' + 'D'.repeat(48), { mode: 0o600 });
+  const down = await cliAsync(logged, ['info', 'nano-banana-2'], env);
+  assert.equal(down.status, 1);
+  assert.match(down.stdout, /No se ha podido obtener el precio de AILAB\. No se ha enviado nada\./);
+  const downValid = await cliAsync(logged, ['validate', 'nano-banana-2', '--prompt', 'x'], env);
+  assert.equal(downValid.status, 0, downValid.stderr);
+  assert.match(downValid.stdout, /precio no disponible ahora \(No se ha podido obtener el precio de AILAB\. No se ha enviado nada\.\)/);
 });
 
 test('doctor sin token pide login con la ruta real, no llama al servidor y no gasta', async (t) => {

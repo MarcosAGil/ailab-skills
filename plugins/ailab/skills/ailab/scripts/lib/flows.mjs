@@ -10,9 +10,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { CONFIG_DIR, ensureConfigDir } from './config.mjs';
-import { flowsPost, flowsFile, uploadPath, explain } from './http.mjs';
+import { flowsPost, flowsFile, uploadPath, explain, errorCode } from './http.mjs';
 import { inspectFile } from './files.mjs';
 import { resolveOutputDir } from './output.mjs';
+import { checkProject } from './account.mjs';
 
 export const FLOWS = ['guion', 'toma', 'separar', 'aislar', 'voz'];
 const AUDIO_FLOWS = ['separar', 'aislar', 'voz'];
@@ -36,6 +37,15 @@ export function flowsErrorText(n) {
   if (['session_expired', 'rate_limited', 'network', 'timeout'].includes(n.kind)) return explain(n);
   if (n.kind === 'insufficient_balance') return neutral(n.message || 'Saldo insuficiente.') + ' Pide a tu gestor que cargue créditos.';
   return neutral(n.message || 'Error inesperado del servidor.');
+}
+
+// Código de máquina del servidor (`project_required`, `invalid_project`, `client_update_required`, `price_changed`...)
+// para la salida `--json`: quien llama distingue la causa sin leer el texto. Un 426 sin código es `client_update_required`.
+export function serverCode(n) {
+  const code = n && !n.ok ? errorCode(n) : null;
+  if (typeof code === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(code)) return { code };
+  if (n && (n.kind === 'client_update_required' || n.httpStatus === 426)) return { code: 'client_update_required' };
+  return {};
 }
 
 const transient = (n) => ['network', 'timeout', 'server_error', 'invalid_response', 'rate_limited'].includes(n.kind);
@@ -91,7 +101,7 @@ export function statusLines(view) {
 
 export async function fetchFlowsStatus() {
   const r = await flowsPost({ action: 'status' });
-  return r.ok ? { ok: true, view: statusView(r.raw) } : { ok: false, error: flowsErrorText(r), response: r };
+  return r.ok ? { ok: true, view: statusView(r.raw) } : { ok: false, error: flowsErrorText(r), response: r, ...serverCode(r) };
 }
 
 function qcView(value) {
@@ -186,7 +196,7 @@ async function uploadAudio(io, value) {
   if (!ext) io.die('El formato del audio no es compatible. Usa WAV, MP3 o FLAC.');
   io.say('Subiendo ' + inspected.path + '…');
   const up = await uploadPath(inspected.path, 'audio.' + ext, inspected.mime, inspected.sha256);
-  if (!up.ok) io.die('No se pudo subir el audio: ' + flowsErrorText(up) + ' No se ha gastado nada.');
+  if (!up.ok) io.die('No se pudo subir el audio: ' + flowsErrorText(up) + ' No se ha gastado nada.', serverCode(up));
   const url = up.data && up.data.url;
   if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) io.die('La subida no devolvió una dirección válida. No se ha gastado nada.');
   return url;
@@ -287,10 +297,10 @@ async function waitJob(io, jobId, flow, { outputDir, wait = true, cliCommand }) 
   for (;;) {
     const r = await flowsPost({ action: 'job', job_id: jobId });
     if (!r.ok) {
-      if (!transient(r)) io.die(flowsErrorText(r), { job_id: jobId });
+      if (!transient(r)) io.die(flowsErrorText(r), { job_id: jobId, ...serverCode(r) });
       streak++;
       if (streak >= TRANSIENT_MAX_STREAK || !wait) {
-        io.die('No se pudo consultar el trabajo (' + flowsErrorText(r) + '). Sigue en marcha y no se ha repetido nada. Recupéralo con ' + cliCommand('flow job ' + jobId + ' --output <carpeta>') + '.', { job_id: jobId, state: 'desconocido' });
+        io.die('No se pudo consultar el trabajo (' + flowsErrorText(r) + '). Sigue en marcha y no se ha repetido nada. Recupéralo con ' + cliCommand('flow job ' + jobId + ' --output <carpeta>') + '.', { job_id: jobId, state: 'desconocido', ...serverCode(r) });
       }
       const asked = r.kind === 'rate_limited' && Number.isFinite(r.retryAfterSeconds) ? r.retryAfterSeconds * 1000 : 0;
       await sleep(Math.min(TRANSIENT_MAX_WAIT_MS, Math.max(asked, POLL_MS * 2 ** streak)));
@@ -317,31 +327,54 @@ async function waitJob(io, jobId, flow, { outputDir, wait = true, cliCommand }) 
 
 async function cmdStatus(io) {
   const status = await fetchFlowsStatus();
-  if (!status.ok) io.die(status.error);
+  if (!status.ok) io.die(status.error, status.code ? { code: status.code } : {});
   for (const line of statusLines(status.view)) io.say(line);
   io.done(status.view);
 }
 
+const OPEN_OPTIONS = ['case', 'proyecto', 'titulo', 'request-id', 'json'];
+const TITLE_MAX = 120;
+
 async function cmdOpen(io, opts) {
+  // Una opción desconocida se rechaza: la 2.4.0 ignoraba `--proyecto` en silencio y abría el vídeo sin proyecto.
+  const unknown = Object.keys(opts).filter((key) => !OPEN_OPTIONS.includes(key));
+  if (unknown.length) {
+    io.die('Opción no válida en flow open: ' + unknown.map((key) => '--' + key).join(', ') + '. Admite --case, --proyecto, --titulo, --request-id y --json. No se ha abierto nada.', { code: 'unknown_option' });
+  }
   const kase = one(io, opts, 'case');
   if (!kase || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(kase)) io.die('Falta --case con el caso del vídeo (por ejemplo servicio-empresas).');
+  // Proyecto del vídeo (por ejemplo 06_super-cremita): el mismo formato que --proyecto en prepare, nunca el uso general.
+  let project = null;
+  if (opts.proyecto !== undefined) {
+    const checked = checkProject(opts.proyecto, { general: false });
+    if (!checked.ok) io.die(checked.error);
+    project = checked.project;
+  }
+  // Título del vídeo (1 a 120 caracteres), por ejemplo el del guion del kit.
+  let title = null;
+  if (opts.titulo !== undefined) {
+    const value = one(io, opts, 'titulo');
+    title = String(value).replace(/\s+/g, ' ').trim();
+    if (!title || [...title].length > TITLE_MAX || /[\u0000-\u001f\u007f]/.test(title)) io.die('--titulo admite de 1 a ' + TITLE_MAX + ' caracteres. No se ha abierto nada.');
+  }
   let requestId = one(io, opts, 'request-id');
   if (requestId !== undefined && !UUID_RE.test(requestId)) io.die('--request-id debe ser un UUID.');
   requestId = (requestId || crypto.randomUUID()).toLowerCase();
   let r;
   for (let i = 0; i < 3; i++) {
-    r = await flowsPost({ action: 'video_open', case: kase, client_request_id: requestId });
+    r = await flowsPost({ action: 'video_open', case: kase, ...(project ? { project } : {}), ...(title ? { title } : {}), client_request_id: requestId });
     if (r.ok || !transient(r)) break;
     await sleep(POLL_MS * (i + 1));
   }
   if (!r.ok) {
-    const hint = transient(r) ? ' Repite con --request-id ' + requestId + ' para no gastar otro número.' : '';
-    io.die(flowsErrorText(r) + hint, { request_id: requestId });
+    const hint = transient(r) ? ' Repite con --request-id ' + requestId + (project || title ? ' y las mismas opciones' : '') + ' para no gastar otro número.' : '';
+    io.die(flowsErrorText(r) + hint, { request_id: requestId, ...serverCode(r) });
   }
-  const view = pick(r.raw, ['code', 'case', 'status', 'opened_at', 'references']);
+  const view = pick(r.raw, ['code', 'case', 'status', 'opened_at', 'references', 'project', 'project_key', 'title']);
   if (!CODE_RE.test(String(view.code || ''))) io.die('AILAB no ha devuelto un código de vídeo válido.');
-  io.say('Vídeo abierto: ' + view.code + ' · caso ' + view.case);
+  io.say('Vídeo abierto: ' + view.code + ' · caso ' + view.case + (view.project || project ? ' · proyecto ' + (view.project || project) : ''));
   io.say('Código: ' + view.code);
+  if (typeof view.title === 'string' && view.title) io.say('Título: ' + neutral(view.title));
   if (typeof view.references === 'number') io.say('Fotos de referencia del caso: ' + view.references);
   io.done({ ...view, request_id: requestId });
 }
@@ -401,7 +434,7 @@ async function cmdPrepare(io, pos, opts, cliCommand) {
     body.input.audio = await uploadAudio(io, audio);
   }
   const r = await flowsPost(body);
-  if (!r.ok) io.die(flowsErrorText(r));
+  if (!r.ok) io.die(flowsErrorText(r), serverCode(r));
   const raw = r.raw;
   if (!QUOTE_RE.test(String(raw.quote_id || ''))) io.die('AILAB no ha devuelto una cotización válida. No se ha gastado nada.');
   const record = {
@@ -469,9 +502,9 @@ async function cmdSubmit(io, pos, opts, cliCommand) {
     if (!r.ok) {
       if (transient(r)) {
         io.die('No se ha podido confirmar si el envío llegó (' + flowsErrorText(r) + '). No se ha repetido con otra petición. Vuelve a ejecutar '
-          + cliCommand('flow submit ' + record.quote_id + ' --confirmed') + ': reutiliza la misma petición y no cobra dos veces.', { quote_id: record.quote_id });
+          + cliCommand('flow submit ' + record.quote_id + ' --confirmed') + ': reutiliza la misma petición y no cobra dos veces.', { quote_id: record.quote_id, ...serverCode(r) });
       }
-      io.die(flowsErrorText(r), { quote_id: record.quote_id });
+      io.die(flowsErrorText(r), { quote_id: record.quote_id, ...serverCode(r) });
     }
     if (!/^[a-f0-9]{32}$/.test(String(r.raw.job_id || ''))) io.die('AILAB no ha devuelto un trabajo válido. No lo repitas; consulta a tu gestor.', { quote_id: record.quote_id });
     record.job_id = r.raw.job_id;
@@ -506,7 +539,7 @@ async function cmdClose(io, opts) {
   }
   if (!used.length) io.die('Indica las tomas usadas con --used toma:versión (una por toma).');
   const r = await flowsPost({ action: 'video_close', code, final_seconds: Math.round(final * 1000) / 1000, used_takes: used });
-  if (!r.ok) io.die(flowsErrorText(r));
+  if (!r.ok) io.die(flowsErrorText(r), serverCode(r));
   const video = pick(r.raw.video || {}, VIDEO_KEYS);
   io.say('Vídeo ' + video.code + ' ' + video.status + ' · ' + video.final_seconds + ' s finales · ' + video.gen_seconds + ' s generados');
   io.say('Tomas: ' + video.takes_generated + ' generadas · ' + video.takes_needed + ' necesarias · ' + video.extra_takes + ' de más');
@@ -526,4 +559,4 @@ export async function runFlowCommand(pos, opts, deps) {
   io.die('Subcomando de flow no válido. Usa: status · open · prepare · submit · job · close.');
 }
 
-export const FLOW_HELP = 'Flujos de cliente: flow status · flow open --case <caso> · flow prepare <guion|toma|separar|aislar|voz> --code <código> [--take N] [--text|--prompt|--duration|--idea|--texto|--audio|--version|--attempt|--dato clave=valor] · flow submit <cotización> --confirmed [--output dir] · flow job <trabajo> [--wait] [--output dir] · flow close --code <código> --final-seconds S --used toma:versión… (todos admiten --json)';
+export const FLOW_HELP = 'Flujos de cliente: flow status · flow open --case <caso> [--proyecto NN_slug] [--titulo texto] · flow prepare <guion|toma|separar|aislar|voz> --code <código> [--take N] [--text|--prompt|--duration|--idea|--texto|--audio|--version|--attempt|--dato clave=valor] · flow submit <cotización> --confirmed [--output dir] · flow job <trabajo> [--wait] [--output dir] · flow close --code <código> --final-seconds S --used toma:versión… (todos admiten --json)';

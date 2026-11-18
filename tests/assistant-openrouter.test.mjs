@@ -13,13 +13,18 @@ const instructions = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
 const approval = fs.readFileSync(path.join(skillRoot, 'references', 'approval-flows.md'), 'utf8');
 
 test('la skill fija OpenRouter multimodal y no permite enrutar por el modelo solicitado', () => {
-  assert.match(assistantsLib, /schema_version !== 2/);
+  // assistants-v3.json (schema 3, sin precios) o el schema 2 anterior; los importes los da price.php.
+  assert.match(assistantsLib, /SCHEMA_VERSIONS = \[2, 3\]/);
+  assert.match(assistantsLib, /SCHEMA_VERSIONS\.includes\(value\.schema_version\)/);
+  assert.doesNotMatch(assistantsLib, /estimated_credits'\)|max_authorized_credits > /);
   assert.match(assistantsLib, /billing\.type !== 'actual_usage'/);
   assert.match(runtime, /resolveAssistantModel\(catalog, catalog\.default_model\)/);
   assert.match(runtime, /--model se acepta por compatibilidad/);
   assert.match(runtime, /Modelo fijo:/);
   assert.match(runtime, /--image\|--audio\|--video ruta/);
-  assert.match(instructions, /Todos usan siempre Gemini 3\.5 Flash Lite multimodal mediante OpenRouter Priority/);
+  // Desde la 2.5.0 los textos que se instalan no nombran la plataforma intermedia (contrato, sección 2).
+  assert.match(instructions, /Todos usan siempre Gemini 3\.5 Flash Lite multimodal\./);
+  assert.doesNotMatch(instructions, /OpenRouter/);
   assert.doesNotMatch(instructions, /--model claude/);
 });
 

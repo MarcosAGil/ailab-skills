@@ -63,23 +63,29 @@ test('un sobre doble de fallo conserva el cuerpo y no se marca como exito', () =
 
 test('el adapter de Higgsfield cotiza con el sobre doble real', async () => {
   const originalFetch = globalThis.fetch;
-  let calls = 0;
-  globalThis.fetch = async () => {
-    calls += 1;
+  const bodies = [];
+  globalThis.fetch = async (url, init = {}) => {
+    bodies.push(JSON.parse(String(init.body || '{}')));
     return Response.json(REAL_ENVELOPE);
   };
   try {
     const adapter = await import('../skills/ailab/scripts/adapters/higgsfield-v1.mjs');
-    const model = { id: 'soul-2', server_model: 'higgsfield-soul-2', params: { prompt: {} }, estimate: { max_credits: 1000 } };
+    // Desde la 2.5.0 el catálogo no lleva tope: el techo de la cotización lo da price.php (`max_credits`) y llega en el intent.
+    const model = { id: 'soul-2', server_model: 'higgsfield-soul-2', params: { prompt: {} } };
     const payload = adapter.buildPayload(model, { prompt: 'retrato' }, {});
-    const quoted = await adapter.quote(model, payload, { client_request_id: 'r1' });
-    assert.equal(calls, 1);
+    const quoted = await adapter.quote(model, payload, { client_request_id: 'r1', max_credits_authorized: 1000 });
+    assert.equal(bodies.length, 1);
+    assert.equal(bodies[0].max_credits_authorized, 1000);
     assert.equal(quoted.ok, true);
     assert.equal(quoted.quote.quote_id, QUOTE_ID);
     assert.equal(quoted.quote.estimated_credits, 50, 'Antes del arreglo el adapter no encontraba credits en el sobre doble.');
-    assert.equal(quoted.quote.max_credits_authorized, 1000, 'Sin maximo cotizado el tope de seguridad acota la cotizacion.');
+    assert.equal(quoted.quote.max_credits_authorized, 1000, 'Sin maximo cotizado el techo de la cuenta acota la cotizacion.');
     assert.equal(quoted.quote.hard_cap_credits, 1000);
     assert.equal(quoted.quote.expires_at, EXPIRES_AT);
+    // Sin techo de AILAB no se cotiza: rechazo local, sin llamar al servidor.
+    const blind = await adapter.quote(model, payload, { client_request_id: 'r2' });
+    assert.equal(blind.ok, false);
+    assert.equal(bodies.length, 1);
   } finally { globalThis.fetch = originalFetch; }
 });
 

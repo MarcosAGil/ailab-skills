@@ -1,7 +1,7 @@
-# Flujos de cliente (skill 2.4.0)
+# Flujos de cliente
 
 Una cuenta de cliente de AILAB usa sus flujos de producción y la subida de archivos; solo
-usa el Playground si AILAB le activa el plugin, y entonces con su precio de cuenta y, si su
+usa el Playground si AILAB le activa el plugin, y entonces con el precio que AILAB da a su cuenta y, si su
 cuenta lo exige, `--proyecto` en cada generación. El gestor crea el token; el usuario lo pega en `login --cliente`, en su propia
 terminal. El servidor decide modelo, perfil y precio de cada paso; la CLI nunca los
 muestra.
@@ -11,13 +11,13 @@ muestra.
 | Comando | Qué hace | Gasta |
 |---|---|---|
 | `flow status` | Saldo, límite, gasto y vídeos del mes, y si la cuenta está en pausa | No |
-| `flow open --case <caso> [--request-id <uuid>]` | Abre un vídeo y devuelve su código (`NOV26-07`) | No |
+| `flow open --case <caso> [--proyecto NN_slug] [--titulo texto] [--request-id <uuid>]` | Abre un vídeo en su proyecto y devuelve su código (`NOV26-07`) | No |
 | `flow prepare <flujo> --code <código> [--take N] …` | Cotiza un paso y guarda la cotización 15 min | No |
 | `flow submit <cotización> --confirmed [--output carpeta]` | Ejecuta el paso, espera y descarga | Sí |
 | `flow job <trabajo> [--wait] [--output carpeta]` | Consulta o recupera un paso sin repetirlo | No |
 | `flow close --code <código> --final-seconds S --used toma:versión…` | Cierra el vídeo con la duración final y las tomas usadas | No |
 
-Todos admiten `--json` (una línea JSON al final, con `ok`).
+Todos admiten `--json` (una línea JSON al final, con `ok`; en un error, `error` y el `code` de AILAB).
 
 ## Datos de cada flujo
 

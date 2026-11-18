@@ -21,7 +21,7 @@ process.env.AILAB_CREDENTIALS_DIR = path.join(temporary, 'credentials');
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
 const catalogPath = path.join(root, 'skills/ailab/catalog/catalog.json');
-const { validateCatalogShape, validateParams, estimateCredits, modelUsable, resolveModel, requiresServerQuote } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { validateCatalogShape, validateParams, modelUsable, resolveModel } = await import('../skills/ailab/scripts/lib/catalog.mjs');
 const higgsfield = await import('../skills/ailab/scripts/adapters/higgsfield-v1.mjs');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
 const execute = promisify(execFile);
@@ -49,12 +49,11 @@ test('los dos modelos nuevos están activos desde la CLI 2.3.13, con cotización
     assert.equal(model.enabled, true, 'el servidor de la skill ya los admite');
     assert.equal(model.status, 'active');
     assert.equal(model.min_cli_version, '2.3.13');
-    assert.equal(model.estimate.kind, 'higgsfield_quote');
-    assert.equal(requiresServerQuote(model), true);
+    // Sin tarifa local: precio, cotización y techo los da AILAB (price.php y el endpoint de Higgsfield).
+    assert.equal(model.estimate, undefined);
     assert.equal(modelUsable(model).ok, true);
-    assert.equal(estimateCredits(model, {}).server_quote, true, 'sin tarifa local inventada: la cotiza el servidor');
     assert.equal(higgsfield.serverModelId(model), model.id);
-    assert.equal(higgsfield.hardCreditCap(model), 1000);
+    assert.equal(higgsfield.hardCreditCap, undefined, 'el techo de cada modelo lo da AILAB, no la CLI');
     const text = JSON.stringify(model);
     assert.equal(/pendiente de activaci/i.test(text), false, 'la descripción ya no habla de una activación pendiente');
     for (const forbidden of ['higgsfield-ai/', 'marketing-studio/image', 'provider_contract', 'api_key', 'HIGGSFIELD']) assert.equal(text.includes(forbidden), false, forbidden);
@@ -79,7 +78,8 @@ test('el catálogo solo activa un modelo Higgsfield cuando el servidor de la ski
 test('las CLI anteriores (2.3.7 a 2.3.12) aceptan el catálogo con los dos modelos activos y no los ofrecen: piden la 2.3.13', { skip: !CANONICAL && 'sin AILAB_CANONICAL_REPO' }, async () => {
   for (const version of ['2.3.7', '2.3.8', '2.3.9', '2.3.10', '2.3.11', '2.3.12']) {
     const old = await import(pathToFileURL(path.join(CANONICAL, 'app/api/v1/skill/releases', version, 'scripts/lib/catalog.mjs')).href);
-    const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
+    // Las CLI anteriores a la 2.5.0 leen catalog-v2.json (con tarifas); el catálogo sin `estimate` es solo para la 2.5.0.
+    const parsed = old.validateCatalogShape(JSON.parse(fs.readFileSync(path.join(CANONICAL, 'app/api/v1/skill/catalog-v2.json'), 'utf8')));
     for (const id of ['higgsfield-soul-cinema', 'higgsfield-marketing-studio-image']) {
       const usable = old.modelUsable(parsed.models[id]);
       assert.equal(usable.ok, false, `${version} ${id}`);
@@ -216,8 +216,6 @@ test('paridad con el PHP real: configuración de acceso de Higgsfield (interrupt
   assert.equal(config.lightState, 'open');
   assert.equal(config.cap, 1000);
   assert.equal(config.genjutsu, 2100);
-  assert.equal(higgsfield.hardCreditCap({ id: 'genjutsu', ...catalog.models.genjutsu }), 2100);
-  assert.equal(higgsfield.hardCreditCap({ id: 'soul-2', ...catalog.models['soul-2'] }), 1000);
   // Ambos endpoints piden el scope `generate`, que concede un token de dispositivo.
   assert.match(sourceOf('app/api/skill/higgsfield.php'), /wallet_require_scope\('generate'\)/);
   assert.match(sourceOf('app/api/wallet/higgsfield-gateway.php'), /wallet_require_scope\('generate'\)/);
@@ -234,7 +232,7 @@ test('models lista los dos modelos como disponibles y validate no gasta; el id d
   assert.match(models.stdout, /^ {2}higgsfield-marketing-studio-image · Higgsfield Marketing Studio Image \[image\] · CARO$/m);
   assert.doesNotMatch(models.stdout, /higgsfield-(soul-cinema|marketing-studio-image) .*NO DISPONIBLE/);
   const validated = await exec('validate', 'higgsfield-soul-cinema', '--prompt', 'x', '--batch_size', '4');
-  assert.match(validated.stdout, /el coste lo cotiza el servidor/);
+  assert.match(validated.stdout, /parametros validos · el precio lo da `prepare` · sin gasto/);
   const info = await exec('info', 'higgsfield-marketing-studio-image');
   assert.match(info.stdout, /Higgsfield Marketing Studio Image/);
   assert.match(info.stdout, /preset_id/);

@@ -1,6 +1,6 @@
 # Voz individual con v4
 
-> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+> El precio lo da siempre AILAB para tu cuenta: `prepare` cotiza cada solicitud.
 
 El runtime 2.3.8 incorpora biblioteca y voces privadas propias a v4. La disponibilidad depende del catálogo
 activo y de las puertas del servidor. No fuerces `--version v4` si `info eleven-tts`
@@ -16,15 +16,14 @@ Estabilidad y similitud aceptan valores de 0 a 1. Omite estilo y velocidad;
 el runtime rechaza su uso explícito y elimina esos valores predeterminados para v4.
 No sustituye la versión ni la voz si el proveedor las rechaza.
 
-El precio se calcula por caracteres de entrada y versión, con redondeo del total y
-mínimo de un crédito de AILAB. La promoción de lanzamiento terminó el 11 de octubre de
-2026: rige la tarifa ordinaria (16,32 cr por 1.000 caracteres en v4). Nunca traduzcas
+El precio depende de los caracteres de entrada y la versión; AILAB lo calcula con el
+precio de la cuenta y redondea el total. Nunca traduzcas
 `character-cost` a caracteres o USD: es consumo de cuota del proveedor, separado del
 precio de AILAB.
 
 `prepare` obtiene una cotización del servidor ligada a la cuenta, voz, texto y
 ajustes, válida durante diez minutos. No genera audio ni reserva dinero. El
-catálogo local solo orienta: el máximo del manifiesto es el coste cotizado.
+máximo del manifiesto es el coste cotizado.
 El servidor vuelve a comprobar la tarifa y la
 voz antes de reservar. Un intento enviado conserva su UUID. Si falta el audio, se
 consulta la misma tarea y el historial del proveedor, respetando pausas y backoff; no se genera otra pieza.

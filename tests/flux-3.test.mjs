@@ -18,30 +18,18 @@ process.env.AILAB_BASE_URL = 'https://ailendra.invalid/ailab/';
 process.env.AILAB_GENERATION_BASE_URL = process.env.AILAB_BASE_URL;
 process.env.AILAB_ALLOW_COOKIE_AUTH = '0';
 test.after(() => fs.rmSync(isolated, { recursive: true, force: true }));
-const { estimateCredits, validateCatalogShape, validateParams } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { validateCatalogShape, validateParams } = await import('../skills/ailab/scripts/lib/catalog.mjs');
+const { handlePrice, estimates } = await import('./helpers/price-server.mjs');
 const { buildPayload, check } = await import('../skills/ailab/scripts/adapters/labs-queue-v1.mjs');
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const catalogPath = path.join(root, 'skills/ailab/catalog/catalog.json');
 const catalog = validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
 const model = catalog.models['flux-3'];
-// La promoción terminó el 08/10/2026 y el catálogo publicado ya solo lleva la tarifa ordinaria. El motor de promociones
-// sigue cubierto con el bloque que se publicó entonces.
-const withPromo = structuredClone(model);
-withPromo.estimate.promo = {
-  label: 'Flux 3 promocional hasta el 8 de octubre; corte UTC conservador de AILAB.',
-  until: '2026-10-08T00:00:00Z',
-  credits_by_value: { '768sq': 5, '1k': 5, '2k': 20, '4k': 79 },
-};
-const verifiedCredits = {
-  '768sq': { promotional: 5, ordinary: 10 },
-  '1k': { promotional: 5, ordinary: 10 },
-  '2k': { promotional: 20, ordinary: 40 },
-  '4k': { promotional: 79, ordinary: 157 },
-};
+// Desde la 2.5.0 el catálogo no lleva tarifas: el precio de cada resolución lo da AILAB (price.php).
+const verifiedResolutions = ['768sq', '1k', '2k', '4k'];
 const documentedResolutions = ['512sq', '768sq', '1k', '2k', '4k'];
-const verifiedResolutions = Object.keys(verifiedCredits);
-const unavailableResolutions = documentedResolutions.filter(resolution => !verifiedCredits[resolution]);
+const unavailableResolutions = documentedResolutions.filter(resolution => !verifiedResolutions.includes(resolution));
 const execute = promisify(execFile);
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');
 
@@ -99,31 +87,14 @@ test('Flux 3: default de skill, catálogo canónico y adaptador web coinciden', 
   assert.equal(validated.params.aspect_ratio, canonical.params.aspect_ratio.default);
   assert.equal(adapter.normalizeOptions({ mode: 't2i' }).aspectRatio, canonical.params.aspect_ratio.default);
   assert.equal(adapter.normalizeOptions({ mode: 'edit' }).aspectRatio, 'auto');
-  const boundary = Date.parse(withPromo.estimate.promo.until);
   assert.deepEqual(model.params.resolution.values, canonical.params.resolution.values);
   assert.equal(model.params.resolution.help, canonical.params.resolution.help);
-  assert.equal(model.estimate.promo, undefined, 'el catálogo publicado ya no lleva la promoción terminada');
-  assert.ok(canonical.estimate.note.startsWith(model.estimate.note), 'la nota de la skill es el inicio de la nota de la web, sin la promoción');
-  for (const resolution of verifiedResolutions) for (const mode of ['t2i', 'edit']) for (const now of [boundary - 1, boundary, boundary + 1]) {
-    assert.equal(estimateCredits(withPromo, { mode, resolution }, now).credits, adapter.estimateCredits({ mode, resolution }, mode === 'edit' ? 2 : 0, now), mode + ':' + resolution + ':' + now);
-    if (now >= boundary) assert.equal(estimateCredits(model, { mode, resolution }, now).credits, adapter.estimateCredits({ mode, resolution }, mode === 'edit' ? 2 : 0, now), 'publicado: ' + mode + ':' + resolution + ':' + now);
-  }
+  assert.equal(model.estimate, undefined, 'el catálogo de la skill no lleva tarifas');
 });
 
-test('Flux 3 cotiza cada resolución verificada antes y después del corte promocional', () => {
-  const before = Date.parse('2026-10-07T23:59:59.999Z');
-  const boundary = Date.parse('2026-10-08T00:00:00Z');
-  for (const [resolution, prices] of Object.entries(verifiedCredits)) for (const mode of ['t2i', 'edit']) {
-    assert.equal(estimateCredits(withPromo, { mode, resolution }, before).credits, prices.promotional);
-    assert.equal(estimateCredits(withPromo, { mode, resolution }, boundary).credits, prices.ordinary);
-    assert.equal(estimateCredits(withPromo, { mode, resolution }, boundary + 1).credits, prices.ordinary);
-    // El catálogo publicado cobra la tarifa ordinaria a cualquier fecha.
-    for (const now of [before, boundary, boundary + 1]) assert.equal(estimateCredits(model, { mode, resolution }, now).credits, prices.ordinary);
-  }
-  assert.deepEqual(Object.keys(model.estimate.credits_by_value).sort(), verifiedResolutions.slice().sort());
-  assert.deepEqual(Object.keys(withPromo.estimate.promo.credits_by_value).sort(), verifiedResolutions.slice().sort());
-  for (const resolution of [...unavailableResolutions, 'unknown']) assert.equal(estimateCredits(model, { resolution }, before).credits, null);
-  assert.equal(model.estimate.approximate, false);
+test('Flux 3 no lleva tarifas en el catálogo de la skill', () => {
+  assert.equal(model.estimate, undefined);
+  assert.doesNotMatch(JSON.stringify(model), /\d\s?cr\b|credits_by_value/);
 });
 
 test('Flux 3 valida modalidades, prompt y límites de referencias antes de subir', t => {
@@ -261,7 +232,7 @@ test('Ideogram conserva el recibo cuando falta una descarga del lote', async t =
   assert.equal(JSON.parse(fs.readFileSync(h.receiptPath)).completed_at, null);
 });
 
-async function prepareFixture(t) {
+async function prepareFixture(t, prices = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-image-plan-'));
   const config = path.join(dir, 'config');
   const credentials = path.join(dir, 'credentials');
@@ -270,11 +241,13 @@ async function prepareFixture(t) {
   fs.writeFileSync(path.join(credentials, 'token'), 'ailp_' + 'T'.repeat(48));
   fs.writeFileSync(localCatalog, JSON.stringify(catalog));
   const calls = [];
+  const state = { prices };
   const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks)) : {};
     calls.push({ path: req.url, action: body.action });
+    if (handlePrice(state, req.url, body, res)) return;
     if (req.url === '/api/wallet/api.php' && body.action === 'me') {
       res.setHeader('Content-Type', 'application/json');
       return res.end(JSON.stringify({ ok: true, balance: 10000, user: { tier: 'hub' } }));
@@ -290,12 +263,13 @@ async function prepareFixture(t) {
       return { ...result, code: 0 };
     } catch (error) { return error; }
   };
-  return { config, localCatalog, calls, run };
+  return { config, localCatalog, calls, run, state };
 }
 
 for (const modelId of ['flux-3', 'ideogram-v45']) {
   test(modelId + ': prepare congela el coste y submit exige autorización sin tocar el proveedor', async t => {
-    const h = await prepareFixture(t);
+    const expected = modelId === 'ideogram-v45' ? 352 : 10;
+    const h = await prepareFixture(t, { [modelId]: expected });
     const args = ['prepare', modelId, '--prompt', 'One image'];
     if (modelId === 'ideogram-v45') args.push('--quality', 'high', '--num_images', '8');
     const planned = await h.run(args);
@@ -303,7 +277,6 @@ for (const modelId of ['flux-3', 'ideogram-v45']) {
     const manifestId = planned.stdout.match(/Manifiesto: ([a-f0-9-]+)/)?.[1];
     assert.ok(manifestId);
     const manifest = JSON.parse(fs.readFileSync(path.join(h.config, 'manifests', manifestId + '.json')));
-    const expected = modelId === 'ideogram-v45' ? 352 : estimateCredits(model, { resolution: '1k' }).credits;
     assert.equal(manifest.estimated_credits, expected);
     assert.equal(manifest.max_credits_authorized, expected);
     const denied = await h.run(['submit', manifestId]);
@@ -313,25 +286,29 @@ for (const modelId of ['flux-3', 'ideogram-v45']) {
     assert.notEqual(overCeiling.code, 0);
     assert.match(overCeiling.stderr, /supera el máximo/);
     const changed = JSON.parse(fs.readFileSync(h.localCatalog));
-    changed.models[modelId].estimate.note += ' New contract';
+    changed.models[modelId].params.prompt.help += ' New contract';
     fs.writeFileSync(h.localCatalog, JSON.stringify(changed));
     const stale = await h.run(['submit', manifestId, '--confirmed']);
     assert.notEqual(stale.code, 0);
-    assert.match(stale.stderr, /contrato o el precio/);
-    assert.equal(h.calls.filter(call => call.action !== 'me').length, 0);
+    assert.match(stale.stderr, /contrato de este modelo cambio/);
+    // Solo `me` y price.php: ni subidas ni envíos al proveedor. submit nunca vuelve a pedir el precio.
+    assert.equal(h.calls.filter(call => call.action !== 'me' && !call.path.endsWith('price.php')).length, 0);
+    assert.equal(estimates(h.state).length, 1);
+    assert.equal(estimates(h.state)[0].model, modelId);
   });
 }
 
 for (const modelId of ['flux-3', 'ideogram-v45']) {
   test(modelId + ': prepare y validate de edición conservan referencias ordenadas sin subirlas', async t => {
-    const h = await prepareFixture(t);
+    const h = await prepareFixture(t, { [modelId]: modelId === 'ideogram-v45' ? 13 : 10 });
     const images = [reference(t, 256, 256), reference(t, 512, 256)];
     const options = ['--mode', 'edit', '--prompt', 'Edit image 1 using image 2', ...images.flatMap(file => ['--image_urls', file])];
     if (modelId === 'flux-3') options.push('--aspect_ratio', 'auto');
     else options.push('--image_size', 'auto', '--edit_precision', 'high', '--quality', 'very_low', '--num_images', '8');
     const validated = await h.run(['validate', modelId, ...options]);
     assert.equal(validated.code, 0, validated.stdout + validated.stderr);
-    assert.equal(h.calls.length, 0, 'validate no consulta cuenta ni proveedor');
+    // validate solo pide el precio orientativo a AILAB: ni cuenta, ni subidas, ni proveedor.
+    assert.deepEqual(h.calls.map(call => call.path), ['/api/v1/skill/price.php'], 'validate no consulta cuenta ni proveedor');
     const planned = await h.run(['prepare', modelId, ...options]);
     assert.equal(planned.code, 0, planned.stdout + planned.stderr);
     const manifestId = planned.stdout.match(/Manifiesto: ([a-f0-9-]+)/)?.[1];
@@ -339,15 +316,20 @@ for (const modelId of ['flux-3', 'ideogram-v45']) {
     assert.equal(manifest.params.mode, 'edit');
     assert.deepEqual(manifest.files.map(file => file.path), images.map(file => fs.realpathSync(file)));
     assert.deepEqual(manifest.files.map(file => file.param), ['image_urls', 'image_urls']);
-    assert.equal(manifest.estimated_credits, modelId === 'ideogram-v45' ? 13 : estimateCredits(model, { resolution: '1k' }).credits);
-    assert.equal(h.calls.filter(call => call.action !== 'me').length, 0, 'prepare no sube ni genera');
+    assert.equal(manifest.estimated_credits, modelId === 'ideogram-v45' ? 13 : 10);
+    assert.equal(h.calls.filter(call => call.action !== 'me' && !call.path.endsWith('price.php')).length, 0, 'prepare no sube ni genera');
+    // price.php recibe las medidas de cada referencia, en orden y nunca la ruta local.
+    const sent = estimates(h.state).at(-1);
+    assert.equal(sent.model, modelId);
+    assert.deepEqual(sent.params.image_urls.map(item => [item.ok, item.class, item.width, item.height]), [[true, 'image', 256, 256], [true, 'image', 512, 256]]);
+    assert.doesNotMatch(JSON.stringify(sent), new RegExp(path.basename(path.dirname(images[0]))));
   });
 }
 
 test('Ideogram aplica el techo explícito al coste agregado de prepare', async t => {
-  const h = await prepareFixture(t);
+  const h = await prepareFixture(t, { 'ideogram-v45': 352 });
   const denied = await h.run(['prepare', 'ideogram-v45', '--prompt', 'Eight edits', '--quality', 'high', '--num_images', '8', '--max-credits', '351']);
   assert.notEqual(denied.code, 0);
   assert.match(denied.stderr, /352 cr.*351/);
-  assert.equal(h.calls.length, 0, 'Rechaza antes de consultar cuenta o proveedor');
+  assert.equal(h.calls.filter(call => call.action !== 'me' && !call.path.endsWith('price.php')).length, 0, 'Rechaza antes de subir o enviar');
 });

@@ -1,30 +1,26 @@
-// Catalogo publico + validacion de parametros + estimacion en creditos.
-// El catalogo solo SELECCIONA drivers de la lista blanca local (plan v2.1 §5).
+// Catalogo publico + validacion de parametros. Desde la 2.5.0 no lleva precios: el importe lo da siempre el servidor
+// (price.mjs). El catalogo solo SELECCIONA drivers de la lista blanca local (plan v2.1 §5).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { CATALOG_PATH, CATALOG_URL, CLI_VERSION, CONFIG_DIR, SERVER_CONTRACT_VERSION, ensureConfigDir } from './config.mjs';
 import { inspectPricingMetadata } from './files.mjs';
-import { WAN3_ID, wan3Estimate, wan3Problems } from './wan3.mjs';
-import { KLING4_ID, kling4Estimate, kling4Problems } from './kling4.mjs';
-import { LITE_ID, liteEstimate, liteProblems } from './seedance-lite.mjs';
-import { LIGHT_ID, lightEstimate, lightProblems } from './genjutsu-light.mjs';
-import { SEEDANCE_IDS, seedanceEstimate, seedanceProblems } from './seedance.mjs';
-import { MOTION_CONTROL_IDS, motionEstimate } from './motion-control.mjs';
+import { WAN3_ID, wan3Problems } from './wan3.mjs';
+import { KLING4_ID, kling4Problems } from './kling4.mjs';
+import { LITE_ID, liteProblems } from './seedance-lite.mjs';
+import { LIGHT_ID, lightProblems } from './genjutsu-light.mjs';
+import { SEEDANCE_IDS, seedanceProblems } from './seedance.mjs';
 import { DRAFT_MODEL_IDS, DRAFT_UPGRADE_ID, draftProblems } from './seedance-draft.mjs';
-import { OMNI12_ID, OMNI12_EXTEND_ID, OMNI_RESOURCE_IDS, omni12Estimate, omni12Problems, omni12ExtendProblems, omniResourceProblems } from './omni12.mjs';
+import { OMNI12_ID, OMNI12_EXTEND_ID, OMNI_RESOURCE_IDS, omni12Problems, omni12ExtendProblems, omniResourceProblems } from './omni12.mjs';
 
 export const DRIVER_WHITELIST = ['jobs-v1', 'jobs-text-v1', 'labs-queue-v1', 'labs-queue-multi-v1', 'hybrid-seedream-v1', 'hybrid-grok-v1', 'veo-v1', 'eleven-v1', 'suno-v1', 'heygen-v1', 'resemble-v1', 'topaz-v1', 'higgsfield-v1'];
 
 const TOP_KEYS = new Set(['catalog_version', 'min_cli_version', 'models', 'server_contract_version']);
-const MODEL_KEYS = new Set(['aliases', 'description', 'driver', 'enabled', 'estimate', 'expensive', 'id', 'label', 'min_cli_version', 'modes', 'output', 'params', 'section', 'status', 'tier', 'vendor']);
+const MODEL_KEYS = new Set(['aliases', 'description', 'driver', 'enabled', 'expensive', 'id', 'label', 'min_cli_version', 'modes', 'output', 'params', 'section', 'status', 'tier', 'vendor']);
 const PARAM_KEYS = new Set(['accept', 'default', 'help', 'internal', 'max', 'max_len', 'min', 'required', 'required_when', 'step', 'type', 'values']);
-// Tarifas públicas por calidad, sin exponer costes internos del proveedor.
-const UNIT_RATE_KEYS = ['credits_per_unit_by_value'];
-const ESTIMATE_KEYS = new Set(['rate_param', 'credits_per_1000_by_value', 'max_credits', 'ailab_credits_per_provider_credit', 'approximate', 'audio_param', 'auto_duration_param', 'auto_duration_seconds', 'basic_credit_per_input', 'basic_credits', 'block_seconds', 'by_param', 'characters_param', 'characters_params', 'column_param', 'credit_usd', 'credits', 'credits_by_value', 'credits_matrix', 'credits_per_1000', 'credits_per_file', 'credits_per_second', 'credits_per_unit', 'credits_with_audio', 'credits_with_files', 'credits_with_video', 'credits_with_video_matrix', 'duration_by_mode', 'files_param', 'frames_param', 'frames_per_provider_credit', 'high_credits', 'kind', 'layers_max_credits', 'margin_multiplier', 'matrix_mode', 'megapixels_param', 'minimum_credits', 'mode_param', 'note', 'promo', 'provider_credits_by_max_megapixels', 'quality_param', 'resolution_param', 'round_up', 'row_param', 'seconds_param', 'unit_label', 'unit_name', 'units_param', 'usd_per_block', 'video_param']);
-const PROMO_KEYS = new Set(['credits_by_value', 'credits_per_1000_by_value', 'label', 'until', 'previous_credits_per_second', 'previous_credits_with_video', 'previous_credits_matrix', 'previous_credits_with_video_matrix']);
-UNIT_RATE_KEYS.forEach(key => ESTIMATE_KEYS.add(key));
-const ESTIMATE_KINDS = new Set(['flat_credits', 'per_second_table', 'per_second_matrix', 'mixed_mode', 'param_table', 'hybrid_seedream', 'matrix_table', 'unit_credits', 'per_1000_chars', 'duration_blocks', 'topaz_image', 'topaz_video', 'higgsfield_quote']);
+// Bloque de precio de los catálogos anteriores (`catalog-v2.json`). `catalog-v3.json` no lo trae; si llegara, se
+// descarta al leerlo y nunca se usa ni se guarda.
+const LEGACY_PRICE_KEY = 'estimate';
 const PARAM_TYPES = new Set(['string', 'string[]', 'enum', 'int', 'number', 'bool', 'file', 'file[]']);
 const OUTPUT_TYPES = new Set(['image', 'multi-image', 'video', 'audio', 'text']);
 
@@ -62,6 +58,7 @@ export function validateCatalogShape(cat) {
   if (!entries.length || entries.length > 500) throw new Error('Catalogo invalido: numero de modelos fuera de rango.');
   for (const [id, model] of entries) {
     if (!/^[a-z0-9][a-z0-9-]{1,79}$/.test(id) || !model || typeof model !== 'object' || Array.isArray(model)) throw new Error('Catalogo invalido: modelo ' + id + '.');
+    delete model[LEGACY_PRICE_KEY];
     rejectExtraKeys(model, MODEL_KEYS, 'models.' + id);
     if (model.id !== undefined && model.id !== id) throw new Error('Catalogo invalido: el id interno no coincide en ' + id + '.');
     if (typeof model.label !== 'string' || !model.label.trim() || model.label.length > 120) throw new Error('Catalogo invalido: label de ' + id + '.');
@@ -89,20 +86,6 @@ export function validateCatalogShape(cat) {
         }
       }
     }
-    if (!model.estimate || typeof model.estimate !== 'object' || Array.isArray(model.estimate)) throw new Error('Catalogo invalido: estimate de ' + id + '.');
-    rejectExtraKeys(model.estimate, ESTIMATE_KEYS, 'models.' + id + '.estimate');
-    if (!ESTIMATE_KINDS.has(model.estimate.kind)) throw new Error('Catalogo invalido: estimate.kind de ' + id + '.');
-    if (model.estimate.promo !== undefined) {
-      if (!model.estimate.promo || typeof model.estimate.promo !== 'object' || Array.isArray(model.estimate.promo)) throw new Error('Catalogo invalido: promo de ' + id + '.');
-      rejectExtraKeys(model.estimate.promo, PROMO_KEYS, 'models.' + id + '.estimate.promo');
-      if (typeof model.estimate.promo.label !== 'string' || !model.estimate.promo.label.trim()) throw new Error('Catalogo invalido: promo.label de ' + id + '.');
-      const until = String(model.estimate.promo.until || '');
-      const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/.exec(until);
-      if (!match) throw new Error('Catalogo invalido: promo.until de ' + id + '.');
-      const [year, month, day, hour, minute, second] = match.slice(1).map(Number);
-      const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
-      if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day || hour > 23 || minute > 59 || second > 59) throw new Error('Catalogo invalido: promo.until irreal de ' + id + '.');
-    }
   }
   return cat;
 }
@@ -124,11 +107,14 @@ export function modelContractHash(id, model) {
     output: model.output,
     min_cli_version: model.min_cli_version || null,
     params: model.params || {},
-    estimate: model.estimate || {},
     expensive: !!model.expensive,
   };
   return crypto.createHash('sha256').update(stableStringify(contract)).digest('hex');
 }
+
+// Caché propia del catálogo sin precios: la de los runtimes anteriores (`catalog.json`) es la v2 con tarifas.
+const CACHE_FILE = 'catalog-v3.json';
+const CACHE_META_FILE = 'catalog-v3-meta.json';
 
 function parseCatalogFile(source) {
   const stat = fs.statSync(source);
@@ -144,7 +130,7 @@ function atomicJson(file, value) {
 }
 
 export function loadCatalog() {
-  const cached = path.join(CONFIG_DIR, 'catalog.json');
+  const cached = path.join(CONFIG_DIR, CACHE_FILE);
   const explicit = process.env.AILAB_CATALOG_PATH || process.env.PG_CATALOG_PATH;
   if (explicit) return parseCatalogFile(CATALOG_PATH);
   let bundled = null;
@@ -177,8 +163,8 @@ export function catalogCompatible(cat) {
 export async function refreshCatalog({ maxAgeMs, requireNetwork }) {
   if (process.env.AILAB_CATALOG_PATH || process.env.PG_CATALOG_PATH) return loadCatalog();
   ensureConfigDir();
-  const cacheFile = path.join(CONFIG_DIR, 'catalog.json');
-  const metaFile = path.join(CONFIG_DIR, 'catalog-meta.json');
+  const cacheFile = path.join(CONFIG_DIR, CACHE_FILE);
+  const metaFile = path.join(CONFIG_DIR, CACHE_META_FILE);
   let meta = {};
   try { meta = JSON.parse(fs.readFileSync(metaFile, 'utf8')); } catch {}
   const age = meta.fetched_at ? Date.now() - Date.parse(meta.fetched_at) : Infinity;
@@ -231,15 +217,6 @@ export function resolveModel(cat, nameOrAlias) {
   const mapped = Object.hasOwn(PLAYGROUND_ID_ALIASES, q) ? PLAYGROUND_ID_ALIASES[q] : null;
   if (mapped && cat.models[mapped]) return { id: mapped, model: cat.models[mapped] };
   return null;
-}
-
-// Modelos cuyo coste no se puede calcular en local: el servidor cotiza.
-export function requiresServerQuote(model, params = {}) {
-  return !!(model && ((model.id === 'eleven-tts' && params.version === 'v4')
-    || model.id === 'krea-3'
-    || model.id === DRAFT_UPGRADE_ID
-    || model.id === OMNI12_EXTEND_ID
-    || (model.estimate && model.estimate.kind === 'higgsfield_quote')));
 }
 
 export function modelUsable(model) {
@@ -477,279 +454,4 @@ export function validateParams(model, given) {
     }
   }
   return { ok: errors.length === 0, errors, params, fileParams };
-}
-
-// Estimacion en creditos segun la regla declarada (siempre en creditos, plan §3).
-function effectivePerSecondTable(estimate, now = Date.now()) {
-  const table = { ...(estimate.credits_per_second || {}) };
-  const promo = estimate.promo;
-  const ends = promo && promo.until ? Date.parse(String(promo.until)) : NaN;
-  if (!Number.isFinite(ends) || now < ends) return table;
-  return { ...table, ...(promo.previous_credits_per_second || {}) };
-}
-
-function effectiveVideoTable(estimate, now = Date.now()) {
-  const table = { ...(estimate.credits_with_video || {}) };
-  const ends = estimate.promo && estimate.promo.until ? Date.parse(String(estimate.promo.until)) : NaN;
-  if (!Number.isFinite(ends) || now < ends) return table;
-  return { ...table, ...(estimate.promo.previous_credits_with_video || {}) };
-}
-
-function effectiveMatrix(estimate, field, previousField, now = Date.now()) {
-  const current = estimate[field] || {};
-  const promo = estimate.promo;
-  const ends = promo && promo.until ? Date.parse(String(promo.until)) : NaN;
-  if (!Number.isFinite(ends) || now < ends || !promo[previousField]) return current;
-  const merged = {};
-  for (const [row, values] of Object.entries(current)) {
-    merged[row] = { ...values, ...((promo[previousField] || {})[row] || {}) };
-  }
-  for (const [row, values] of Object.entries(promo[previousField] || {})) {
-    if (!merged[row]) merged[row] = { ...values };
-  }
-  return merged;
-}
-
-// Tarifa vigente de Seedance por segundo, con o sin vídeo de entrada. Una promoción caducada no cuenta.
-function seedanceRate(e, params, hasVideo, now) {
-  if (e.kind === 'per_second_matrix') {
-    const table = hasVideo
-      ? effectiveMatrix(e, 'credits_with_video_matrix', 'previous_credits_with_video_matrix', now)
-      : effectiveMatrix(e, 'credits_matrix', 'previous_credits_matrix', now);
-    return table[params[e.row_param]] && table[params[e.row_param]][params[e.column_param]];
-  }
-  return (hasVideo ? effectiveVideoTable(e, now) : effectivePerSecondTable(e, now))[params[e.by_param]];
-}
-
-export function estimateCredits(model, params, now = Date.now()) {
-  const e = model.estimate || {};
-  if (model.id === 'ideogram-v45') {
-    const mode = String(params.mode ?? 't2i');
-    const quality = String(params.quality ?? 'medium');
-    const rates = e.credits_per_unit_by_value || {};
-    const unitCredits = Number(rates[quality]);
-    const count = Number(params.num_images ?? 1);
-    if (!['t2i', 'edit'].includes(mode) || (mode === 't2i' && quality === 'very_low') || !Number.isFinite(unitCredits) || unitCredits <= 0 || !Number.isSafeInteger(count) || count < 1 || count > 8) {
-      return { credits: null, approximate: false, note: 'tarifa Ideogram no disponible para esta modalidad' };
-    }
-    return { credits: Math.ceil(Number((unitCredits * count).toFixed(8))), approximate: false, note: count + ' imagen(es) · precio exacto del lote' };
-  }
-  // Genjutsu Light tiene tarifa por segundo de video medido: la CLI calcula la misma cifra que el servidor,
-  // que sigue cotizando en `prepare` y manda.
-  if (model.id === LIGHT_ID) return lightEstimate(model, params);
-  // Higgsfield no tiene tarifa local: el servidor cotiza midiendo el video y
-  // las referencias. Devolver un precio inventado aqui autorizaria de menos. El paso a 1080p de un draft tampoco: el precio
-  // sale de la fila del servidor (`credits` del listado), y `estimate.credits` del catalogo es solo la cota para los parsers.
-  if (model.id === 'krea-3' || model.id === DRAFT_UPGRADE_ID || model.id === OMNI12_EXTEND_ID || e.kind === 'higgsfield_quote') {
-    return {
-      credits: null,
-      approximate: true,
-      server_quote: true,
-      note: e.note || 'El coste lo cotiza el servidor antes de generar.',
-    };
-  }
-  if (model.id === WAN3_ID) return wan3Estimate(model, params);
-  if (model.id === KLING4_ID) return kling4Estimate(model, params);
-  if (model.id === LITE_ID) return liteEstimate(model, params);
-  if (model.id === OMNI12_ID) return omni12Estimate(model, params);
-  if (SEEDANCE_IDS.includes(model.id)) return seedanceEstimate(model, params, (hasVideo) => seedanceRate(e, params, hasVideo, now));
-  if (MOTION_CONTROL_IDS.includes(model.id)) return motionEstimate(model, params);
-  if (e.kind === 'topaz_image') {
-    const megapixels = Number(params[e.megapixels_param]);
-    const tiers = e.provider_credits_by_max_megapixels || {};
-    if (!Number.isFinite(megapixels) || megapixels <= 0) return { credits: null, approximate: false, note: 'megapíxeles de salida pendientes' };
-    let providerCredits = null;
-    for (const maximum of Object.keys(tiers).map(Number).sort((a, b) => a - b)) {
-      if (megapixels <= maximum + 0.000001) {
-        providerCredits = Number(tiers[String(maximum)] ?? tiers[maximum]);
-        break;
-      }
-    }
-    if (!Number.isFinite(providerCredits) || providerCredits <= 0) return { credits: null, approximate: false, note: 'La salida supera los 100 megapíxeles.' };
-    const multiplier = Number(e.ailab_credits_per_provider_credit);
-    if (!Number.isFinite(multiplier) || multiplier <= 0) return { credits: null, approximate: false, note: 'cotización Topaz no disponible' };
-    return { credits: Math.ceil(providerCredits * multiplier), approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'topaz_video') {
-    const frames = Number(params[e.frames_param]);
-    const resolution = String(params[e.resolution_param] || '');
-    const perCredit = Number(e.frames_per_provider_credit && e.frames_per_provider_credit[resolution]);
-    const multiplier = Number(e.ailab_credits_per_provider_credit);
-    if (!Number.isSafeInteger(frames) || frames <= 0 || !Number.isFinite(perCredit) || perCredit <= 0 || !Number.isFinite(multiplier) || multiplier <= 0) {
-      return { credits: null, approximate: false, note: 'fotogramas de entrada pendientes' };
-    }
-    const providerCredits = Math.ceil(frames / perCredit);
-    return { credits: Math.ceil(providerCredits * multiplier), approximate: !!e.approximate, note: e.note || '' };
-  }
-  // El catálogo conserva `mixed_mode` para que runtimes antiguos sigan
-  // pudiendo cargarlo. Desde 2.1.11 H3 Max autoriza el coste real local en vez
-  // del máximo teórico de 1.300 cr; el servidor vuelve a medir y decide.
-  if (model.id === 'minimax-h3-max') {
-    const mode = String(params[e.mode_param || 'mode'] || 't2v');
-    const seconds = Number(params.duration || 0);
-    const resolution = String(params.resolution || '768P');
-    if (!Number.isFinite(seconds) || seconds <= 0) return { credits: null, approximate: true, note: 'duración pendiente' };
-    if (mode !== 'ref') {
-      const rate = resolution === '480P' ? 10.2 : 16.32;
-      return { credits: Math.ceil(rate * seconds), approximate: false, note: 'Salida exacta según duración y resolución.' };
-    }
-    const images = Array.isArray(params.reference_image_urls) ? params.reference_image_urls : [];
-    const videos = Array.isArray(params.reference_video_urls) ? params.reference_video_urls : [];
-    let tokens = 0;
-    for (const file of images) {
-      const metadata = inspectPricingMetadata(file);
-      if (!metadata.ok || metadata.class !== 'image' || metadata.width > 4096 || metadata.height > 4096) {
-        return { credits: 1300, approximate: true, note: metadata.error || 'Una imagen supera 4.096 px por lado.' };
-      }
-      tokens += metadata.pixels / 1024;
-    }
-    const videoTokenRate = resolution === '480P' ? 2886 : 7459.2;
-    for (const file of videos) {
-      const metadata = inspectPricingMetadata(file);
-      if (!metadata.ok || metadata.mime !== 'video/mp4' || !Number.isFinite(metadata.duration)) {
-        return { credits: 1300, approximate: true, note: metadata.error || 'Reference-to-Video requiere vídeos MP4 medibles.' };
-      }
-      tokens += metadata.duration * videoTokenRate;
-    }
-    const referenceCredits = Math.max(0, tokens - 4096) / 1000 * 4.08;
-    return {
-      credits: Math.ceil(16.32 * seconds + referenceCredits),
-      approximate: false,
-      note: seconds + ' s · ' + resolution + ' · ' + Math.round(tokens).toLocaleString('es-ES') + ' tokens de referencia'
-    };
-  }
-  // H3 (Kie): el servidor reserva la tarifa por segundo sobre la salida más 15 s por cada vídeo de referencia (su duración no se
-  // conoce antes de enviar) y 8,16 cr por cada imagen de referencia a partir de la sexta. El cargo final es el consumo real.
-  if (model.id === 'minimax-h3' && e.kind === 'per_second_table') {
-    const rate = Number((e.credits_per_second || {})[params[e.by_param]]);
-    const seconds = Math.max(4, Math.min(15, Math.trunc(Number(params[e.seconds_param] ?? 6))));
-    const videos = Array.isArray(params.reference_video_urls) ? params.reference_video_urls.length : 0;
-    const images = Array.isArray(params.reference_image_urls) ? params.reference_image_urls.length : 0;
-    if (!Number.isFinite(rate) || rate <= 0 || !Number.isFinite(seconds)) return { credits: null, approximate: true, note: 'estimacion no disponible' };
-    return { credits: Math.ceil(rate * (seconds + 15 * videos) + 8.16 * Math.max(0, images - 5)), approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'flat_credits') return { credits: Math.ceil(e.credits), approximate: !!e.approximate, note: e.note || '' };
-  if (e.kind === 'duration_blocks') {
-    const seconds = Number(params[e.seconds_param] || 0);
-    const blockSeconds = Number(e.block_seconds || 30);
-    const unitUsd = Number(e.usd_per_block || 0);
-    const margin = Number(e.margin_multiplier || 1);
-    const creditUsd = Number(e.credit_usd || 0.005);
-    if (![seconds, blockSeconds, unitUsd, margin, creditUsd].every(Number.isFinite) || seconds <= 0 || blockSeconds <= 0 || unitUsd <= 0 || margin <= 0 || creditUsd <= 0) {
-      return { credits: null, approximate: true, note: 'duración pendiente' };
-    }
-    const blocks = Math.ceil(seconds / blockSeconds);
-    const credits = Math.max(Number(e.minimum_credits || 1), Math.ceil(blocks * unitUsd * margin / creditUsd));
-    return { credits, approximate: !!e.approximate, note: blocks + ' bloque(s) iniciado(s) de ' + blockSeconds + ' s' };
-  }
-  if (e.kind === 'per_second_table') {
-    const key = params[e.by_param];
-    const hasVideo = e.video_param && Array.isArray(params[e.video_param]) && params[e.video_param].length > 0;
-    let table = effectivePerSecondTable(e, now);
-    if (hasVideo && e.credits_with_video) {
-      table = effectiveVideoTable(e, now);
-    } else if (e.audio_param && params[e.audio_param] && e.credits_with_audio) {
-      table = { ...e.credits_with_audio };
-    }
-    const perSec = table[key];
-    const modeDuration = e.mode_param && e.duration_by_mode && e.duration_by_mode[params[e.mode_param]];
-    const secs = modeDuration !== undefined
-      ? Number(modeDuration)
-      : e.auto_duration_param && params[e.auto_duration_param]
-      ? Number(e.auto_duration_seconds || 0)
-      : Number(params[e.seconds_param] || 0);
-    if (!perSec || !secs) return { credits: null, approximate: true, note: 'estimacion no disponible' };
-    const fileCredits = e.files_param && Array.isArray(params[e.files_param])
-      ? Number(e.credits_per_file || 0) * params[e.files_param].length
-      : 0;
-    return { credits: Math.ceil(perSec * secs + fileCredits), approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'per_second_matrix') {
-    const row = params[e.row_param];
-    const column = params[e.column_param];
-    const hasVideo = e.video_param && Array.isArray(params[e.video_param]) && params[e.video_param].length > 0;
-    const table = hasVideo && e.credits_with_video_matrix
-      ? effectiveMatrix(e, 'credits_with_video_matrix', 'previous_credits_with_video_matrix', now)
-      : effectiveMatrix(e, 'credits_matrix', 'previous_credits_matrix', now);
-    const perSec = Number(table[row] && table[row][column]);
-    const secs = e.auto_duration_param && params[e.auto_duration_param]
-      ? Number(e.auto_duration_seconds || 0)
-      : Number(params[e.seconds_param] || 0);
-    const credits = perSec * secs;
-    const fileCredits = e.files_param && Array.isArray(params[e.files_param])
-      ? Number(e.credits_per_file || 0) * params[e.files_param].length
-      : 0;
-    return { credits: Number.isFinite(credits + fileCredits) && credits + fileCredits > 0 ? Math.ceil(credits + fileCredits) : null, approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'param_table') {
-    const key = params[e.by_param];
-    const hasFiles = e.files_param && Array.isArray(params[e.files_param]) && params[e.files_param].length > 0;
-    const ordinary = hasFiles && e.credits_with_files ? e.credits_with_files : e.credits_by_value;
-    const ends = e.promo?.until ? Date.parse(String(e.promo.until)) : NaN;
-    const table = Number.isFinite(ends) && now < ends && e.promo?.credits_by_value
-      ? { ...(ordinary || {}), ...e.promo.credits_by_value }
-      : ordinary;
-    const credits = table && Number(table[key]);
-    return { credits: Number.isFinite(credits) ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'mixed_mode') {
-    const mode = params[e.mode_param];
-    if (mode === e.matrix_mode) {
-      const row = params[e.row_param];
-      const column = params[e.column_param];
-      let credits = Number(e.credits_matrix && e.credits_matrix[row] && e.credits_matrix[row][column]);
-      if (e.files_param && Array.isArray(params[e.files_param])) credits += Number(e.credits_per_file || 0) * params[e.files_param].length;
-      return { credits: Number.isFinite(credits) && credits >= 0 ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
-    }
-    const credits = Number(e.credits_by_value && e.credits_by_value[mode]);
-    return { credits: Number.isFinite(credits) && credits >= 0 ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'hybrid_seedream') {
-    if (params[e.mode_param] === 'layers') {
-      const maximum = Number(e.layers_max_credits);
-      return { credits: Number.isFinite(maximum) && maximum > 0 ? Math.ceil(maximum) : null, approximate: true, note: e.note || '' };
-    }
-    const high = params[e.quality_param] === 'high';
-    let credits = high ? Number(e.high_credits) : Number(e.basic_credits);
-    if (!high && params[e.mode_param] === 'i2i' && Array.isArray(params[e.files_param])) credits += Number(e.basic_credit_per_input || 0) * params[e.files_param].length;
-    return { credits: Number.isFinite(credits) ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'matrix_table') {
-    const row = params[e.row_param];
-    // Con clip de video (Gemini Omni) el servidor cobra tarifa PLANA por calidad
-    // (la duracion la decide el modelo): sin esto la CLI autorizaba de menos y el
-    // servidor devolvia 402 por superar max_credits_authorized.
-    if (e.video_param && params[e.video_param] && e.credits_with_video) {
-      const flat = Number(e.credits_with_video[row]);
-      return { credits: Number.isFinite(flat) && flat > 0 ? Math.ceil(flat) : null, approximate: !!e.approximate, note: e.note || '' };
-    }
-    const column = params[e.column_param];
-    let credits = Number(e.credits_matrix && e.credits_matrix[row] && e.credits_matrix[row][column]);
-    if (e.multiplier_param) credits *= Number(params[e.multiplier_param] || 0);
-    return { credits: Number.isFinite(credits) && credits > 0 ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'unit_credits') {
-    const units = Number(params[e.units_param] || 0);
-    // Tarifa por valor de un parámetro (p. ej. la resolución del avatar); `credits_per_unit` es la tarifa de las CLI que no la leen.
-    const keyed = e.rate_param && e.credits_per_unit_by_value ? Number(e.credits_per_unit_by_value[params[e.rate_param]]) : NaN;
-    const perUnit = Number.isFinite(keyed) && keyed > 0 ? keyed : Number(e.credits_per_unit || 0);
-    const credits = Math.max(Number(e.minimum_credits || 0), units * perUnit);
-    const rounded = Number.isFinite(credits) ? Number(credits.toFixed(4)) : credits;
-    return { credits: Number.isFinite(rounded) && rounded > 0 ? Math.ceil(rounded) : null, approximate: !!e.approximate, note: e.note || '' };
-  }
-  if (e.kind === 'per_1000_chars') {
-    const characterParams = Array.isArray(e.characters_params) ? e.characters_params : [e.characters_param];
-    const chars = characterParams.reduce((total, key) => total + (params.version === 'v4' ? Array.from(String(params[key] || '').trim()).length : String(params[key] || '').length), 0);
-    let rate = Number(e.credits_per_1000 || 0);
-    if (e.rate_param && e.credits_per_1000_by_value) {
-      rate = Number(e.credits_per_1000_by_value[params[e.rate_param]]);
-      const ends = Date.parse(e.promo?.until || '');
-      // La tabla base es ordinaria. Un descuento inválido o vencido no se aplica.
-      if (Number.isFinite(ends) && now < ends && e.promo?.credits_per_1000_by_value) rate = Number(e.promo.credits_per_1000_by_value[params[e.rate_param]] ?? rate);
-    }
-    const units = e.rate_param ? chars / 1000 : Math.ceil(chars / 1000);
-    const credits = Math.max(Number(e.minimum_credits || 0), Number((units * rate).toFixed(4)));
-    return { credits: Number.isFinite(credits) && credits > 0 ? Math.ceil(credits) : null, approximate: !!e.approximate, note: e.note || '' };
-  }
-  return { credits: null, approximate: true, note: 'sin regla de estimacion' };
 }

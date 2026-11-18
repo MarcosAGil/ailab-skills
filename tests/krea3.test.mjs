@@ -7,7 +7,8 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
-import {validateCatalogShape, validateParams, estimateCredits, requiresServerQuote} from '../skills/ailab/scripts/lib/catalog.mjs';
+import {validateCatalogShape, validateParams} from '../skills/ailab/scripts/lib/catalog.mjs';
+import {handlePrice, estimates} from './helpers/price-server.mjs';
 import {buildPayload} from '../skills/ailab/scripts/adapters/labs-queue-v1.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -15,9 +16,9 @@ const catalogPath=path.join(root,'skills/ailab/catalog/catalog.json');
 const model={id:'krea-3',...validateCatalogShape(JSON.parse(fs.readFileSync(catalogPath))).models['krea-3']};
 const execute=promisify(execFile);
 
-test('Krea 3 exige cotización, valida incompatibilidades y no expone semilla',()=>{
-  assert.equal(requiresServerQuote(model),true);
-  assert.equal(estimateCredits(model,{}).credits,null);
+// Que Krea 3 lo cotiza el servidor lo dice ahora price.php (`server_quote`), no el catálogo.
+test('Krea 3 valida incompatibilidades y no expone semilla',()=>{
+  assert.equal(model.estimate,undefined);
   assert.equal(model.params.seed,undefined);
   const valid={prompt:'Edita <image-1>',mode:'edit',image_urls:['a.png'],variant:'berry',reasoning_level:'high',resolution:'1k'};
   assert.equal(validateParams(model,valid).ok,true);
@@ -34,10 +35,12 @@ test('CLI real Krea 3: prepare congela la cotización y submit recupera el mismo
   const credentials=path.join(temp,'credentials'),config=path.join(temp,'config');
   fs.mkdirSync(credentials);fs.writeFileSync(path.join(credentials,'token'),'ailp_'+'K'.repeat(48),{mode:0o600});
   const requests=[];let base;
+  const state={prices:{'krea-3':{credits:null,server_quote:true}}};
   const server=http.createServer(async(req,res)=>{
     const chunks=[];for await(const c of req)chunks.push(c);
     const body=JSON.parse(Buffer.concat(chunks).toString()||'{}');
     const url=new URL(req.url,base);requests.push({path:url.pathname,action:url.searchParams.get('action'),body});
+    if(handlePrice(state,url.pathname,body,res))return;
     if(url.pathname==='/result.png') {
       res.writeHead(200,{'content-type':'image/png'});
       return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==','base64'));
@@ -62,6 +65,8 @@ test('CLI real Krea 3: prepare congela la cotización y submit recupera el mismo
   const manifest=JSON.parse(fs.readFileSync(path.join(config,'manifests',id+'.json')));
   assert.equal(manifest.quote_id,'signed-test-quote');assert.equal(manifest.quote_max_credits,6);
   assert.equal(requests.filter(r=>r.action==='submit').length,0);
+  assert.deepEqual(estimates(state).map(r=>r.model),['krea-3']);
+  assert.equal(estimates(state)[0].params.prompt,'Una imagen');
   const completed=await run('submit',id,'--confirmed');
   assert.match(completed.stdout,/Coste real: 6 cr/);
   const sends=requests.filter(r=>r.action==='submit');assert.equal(sends.length,1);
@@ -70,4 +75,5 @@ test('CLI real Krea 3: prepare congela la cotización y submit recupera el mismo
   await assert.rejects(run('submit',id,'--confirmed'),/ya se ejecutó/);
   await run('status','fal:krea-cli-job');
   assert.equal(requests.filter(r=>r.action==='submit').length,1,'No debe duplicar un envío confirmado');
+  assert.equal(estimates(state).length,1,'submit no vuelve a pedir el precio');
 });

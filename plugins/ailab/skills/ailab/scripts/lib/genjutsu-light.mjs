@@ -6,9 +6,7 @@
 // la salida (que dura lo mismo que el vídeo) más el vídeo de entrada: 2 x ceil(duración medida).
 //
 // El servidor mide el vídeo, cotiza (`quote`), reserva lo cotizado y es siempre la autoridad. Este módulo solo avisa
-// antes de subir nada y calcula la misma cifra que el servidor para que el máximo autorizado nunca quede por debajo
-// de la reserva (si lo hiciera, el servidor rechazaría con 402). La cuenta es exacta, con décimas de crédito enteras:
-// 10,2 / 20,4 / 40,8 cr por segundo de vídeo (5,1 / 10,2 / 20,4 por segundo facturable).
+// antes de subir nada (por ejemplo, un vídeo de más de 15 s).
 import { inspectPricingMetadata } from './files.mjs';
 import { phpRound } from './kling4.mjs';
 
@@ -58,46 +56,4 @@ export function lightInspect(params, fileParams = {}) {
 
 export function lightProblems(params, fileParams = {}) {
   return lightInspect(params, fileParams).problems;
-}
-
-// Décimas de crédito por segundo de vídeo, leídas de `estimate.credits_per_second` del catálogo. Si el catálogo trae
-// una cifra que no es múltiplo de una décima, la cuenta entera no sería exacta y no se estima.
-function tenthsPerVideoSecond(estimate, resolution) {
-  const rate = Number(estimate && estimate.credits_per_second && estimate.credits_per_second[resolution]);
-  const tenths = Math.round(rate * 10);
-  return Number.isFinite(rate) && rate > 0 && Math.abs(rate * 10 - tenths) < 1e-9 ? tenths : null;
-}
-
-// ceil(segundos de vídeo x tarifa por segundo de vídeo): la misma cifra que `wallet_genjutsu_light_credits` con
-// 2 x ceil(duración) segundos facturables.
-export function lightCredits(estimate, resolution, videoSeconds) {
-  const tenths = tenthsPerVideoSecond(estimate, resolution);
-  if (tenths === null || !Number.isSafeInteger(videoSeconds) || videoSeconds < 1 || videoSeconds > LIGHT_MAX_VIDEO_SECONDS) return null;
-  return Math.max(1, Math.floor((tenths * videoSeconds + 9) / 10));
-}
-
-export function lightEstimate(model, params, fileParams = {}) {
-  const e = model.estimate || {};
-  // `estimateCredits` recibe los parámetros y las rutas de archivo en un único objeto.
-  const merged = { ...params, ...fileParams };
-  const inspected = lightInspect(merged, merged);
-  if (inspected.problems.length) return { credits: null, approximate: false, server_quote: true, note: inspected.problems[0] };
-  const resolution = String(params.resolution ?? '720p');
-  if (inspected.videoSeconds === null) {
-    return {
-      credits: null,
-      approximate: true,
-      server_quote: true,
-      note: 'La CLI no puede medir este vídeo: lo mide y lo cotiza el servidor.',
-    };
-  }
-  const credits = lightCredits(e, resolution, inspected.videoSeconds);
-  if (credits === null) return { credits: null, approximate: true, server_quote: true, note: 'tarifa de Genjutsu Light no disponible para esta combinación: la cotiza el servidor' };
-  const billable = 2 * inspected.videoSeconds;
-  return {
-    credits,
-    approximate: false,
-    server_quote: true,
-    note: inspected.videoSeconds + ' s de salida + ' + inspected.videoSeconds + ' s de vídeo = ' + billable + ' s facturables · precio exacto; el servidor cotiza la misma cifra',
-  };
 }

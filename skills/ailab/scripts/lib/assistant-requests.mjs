@@ -62,8 +62,7 @@ export function assistantRequestIntact(value) {
     contract_hash: value.contract_hash,
     estimated_credits: value.estimated_credits,
     max_credits_authorized: value.max_credits_authorized,
-    // Precio por cuenta (2.4.0): solo existen en las peticiones de un cliente o con proyecto.
-    ...(value.price_factor !== undefined ? { price_factor: value.price_factor } : {}),
+    // Proyecto: solo existe en las peticiones que lo llevan.
     ...(value.project !== undefined ? { project: value.project } : {}),
   };
   return crypto.createHash('sha256').update(stableStringify(prepared)).digest('hex') === value.prepared_hash;

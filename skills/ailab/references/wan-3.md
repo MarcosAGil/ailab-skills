@@ -1,6 +1,6 @@
 # Wan 3.0 Video y Wan 3.0 Video Prime
 
-> Las cifras de esta guía son precio de miembro. El precio exacto de tu cuenta lo da `prepare`.
+> El precio lo da siempre AILAB para tu cuenta: `info` y `prepare` lo muestran.
 
 Usa `info wan-3-video` y el catálogo vigente. Un único modelo con dos versiones:
 `--version normal` (calidad de referencia) y `--version prime` (mismas capacidades,
@@ -34,24 +34,15 @@ materiales de referencia se nombran por orden dentro de su tipo: `@Image1`,
 - Audios: MP3 o WAV, hasta 15 MB, cada uno de 1 a 15 s y 15 s en total.
 - Documento: PDF, Word, Excel, PowerPoint, Keynote, Pages, Numbers, TXT o MD, hasta
   50 páginas. Enlace: una página pública sin inicio de sesión.
-- La duración inteligente (`--duration -1`) no está disponible: Kie factura la
+- La duración inteligente (`--duration -1`) no está disponible: se cobra la
   duración que elige el modelo y el coste no se puede acotar antes de enviar.
   Tampoco se ofrece el filtro `nsfw_checker`: AILAB lo mantiene activado.
 
 ## Precio
 
-Kie factura, en ambas versiones, `(segundos de vídeos de entrada + segundos de salida)
-x tarifa por segundo`. Las imágenes, los audios, el enlace y el documento no suman
-segundos. AILAB cobra `ceil(créditos Kie x 1,02)` sobre el total.
-
-| Resolución | Normal (cr/s) | Prime (cr/s) |
-| --- | --- | --- |
-| 480P | 8,16 | 12,444 |
-| 720P | 16,32 | 25,704 |
-| 1080P | 32,64 | 51,408 |
-
-Ejemplo: 10 s de salida con un vídeo de 5 s en Prime 1080P son 15 s facturados
-(772 cr); sin el vídeo, 515 cr.
+En ambas versiones se facturan los segundos de vídeos de entrada más los de salida, con una
+tarifa por segundo que sube con la resolución y es mayor en Prime. Las imágenes, los audios,
+el enlace y el documento no suman segundos. AILAB da el importe con `info` y `prepare`.
 
 `prepare` mide los vídeos locales (cada uno se redondea al segundo superior) y fija
 el máximo autorizado. Sin vídeos de entrada el precio es exacto; con ellos es el
@@ -61,4 +52,4 @@ con un 402 y no cobra: vuelve a ejecutar `prepare`.
 
 Recupera tareas mediante `status` sobre el mismo ID. Un éxito sin vídeo de salida
 no se liquida y queda pendiente de revisión; no repitas la generación.
-Las pruebas locales no acreditan la factura real de Kie.
+Las pruebas locales no acreditan el cobro real.

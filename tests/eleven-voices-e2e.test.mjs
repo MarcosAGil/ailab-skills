@@ -1,16 +1,19 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import http from 'node:http';import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {fileURLToPath} from 'node:url';
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import http from 'node:http';import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {fileURLToPath} from 'node:url';import {handlePrice} from './helpers/price-server.mjs';
 const execute=promisify(execFile);const ROOT=fileURLToPath(new URL('..',import.meta.url));const CLI=path.join(ROOT,'skills/ailab/scripts/pg.mjs');const catalog=JSON.parse(fs.readFileSync(path.join(ROOT,'skills/ailab/catalog/catalog.json'),'utf8'));
 test('CLI completa: muestra, alta y v4 con voz privada; recuperación no repite el POST',async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ailab-eleven-e2e-'));const credentials=path.join(dir,'credentials');fs.mkdirSync(credentials);fs.writeFileSync(path.join(credentials,'token'),'ailp_'+'T'.repeat(48));
  let base,designs=0,creates=0,audios=0;const slot='a'.repeat(32),sample='b'.repeat(32),voice='c'.repeat(32),quote='d'.repeat(32);let manifestRef;
+ // Precio que da AILAB: v4 lo cotiza el servidor; el alta de la voz llega en options.creation_credits.
+ const priceState={prices:{'eleven-tts':{credits:null,server_quote:true}}};
  const json=(res,data)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:true,data}));};
  const server=http.createServer(async(req,res)=>{try{
   if(req.url==='/audio.mp3'){res.setHeader('Content-Type','audio/mpeg');res.end(Buffer.from('ID3fixture-audio'));return;}
   const u=new URL(req.url,base);let raw='';for await(const chunk of req)raw+=chunk;const b=raw?JSON.parse(raw):{};const action=u.searchParams.get('action')||b.action;
-  if(u.pathname.endsWith('catalog-v2.json')){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(catalog));return;}
+  if(handlePrice(priceState,u.pathname,b,res))return;
+  if(u.pathname.endsWith('catalog-v3.json')){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(catalog));return;}
   if(u.pathname.endsWith('api.php')){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:true,user:{email:'fixture@example.test',tier:'hub'},balance:1000,costs:{'el-v4:fixture':1}}));return;}
   assert.match(req.headers.authorization||'',/^Bearer /);
-  if(action==='options')return json(res,{enabled:true,can_create:true,design_enabled:true});
+  if(action==='options')return json(res,{enabled:true,can_create:true,design_enabled:true,creation_credits:100,renewal_credits:15});
   if(action==='design_quote')return json(res,{credits:7,pricing_version:'paid-v1'});
   if(action==='reserve')return json(res,{id:slot});
   if(action==='design'){designs++;manifestRef=b.client_request_id;assert.equal(b.max_credits_authorized,7);return json(res,{id:sample,state:'ready',credits:7,samples:[{id:sample}]});}
@@ -31,5 +34,5 @@ test('CLI completa: muestra, alta y v4 con voz privada; recuperación no repite 
  await run('voice-submit',d.manifest_id,'--confirmed');await run('voice-submit',d.manifest_id,'--confirmed');assert.equal(designs,1);
  const c=JSON.parse(await run('voice-prepare','create','--name','Prueba','--sample',sample,'--request',d.manifest_id));await run('voice-submit',c.manifest_id,'--confirmed');await run('voice-submit',c.manifest_id,'--confirmed');assert.equal(creates,1);
  const p=await run('prepare','eleven-tts','--version','v4','--private_voice_id',voice,'--text','Hola');const manifest=p.match(/submit ([0-9a-f-]{36}) --confirmed/)[1];
- const result=await run('submit',manifest,'--confirmed','--output',path.join(dir,'audio'));assert.match(result,/Guardado/);assert.equal(audios,1);assert.equal(fs.readdirSync(path.join(dir,'audio')).filter(f=>f.endsWith('.mp3')).length,1);
+ const result=await run('submit',manifest,'--confirmed','--output',path.join(dir,'audio'));assert.match(result,/Guardado/);assert.equal(audios,1);assert.deepEqual(priceState.priceRequests.map(r=>[r.action,r.model]),[['estimate','eleven-tts']]);assert.equal(fs.readdirSync(path.join(dir,'audio')).filter(f=>f.endsWith('.mp3')).length,1);
 });

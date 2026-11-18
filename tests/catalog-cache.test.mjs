@@ -15,11 +15,13 @@ legacy.min_cli_version = '2.1.0';
 delete legacy.models['flux-3'];
 delete legacy.models['ideogram-v45'];
 
-function cachedCatalog(t, catalog, fetchedAt = '2000-01-01T00:00:00Z') {
+// Desde la 2.5.0 la caché propia es `catalog-v3.json` (sin precios). `catalog.json` y `catalog-meta.json` son de los
+// runtimes anteriores (catálogo v2 con tarifas): el runtime nuevo ni los lee ni los toca.
+function cachedCatalog(t, catalog, fetchedAt = '2000-01-01T00:00:00Z', { file = 'catalog-v3.json', meta = 'catalog-v3-meta.json' } = {}) {
   const config = fs.mkdtempSync(path.join(os.tmpdir(), 'ailab-catalog-refresh-'));
   t.after(() => fs.rmSync(config, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(config, 'catalog.json'), JSON.stringify(catalog));
-  fs.writeFileSync(path.join(config, 'catalog-meta.json'), JSON.stringify({
+  fs.writeFileSync(path.join(config, file), JSON.stringify(catalog));
+  fs.writeFileSync(path.join(config, meta), JSON.stringify({
     etag: '"catalog-' + catalog.catalog_version + '"',
     fetched_at: fetchedAt,
     catalog_version: catalog.catalog_version,
@@ -35,7 +37,7 @@ function runCatalog(config, script, overrides = {}) {
     import { loadCatalog, refreshCatalog, catalogCompatible } from ${JSON.stringify(catalogURL)};
     const current = JSON.parse(fs.readFileSync(new URL(${JSON.stringify(bundledPath.href)}), 'utf8'));
     const config = process.env.AILAB_CONFIG_DIR;
-    const v2URL = 'https://catalog.invalid/ailab/api/v1/skill/catalog-v2.json';
+    const v3URL = 'https://catalog.invalid/ailab/api/v1/skill/catalog-v3.json';
     ${script}
   `;
   assert.ok(Buffer.byteLength(input, 'utf8') < 64 * 1024, 'El script debe leer los catálogos desde archivos, no incluir su JSON');
@@ -66,7 +68,7 @@ test('una release nueva no queda oculta por un catálogo cacheado anterior', (t)
   for (const id of ['topaz-bloom-2', 'topaz-wonder-3-5', 'topaz-astra-precise-2-6', 'topaz-astra-creative-2', 'lipsync-veed-v2']) {
     delete stale.models[id];
   }
-  fs.writeFileSync(path.join(config, 'catalog.json'), JSON.stringify(stale));
+  fs.writeFileSync(path.join(config, 'catalog-v3.json'), JSON.stringify(stale));
   const script = `import('./skills/ailab/scripts/lib/catalog.mjs').then(({loadCatalog}) => {
     const catalog = loadCatalog();
     process.stdout.write(catalog.catalog_version + ':' + Object.keys(catalog.models).length);
@@ -81,13 +83,13 @@ test('una release nueva no queda oculta por un catálogo cacheado anterior', (t)
   assert.equal(loaded.stdout, '1.32.0:77');
 });
 
-test('refreshCatalog usa v2 y reemplaza una caché legacy con su ETag anterior', t => {
+test('refreshCatalog usa v3 y reemplaza una caché anterior con su ETag', t => {
   const config = cachedCatalog(t, legacy);
   runCatalog(config, `
     let requests = 0;
     globalThis.fetch = async (url, options) => {
       requests++;
-      assert.equal(url, v2URL);
+      assert.equal(url, v3URL);
       assert.equal(options.headers['If-None-Match'], '"catalog-1.18.0"');
       assert.equal(options.cache, 'no-store');
       return Response.json(current, { headers: { etag: '"catalog-1.32.0"' } });
@@ -97,8 +99,8 @@ test('refreshCatalog usa v2 y reemplaza una caché legacy con su ETag anterior',
     assert.equal(refreshed.catalog_version, '1.32.0');
     assert.equal(Object.keys(refreshed.models).length, 77);
     assert.deepEqual(catalogCompatible(refreshed), { ok: true });
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'catalog.json'), 'utf8')), current);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'catalog-meta.json'), 'utf8')).etag, '"catalog-1.32.0"');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3.json'), 'utf8')), current);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3-meta.json'), 'utf8')).etag, '"catalog-1.32.0"');
   `);
 });
 
@@ -113,35 +115,70 @@ test('una caché legacy reciente no oculta el catálogo 1.32.0 incluido en 2.3.7
   `);
 });
 
-test('un 304 de v2 mantiene el catálogo validado y actualiza la fecha de caché', t => {
+test('un 304 de v3 mantiene el catálogo validado y actualiza la fecha de caché', t => {
   const config = cachedCatalog(t, current);
   runCatalog(config, `
     globalThis.fetch = async (url, options) => {
-      assert.equal(url, v2URL);
+      assert.equal(url, v3URL);
       assert.equal(options.headers['If-None-Match'], '"catalog-1.32.0"');
       return new Response(null, { status: 304 });
     };
     assert.deepEqual(await refreshCatalog({ maxAgeMs: 0, requireNetwork: true }), current);
-    const meta = JSON.parse(fs.readFileSync(path.join(config, 'catalog-meta.json'), 'utf8'));
+    const meta = JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3-meta.json'), 'utf8'));
     assert.equal(meta.etag, '"catalog-1.32.0"');
     assert.ok(Date.parse(meta.fetched_at) > Date.parse('2000-01-01T00:00:00Z'));
   `);
 });
 
-test('un fallo de v2 no consulta legacy ni destruye la caché válida', t => {
+test('un fallo de v3 no consulta v2 ni destruye la caché válida', t => {
   const config = cachedCatalog(t, current);
   runCatalog(config, `
-    const previousCache = fs.readFileSync(path.join(config, 'catalog.json'), 'utf8');
+    const previousCache = fs.readFileSync(path.join(config, 'catalog-v3.json'), 'utf8');
     let requests = 0;
     globalThis.fetch = async url => {
       requests++;
-      assert.equal(url, v2URL);
+      assert.equal(url, v3URL);
       return new Response(null, { status: 404 });
     };
     await assert.rejects(refreshCatalog({ maxAgeMs: 0, requireNetwork: true }), /HTTP 404/);
     assert.equal(requests, 1);
-    assert.equal(fs.readFileSync(path.join(config, 'catalog.json'), 'utf8'), previousCache);
+    assert.equal(fs.readFileSync(path.join(config, 'catalog-v3.json'), 'utf8'), previousCache);
     assert.deepEqual(loadCatalog(), current);
+  `);
+});
+
+test('la caché v2 de un runtime anterior (con tarifas) no se lee, no aporta su ETag y queda intacta', t => {
+  const priced = structuredClone(current);
+  priced.catalog_version = '9.0.0';
+  for (const model of Object.values(priced.models)) model.estimate = { kind: 'fixed', credits: 7 };
+  const config = cachedCatalog(t, priced, new Date().toISOString(), { file: 'catalog.json', meta: 'catalog-meta.json' });
+  runCatalog(config, `
+    const before = fs.readFileSync(path.join(config, 'catalog.json'), 'utf8');
+    assert.equal(loadCatalog().catalog_version, '1.32.0');
+    let requests = 0;
+    globalThis.fetch = async (url, options) => {
+      requests++;
+      assert.equal(url, v3URL);
+      assert.equal(options.headers['If-None-Match'], undefined);
+      return Response.json(current, { headers: { etag: '"catalog-1.32.0"' } });
+    };
+    assert.deepEqual(await refreshCatalog({ maxAgeMs: 3600000, requireNetwork: true }), current);
+    assert.equal(requests, 1);
+    assert.equal(fs.readFileSync(path.join(config, 'catalog.json'), 'utf8'), before);
+  `);
+});
+
+test('un catálogo servido sin ningún dato de precio se acepta, y un bloque estimate heredado se descarta en silencio', t => {
+  const config = cachedCatalog(t, legacy);
+  runCatalog(config, `
+    const served = structuredClone(current);
+    served.models['nano-banana-2'].estimate = { kind: 'by_param', param: 'resolution', credits_by_value: { '1K': 5 } };
+    globalThis.fetch = async () => Response.json(served, { headers: { etag: '"catalog-1.32.0"' } });
+    const refreshed = await refreshCatalog({ maxAgeMs: 0, requireNetwork: true });
+    for (const model of Object.values(refreshed.models)) assert.equal('estimate' in model, false);
+    const cached = JSON.parse(fs.readFileSync(path.join(config, 'catalog-v3.json'), 'utf8'));
+    assert.deepEqual(cached, current);
+    assert.equal(fs.readFileSync(path.join(config, 'catalog-v3.json'), 'utf8').includes('credits_by_value'), false);
   `);
 });
 
@@ -153,7 +190,7 @@ test('AILAB_CATALOG_PATH conserva la lectura explícita sin refresco remoto', t 
   `, { AILAB_CATALOG_PATH: fileURLToPath(bundledPath) });
 });
 
-test('el runtime publicado 2.3.5 y el nuevo 2.3.7 conviven con la caché compartida', t => {
+test('el runtime publicado 2.3.5 y el nuevo conviven: cada uno con su caché', t => {
   const canonicalRoot = process.env.AILAB_CANONICAL_REPO;
   if (!canonicalRoot) return t.skip('Define AILAB_CANONICAL_REPO para comprobar el runtime publicado.');
   const publishedRoot = path.join(canonicalRoot, 'app/api/v1/skill/releases/2.3.5');
@@ -161,13 +198,14 @@ test('el runtime publicado 2.3.5 y el nuevo 2.3.7 conviven con la caché compart
   const publishedCatalog = JSON.parse(fs.readFileSync(path.join(publishedRoot, 'catalog/catalog.json'), 'utf8'));
   assert.equal(publishedCatalog.catalog_version, '1.18.0');
   assert.equal(Object.keys(publishedCatalog.models).length, 61);
-  const config = cachedCatalog(t, current, new Date().toISOString());
+  const config = cachedCatalog(t, current, new Date().toISOString(), { file: 'catalog.json', meta: 'catalog-meta.json' });
   runCatalog(config, `
     const oldRuntime = await import(${JSON.stringify(publishedURL)});
     const published = JSON.parse(fs.readFileSync(${JSON.stringify(path.join(publishedRoot, 'catalog/catalog.json'))}, 'utf8'));
     let requests = 0;
     globalThis.fetch = async url => {
       requests++;
+      if (url === 'https://catalog.invalid/ailab/api/v1/skill/catalog-v3.json') return Response.json(current, { headers: { etag: '"catalog-1.32.0"' } });
       assert.equal(url, 'https://catalog.invalid/ailab/api/v1/skill/catalog.json');
       return Response.json(published, { headers: { etag: '"catalog-1.18.0"' } });
     };
@@ -181,6 +219,6 @@ test('el runtime publicado 2.3.5 y el nuevo 2.3.7 conviven con la caché compart
     const newFresh = await refreshCatalog({ maxAgeMs: 3600000, requireNetwork: true });
     assert.deepEqual(newFresh, current);
     assert.deepEqual(catalogCompatible(newFresh), { ok: true });
-    assert.equal(requests, 1, 'El runtime nuevo usa su catálogo incluido frente a la caché legacy');
+    assert.equal(requests, 2, 'El runtime nuevo no lee la caché v2 del antiguo: descarga la v3');
   `);
 });

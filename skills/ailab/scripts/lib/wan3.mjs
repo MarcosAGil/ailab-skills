@@ -1,9 +1,8 @@
 // Wan 3.0 Video y Wan 3.0 Video Prime (Alibaba, vía Kie). Contrato oficial leído el 23/10/2026:
 //   https://docs.kie.ai/market/wan/3-0-video.md
 //   https://docs.kie.ai/market/wan/3-0-video-prime.md
-// Kie factura en AMBAS versiones (segundos de vídeos de entrada + segundos de salida) x tarifa por
-// segundo. La CLI mide los vídeos locales para presupuestar; el servidor vuelve a medir la subida
-// y es siempre la autoridad: si el servidor calcula más que lo autorizado, rechaza sin cobrar.
+// Los segundos de los vídeos de entrada cuentan en el precio, que da el servidor con lo que mide la CLI. El
+// servidor vuelve a medir la subida y es siempre la autoridad: si calcula más que lo autorizado, rechaza sin cobrar.
 import { inspectPricingMetadata } from './files.mjs';
 
 export const WAN3_ID = 'wan-3-video';
@@ -126,28 +125,4 @@ export function wan3Inspect(params, fileParams = {}) {
 
 export function wan3Problems(params, fileParams = {}) {
   return wan3Inspect(params, fileParams).problems;
-}
-
-// ceil(cr Kie x 1,02) sobre el total, en milésimas de crédito para no arrastrar ruido de coma flotante.
-// `credits_matrix` ya publica la tarifa AILAB por segundo (8,16 / 16,32 / 32,64 y 12,444 / 25,704 / 51,408).
-export function wan3Estimate(model, params, fileParams = {}) {
-  const e = model.estimate || {};
-  const version = String(params.version ?? 'normal');
-  const resolution = String(params.resolution ?? '720P');
-  const output = Number(params.duration ?? 5);
-  const rate = Number(e.credits_matrix && e.credits_matrix[version] && e.credits_matrix[version][resolution]);
-  const inspected = wan3Inspect(params, fileParams);
-  if (inspected.problems.length) return { credits: null, approximate: false, note: inspected.problems[0] };
-  if (!Number.isInteger(output) || output < 2 || output > 30 || !Number.isFinite(rate) || rate <= 0) {
-    return { credits: null, approximate: false, note: 'tarifa de Wan 3.0 no disponible para esta combinación' };
-  }
-  const billed = output + inspected.inputSeconds;
-  const credits = Math.floor((Math.round(rate * 1000) * billed + 999) / 1000);
-  return {
-    credits,
-    approximate: inspected.inputSeconds > 0,
-    note: inspected.inputSeconds > 0
-      ? output + ' s de salida + ' + inspected.inputSeconds + ' s de vídeo de entrada = ' + billed + ' s · máximo reservado; el cargo final es el consumo confirmado'
-      : output + ' s de salida · precio exacto',
-  };
 }
