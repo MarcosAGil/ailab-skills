@@ -1,0 +1,13 @@
+15-sec natural storytelling scene, clean interior acoustic, voice-forward mix, conversational tone, no background music.
+
+[AESTHETIC]
+- Texture: natural room acoustic, warm intimate voice, subtle dynamic range.
+- Environment: quiet living room, understated ambient warmth.
+- Voice (Man): hombre de 30 años, español de España, acento castellano, tono seguro de sí mismo, natural, cercano, sin sobreactuar.
+- Palette: subtle natural breath, gentle vocal presence.
+
+[EXECUTION]
+[AMBI] Quiet room ambience -> [DIAL] Man (conversational, calm, español de España): "Benjamín pidió una bebida de kiwi y fresa... Noé, sin vergüenza, la más exquisita champaña del menú." -> [EVENT] Subtle natural pause.
+[DIAL] Man (relaxed, natural emphasis, español de España): "El pingüino Wenceslao... hizo kilómetros. ¡Bajo exhaustiva lluvia y frío! Añoraba a su querido cachorro." -> [TRANS] Gentle room silence decay.
+
+[ETIQUETA: español de España, una sola voz masculina, sin narrador, sin música, duración exacta 15.0s]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-18",
+  "updated_at": "2026-11-19",
   "skills": [
     {
       "id": "ailab",
@@ -86,10 +86,10 @@
     {
       "id": "personaje-consistente",
       "name": "Personaje consistente",
-      "version": "0.1.0",
+      "version": "0.6.0",
       "channel": "beta",
       "path": "skills/personaje-consistente",
-      "description": "Personaje de IA consistente entre vídeos, con ficha, referencias y voz.",
+      "description": "Personaje de IA consistente entre vídeos: ficha, hojas de referencia, voz y vídeo negro.",
       "kind": "instructions",
       "guide_references": [],
       "clients": [

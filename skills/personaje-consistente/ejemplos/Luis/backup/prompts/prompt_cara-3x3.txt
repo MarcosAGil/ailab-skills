@@ -1,0 +1,41 @@
+Task: Edit the character sheet generation to strictly integrate specific facial expressions across the grid portraits based on the reference image.
+
+Use the provided reference image as the absolute and ONLY source of truth for the character's facial identity, structure, skin tone, hair, and unique features.
+
+Generate a professional 3×3 character sheet showing the exact same person from multiple angles and expressions on a flat 18% neutral gray field:
+
+The identity must remain absolutely identical to the reference: same facial structure, eye shape and spacing, nose, lips, jawline, hairstyle and hairline, skin tone, proportions, age, ethnicity, and facial asymmetries.
+Every skin detail is part of the identity: every mole, freckle, beauty mark, scar, pore, fine line, and skin mark visible in the reference appears in the same position, size, shape, and color in every portrait where that area is visible. Nothing is removed, softened, faded, moved, or added.
+Do NOT beautify, stylize, or reinterpret the person in any way.
+Include nine evenly spaced portraits covering a mix of angles and expressions.
+Mandatory expressions to include across the grid:
+At least one portrait must show an angry expression with a distinctly furrowed brow and tight jaw.
+At least one portrait must show a subtle, friendly smile where the teeth are softly and naturally visible.
+Hair, clothing, makeup, and accessories must remain identical in every portrait.
+Camera distance, focal length, and framing should stay consistent throughout.
+
+The background of every panel is a single flat 18% neutral gray field, one uniform value at every pixel corner to corner, identical directly beside the subject and in the far corners, with no gradient, no hotspot, no vignette, and no falloff to lighter or darker anywhere in the panel. It is a flat color field, not a photographed backdrop: no surface, no wall, no corner, no horizon.
+
+Relight from scratch overriding any reference lighting: completely flat shadowless illumination, one enormous soft frontal source at camera position wrapping the subject evenly, matched equal fill from camera-left and camera-right at identical intensity, matched fill from above and below, so both sides of the face read at exactly the same brightness. No key-and-fill ratio, no modelling, no shadow side, no cheek triangle, no nose shadow, no under-chin shadow, no rim light, no hair light, no specular hotspot. Extremely low contrast, even, catalogue-flat. Form is described by bone structure, hair strands, and skin texture alone, not by light and shadow. The lighting is identical in all nine panels.
+
+Absolutely zero shadow anywhere outside the subject. No cast shadow, no drop shadow, no soft darkening behind the shoulders or the head, no halo, no edge darkening, and no rim separating the figure from the field. Absolutely zero light bleed outside the subject: no spill, no glow, no reflected color cast from the skin or the clothing onto the background.
+
+Skin reads matte, zero shine on forehead, nose bridge, cheekbones, temples, and chin, no oily T-zone. Skin renders at its true natural tone, warmth preserved against the neutral gray, never pale, washed-out, or cool-shifted by the background. Real pore texture exactly as in the reference, real peach fuzz at the jaw and hairline, subsurface scattering reading as semi-translucent biology, real hair rendered strand by strand with fine flyaways at the hairline, never plastic, never waxy, never glass-skin.
+
+Even sharpness edge to edge across every panel. No depth-of-field falloff, no bokeh, no background blur, no vignette, no lens distortion, no flare, no bloom, no atmosphere. Photographed on a 50mm prime. Photographed not generated.
+
+Preservation:
+
+Strictly preserve identity consistency, facial realism, every skin mark, and accurate anatomical proportions from the reference image.
+Maintain the flat 18% neutral gray field and the same flat shadowless lighting across all nine panels.
+Restrictions:
+
+No artistic interpretation.
+No beauty filters.
+No skin smoothing, no retouching, no blemish removal.
+No extra accessories or background variation.
+No text, labels, or numbering anywhere in the image.
+Do not alter the core identity or facial features.
+Final result:
+
+A real high-end photorealistic 3×3 facial identity reference sheet used by professional VFX, AAA game studios, or film character departments, featuring precise identity consistency, every skin mark preserved exactly, flat shadowless lighting on a neutral gray field, an angry expression with a furrowed brow, and a subtle, friendly smile with visible teeth.

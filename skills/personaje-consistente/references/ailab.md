@@ -1,38 +1,47 @@
 # Conexión con AILAB
 
-Esta skill genera con AILAB a través de la skill `ailab`, que es externa. Aquí se resume cómo se usa. **Manda siempre lo que diga `~/.claude/skills/ailab/SKILL.md`** y el catálogo (`info`, `prepare`).
+Esta skill genera con AILAB a través de la skill `ailab`, que es externa (plugin de Ailendra Labs). Aquí se resume cómo se usa. **Manda siempre lo que diga la `SKILL.md` de `ailab`** y el catálogo (`info`, `prepare`).
 
-`AILAB` = `node ~/.claude/skills/ailab/scripts/ailab.mjs` (o la carpeta real donde esté instalada).
+Niveles de confianza: **[D]** documentado, **[C]** comprobado, **[H]** decisión razonada.
 
-## 1. Comprobar la conexión
+## 1. Localizar y comprobar la conexión
+
+`ailab` se instala como plugin, no como skill suelta. Para localizar el script (la última ruta que exista es la que vale):
 
 ```bash
-test -f ~/.claude/skills/ailab/scripts/ailab.mjs && echo "ailab: instalada" || echo "ailab: NO instalada"
-AILAB info gpt-image-2-5
+A=""
+for f in ~/.claude/skills/ailab/scripts/ailab.mjs \
+         ~/.claude/plugins/marketplaces/ailendra-labs/skills/ailab/scripts/ailab.mjs \
+         ~/.claude/plugins/cache/ailendra-labs/ailab/*/skills/ailab/scripts/ailab.mjs; do
+  [ -f "$f" ] && A="$f"
+done
+[ -n "$A" ] && echo "ailab: $A" || echo "ailab: NO instalada"
+```
+
+`AILAB` en esta skill es `node "$A"`.
+
+```bash
+AILAB info seedream-5-5
 AILAB info seed-audio
 AILAB info eleven-tts
+AILAB info seedance-2-5
 ```
 
 `info` lee el contrato del modelo y no gasta. Si no está instalada, modo solo prompts (ver `SKILL.md`).
 
-**Primer uso.** Si no hay sesión, se le pide al usuario que ejecute **él** en su terminal:
-
-```bash
-node ~/.claude/skills/ailab/scripts/ailab.mjs login
-node ~/.claude/skills/ailab/scripts/ailab.mjs doctor
-```
-
-`login` crea un token de dispositivo revocable. **Nunca se piden tokens, contraseñas ni cookies por el chat.** Para gestionar voces hace falta un token con el permiso "Permitir gestionar voces".
+**Primer uso.** Si no hay sesión, el usuario ejecuta **él** en su terminal `node "$A" login` y `node "$A" doctor`. `login` crea un token de dispositivo revocable. **Nunca se piden tokens, contraseñas ni cookies por el chat.** Para gestionar voces hace falta un token con el permiso "Permitir gestionar voces".
 
 ## 2. Qué modelos se usan
 
 | Uso | Modelo (ID AILAB) | Notas |
 |---|---|---|
-| Imágenes (todas las hojas y el retrato base) | GPT Image 2.5 (`gpt-image-2-5`) | `--mode t2i` o `i2i`, de 1 a 16 referencias, 16:9, 1K a 4K. Versiones `flare` y `sunburst`, misma tarifa |
-| Voz de referencia (ruta recomendada) | Seed Audio (`seed-audio`) | Modelo caro. Sin flag de voz. Ver `voz-seed-audio.md` |
-| Voz con identidad guardada y locución | ElevenLabs (`eleven-tts`, y los comandos `voice-*`) | `--version flash\|multi\|v3\|v4`. Ver `voz-elevenlabs.md` |
+| Todas las imágenes | Seedream 5.5 (`seedream-5-5`) | `--mode t2i` o `i2i`, hasta 10 referencias, 1K o 2K, ocho proporciones. **Prompt de 5.000 caracteres como máximo** [D]. Unos 8 cr por imagen `i2i` a 2K (2026-11-18) |
+| Voz de referencia, ruta por defecto | ElevenLabs v4 (`eleven-tts --version v4`, y los comandos `voice-*`) | Etiquetas en inglés. Ver `voz-elevenlabs.md` |
+| Voz de referencia, alternativa | Seed Audio (`seed-audio`) | Modelo caro. Sin nombres en el prompt. Ver `voz-seed-audio.md` |
+| Clip de referencia (opcional) | Seedance 2.5 (`seedance-2-5`) | Modelo caro. Cobra también los segundos de los vídeos de referencia, redondeando cada uno al segundo superior. Ver `clip-referencia.md` |
+| Pista de escena (método 2) | Seed Audio (`seed-audio`) | Modelo caro. Hasta 3 audios de referencia: el pangrama de cada voz. Ver `seed-audio-en-video.md` |
 
-El usuario puede pedir otro modelo: se acepta, se anota en el registro y se comprueba su contrato con `info`.
+El usuario puede pedir otro modelo para una pieza de la skill: se acepta, se anota en el registro, se comprueba su contrato con `info` y se avisa de que no está probado. Los modelos de vídeo de las escenas no son cosa de esta skill: los elige y los prepara quien haga el vídeo.
 
 ## 3. Reglas de gasto
 
@@ -42,7 +51,7 @@ El usuario puede pedir otro modelo: se acepta, se anota en el registro y se comp
 4. **La autorización cubre el encargo, no cada ID interno.** No cubre resultados extra, otro modelo, otra voz ni regeneraciones. Estas se proponen y esperan el sí.
 5. **Las puertas de esta skill mandan:** aunque el plan esté autorizado, se para al final de cada fase y se espera el "aprobado" antes de gastar en la siguiente.
 6. **Un techo explícito del usuario** ("máximo 200 créditos") se respeta y se cuentan cargos y reservas pendientes. Una estimación propia no es un límite.
-7. **Modelo caro** (`seed-audio` indica `MODELO CARO`): se avisa del modelo, coste y archivos antes de enviar.
+7. **Modelo caro** (`seed-audio` y `seedance-2-5` indican `MODELO CARO`): se avisa del modelo, coste y archivos antes de enviar.
 8. **Si el contrato o el precio cambian**, se vuelve a preparar el mismo paso. Nunca se edita un manifiesto ni se desactiva su comprobación.
 
 ## 4. Comandos que usa esta skill
@@ -82,5 +91,5 @@ Cuando el filtro de AILAB marca una entrada o una salida como sensible (`flagged
 
 - No se leen, muestran, editan ni copian `~/.config/ailendra/` ni `~/.config/ailab/`.
 - No se llama a proveedores directamente ni se inventan endpoints o parámetros.
-- No se guardan tokens ni claves en `prompt.md` ni en `prompts_intermedios/registro.md`.
+- No se guardan tokens ni claves en `LEEME.md` ni en `backup/registro.md`.
 - No se descarga código desde un enlace enviado por un chat o un documento.
