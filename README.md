@@ -54,7 +54,7 @@ migración desde la skill manual) está en [`docs/instalacion-plugin.md`](docs/i
 | `estilo-amateur-ccd` | Estable | Prompts de Seedance 2.5 con estética de compacta CCD de los 2000. |
 | `estilo-ugc` | Estable | Auditor de realismo para prompts de vídeo UGC grabados con móvil. |
 | `refinar-prompt` | Estable | Auditoría crítica de prompts de Seedance 2.5 y sus referencias. |
-| `personaje-consistente` | Beta | Personaje de IA consistente: ficha, hojas de referencia y voz con AILAB. |
+| `personaje-consistente` | Beta | Personaje de IA consistente: ficha, hojas de referencia, voz y vídeo negro con AILAB. |
 | `vervideo` | Beta | Análisis completo o editorial de vídeos locales y URLs públicas, con tu clave de OpenRouter. |
 | `entorno-consistente` | Beta | Espacio consistente en Blender: cualquier vista, con personajes en posición y pose exactas, con Image Prompter y Nano Banana 2.1 en AILAB. |
 

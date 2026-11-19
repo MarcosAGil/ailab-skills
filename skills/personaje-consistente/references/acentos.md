@@ -14,7 +14,7 @@ Niveles de confianza: **[D]** documentado, **[H]** heurística razonada, **[?]**
 
 | Ruta | Cómo se pide el acento | Confianza |
 |---|---|---|
-| **Seed Audio** | En la línea `Voice (<Nombre>): ... español de España, acento castellano ...`, **repetido** en cada `[DIAL]` y en `[ETIQUETA]` | Español: experimental **[D]**. Otros idiomas y acentos: **[?]** |
+| **Seed Audio** | En la línea `Voice (Man)` o `Voice (Woman)`, sin nombre: `... español de España, acento castellano ...`, **repetido** en cada `[DIAL]` y en `[ETIQUETA]` | Español: experimental **[D]**. Otros idiomas y acentos: **[?]** |
 | **ElevenLabs, diseñar una voz** | En la **primera frase** del prompt de diseño: `Native <language>, <regional dialect>.` La palabra `accent` solo para un dialecto regional real; la melodía y el énfasis se describen con `intonation`, `emphasis` o `delivery` | **[D]** como método; el resultado depende del modelo |
 | **ElevenLabs, voz existente (biblioteca o propia)** | El acento lo da **la voz**. No se añaden etiquetas de acento por defecto. Si hay un problema de acento y el usuario acepta probar, un tag de acento es un refuerzo **experimental** | **[D]** |
 | **ElevenLabs, clon** | El acento sale de la grabación. Se elige una grabación con el acento deseado | **[D]** |
@@ -35,7 +35,7 @@ Son ejemplos de redacción para el prompt, **no probados salvo donde se indique*
 | Inglés británico | `Native English, British English as spoken in England.` **[?]** | `British English, southern England accent` **[?]** |
 | Inglés estadounidense | `Native English, American English as spoken in the United States.` **[?]** | `American English, general American accent` **[?]** |
 
-El autor ha usado en prompts de vídeo el castellano, el andaluz y el inglés con acento australiano para el diálogo de Seedance 2.5, pero eso **no valida** estas redacciones en Seed Audio ni en el diseño de ElevenLabs.
+Que un acento funcione en el diálogo de un modelo de vídeo **no valida** estas redacciones en Seed Audio ni en el diseño de ElevenLabs: se prueban y se escuchan.
 
 ## 4. Cómo probar un acento
 
@@ -43,7 +43,7 @@ El autor ha usado en prompts de vídeo el castellano, el andaluz y el inglés co
 2. Si el acento no sale, se cambia **una sola variable**: la palabra del dialecto, su posición, o el nivel de detalle. No se acumulan descriptores.
 3. Con ElevenLabs diseño, se puede subir el realismo del acento describiendo `intonation` y `delivery`, no con más adjetivos de acento.
 4. Con voz de biblioteca, se busca una voz que ya tenga el acento (`voices eleven --language es --search ...`) antes de forzarlo con texto.
-5. Lo que funcione se anota en `prompt.md (sección 6)` con el prompt exacto, para reproducirlo.
+5. Lo que funcione se anota en `backup/registro.md` con el prompt exacto, para reproducirlo.
 6. Si no sale tras unos intentos, se dice con honestidad y se ofrece otra ruta (otra voz de biblioteca, una grabación para clonar).
 
 ## 5. Dos voces en una toma

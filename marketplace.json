@@ -130,16 +130,17 @@
       "id": "personaje-consistente",
       "category": "Creación",
       "icon": "workflow",
-      "summary": "Crea un personaje de IA y mantén su aspecto, su voz y su forma de actuar entre vídeos, con su ficha y sus hojas de referencia.",
+      "summary": "Crea un personaje de IA y mantén su aspecto, su voz y su forma de actuar entre vídeos, con su ficha, sus hojas de referencia y su vídeo de voz.",
       "features": [
-        "Ficha del personaje en una carpeta local",
-        "Hojas de rostro, cuerpo, outfit y producto con AILAB",
-        "Voz de referencia con Seed Audio o ElevenLabs"
+        "Ficha y guía de uso (LEEME.md) en una carpeta con su nombre",
+        "Hojas con Seedream 5.5: rostro 3x3, 3 paneles por outfit, producto y escala",
+        "Voz por pangrama (ElevenLabs v4 o Seed Audio) o pista completa de una escena con Seed Audio",
+        "Vídeo negro de segundos enteros y, si lo pides, clip de referencia con Seedance 2.5"
       ],
       "requirements": [
         "Plugin de AILAB y créditos para generar de forma automática",
         "Sin AILAB funciona en modo solo prompts",
-        "FFmpeg y FFprobe opcionales para el audio"
+        "FFmpeg y FFprobe para el audio y el vídeo negro"
       ],
       "billing": "La skill es gratuita. Cada hoja y cada voz que generes con AILAB usa tus créditos; se detiene en cada fase y pide tu aprobación antes de gastar.",
       "setup": "Instala antes el plugin de AILAB (ficha AILAB) y luego esta skill con el comando de la ficha. Abre una conversación nueva e invoca $personaje-consistente.",
@@ -148,7 +149,7 @@
         "ailab",
         "personaje-consistente"
       ],
-      "workflow": "Redacta la ficha, genera las hojas de referencia y la voz con AILAB y te las devuelve listas para usar en una escena. Para tras cada fase y espera tu aprobación. No genera vídeo ni guion y no publica."
+      "workflow": "Redacta la ficha, genera las hojas de referencia y la voz con AILAB, monta el vídeo negro y te lo deja todo listo para usar en una escena. Para tras cada fase y espera tu aprobación. No escribe guiones ni prompts de vídeo de escenas y no publica."
     },
     {
       "id": "vervideo",

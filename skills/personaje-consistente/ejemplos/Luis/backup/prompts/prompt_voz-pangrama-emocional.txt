@@ -1,0 +1,13 @@
+15-sec expressive storytelling scene, natural room acoustic, voice-forward mix with rich dynamic range, no background music.
+
+[AESTHETIC]
+- Texture: clean room acoustic, warm intimate voice-forward dynamic range.
+- Environment: quiet interior room, subtle ambient warmth.
+- Voice (Man): hombre de 30 años, español de España, acento castellano, tono seguro de sí mismo, juguetón, muy expresivo y dinámico.
+- Palette: soft breath dynamics, subtle vocal posture changes.
+
+[EXECUTION]
+[AMBI] Quiet interior ambience -> [DIAL] Man (curious, confident, español de España): "[curious] Benjamín pidió una bebida de kiwi y fresa... [mischievously] Noé, sin vergüenza, [laughs softly] la más exquisita champaña del menú." -> [EVENT] Soft breath shift.
+[DIAL] Man (expressive, dynamic, español de España): "[whispers] El pingüino Wenceslao... [gasps] ¡hizo kilómetros! [shouting] ¡Bajo exhaustiva lluvia y frío! [sighs] Añoraba a su querido cachorro." -> [TRANS] Natural vocal decay into quiet room ambience.
+
+[ETIQUETA: español de España, una sola voz masculina, sin narrador, sin música, duración exacta 15.0s]

@@ -4,13 +4,13 @@ Basada en el conocimiento del Audio Prompter de Ailendra Labs (ElevenLabs verifi
 
 Niveles de confianza: **[D]** documentado, **[H]** heurística razonada, **[?]** hipótesis por validar.
 
-## 1. Cuándo ElevenLabs en lugar de Seed Audio
+## 1. Cuándo ElevenLabs y cuándo Seed Audio
 
 - Se quiere una **voz con identidad guardada** en AILAB, reutilizable con el mismo identificador.
 - Se quiere **locución limpia** de un guion con control de interpretación, no una escena sonora.
 - Se dispone de una grabación **autorizada** para clonar.
 
-Seed Audio sigue siendo la ruta recomendada por defecto (ver `voz-seed-audio.md`).
+**ElevenLabs v4 con etiquetas es la ruta por defecto** para la voz de referencia **[H]**: todavía no se ha probado con un personaje completo (Luis se hizo con Seed Audio). Seed Audio es la alternativa probada (ver `voz-seed-audio.md`).
 
 ## 2. Antes de crear una voz: avisar al usuario
 
@@ -49,10 +49,10 @@ Flujo de comandos **[D]** (la skill `ailab` los documenta; se consulta `AILAB vo
 ```bash
 AILAB voice-options
 AILAB voice-list
-AILAB voice-prepare design --description-file "$P/prompts_intermedios/generaciones/descripcion.txt" --text-file "$P/prompts_intermedios/generaciones/texto-de-prueba.txt"
+AILAB voice-prepare design --description-file "$D/voz_descripcion.txt" --text-file "$D/voz_texto-de-prueba.txt"
 AILAB voice-submit <manifest_id> --confirmed
 AILAB voice-status <manifest_id>
-AILAB voice-samples <manifest_id> --output "$P/prompts_intermedios/generaciones/"
+AILAB voice-samples <manifest_id> --output "$D/"
 ```
 
 - El **texto de prueba** debe tener entre 100 y 1.000 caracteres, representar la personalidad del personaje y no contradecir la descripción. Se aprueba con el usuario.
@@ -94,10 +94,12 @@ AILAB voice-select <voice_id> --owner <public_owner_id> --name "<nombre>" --conf
 
 ## 6. Generar audio con la voz
 
+**Voz de referencia del personaje:** el texto es siempre el **pangrama** (`voz-pangrama.md`): en modo natural sin etiquetas, o en modo de rango emocional con una etiqueta por trozo. Después del envío, el original va a `backup/fuentes/voz-pangrama-<modo>_original.<ext>` y se pasa por el medidor de volumen y la duración exacta (`volumen-y-video-negro.md`) antes de aprobarlo.
+
 ```bash
 AILAB info eleven-tts
-AILAB prepare eleven-tts --version v4 --text "$(cat "$P/prompts_intermedios/generaciones/frase.txt")" --private_voice_id <id_ailab>
-AILAB submit <manifest_id_real> --confirmed --output "$P/prompts_intermedios/generaciones/"
+AILAB prepare eleven-tts --version v4 --text "$(cat "$D/voz-pangrama-<modo>_v1.txt")" --private_voice_id <id_ailab>
+AILAB submit <manifest_id_real> --confirmed --output "$D/"
 ```
 
 - **Voz privada propia:** `--private_voice_id <id_ailab>`. **Voz de biblioteca:** `--voice_id <id>`. Nunca los dos, y no se usa el ID privado como `voice_id`. La voz debe estar activa, vigente y ofrecer `tts:v4`.
@@ -121,7 +123,7 @@ Según el contrato de v4 de AILAB, el **diálogo con varias voces**, Turbo y la 
 
 ## 8. Qué se guarda
 
-En la sección 6 de `prompt.md`:
+En `backup/registro.md` (y la descripción de la voz en la sección 2 de `LEEME.md`):
 - La ruta (diseño, clonación o biblioteca), la referencia AILAB de la voz (no un token) y su vigencia y conservación.
 - La descripción del diseño o el origen de la voz de biblioteca.
 - El archivo de audio de muestra aprobado.
