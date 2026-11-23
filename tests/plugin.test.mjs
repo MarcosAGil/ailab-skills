@@ -94,12 +94,14 @@ test('los marketplaces de Claude Code y Codex apuntan al plugin y no repiten la 
   const codex = read('.agents', 'plugins', 'marketplace.json');
   assert.equal(claude.name, 'ailendra-labs');
   assert.equal(codex.name, 'ailendra-labs');
-  assert.equal(claude.plugins.length, 1);
-  assert.equal(codex.plugins.length, 1);
+  assert.deepEqual(claude.plugins.map((plugin) => plugin.name), ['ailab', 'ailab-v2'], 'ailab primero y sin cambios; ailab-v2 es el segundo plugin');
+  assert.deepEqual(codex.plugins.map((plugin) => plugin.name), ['ailab', 'ailab-v2']);
   const manifest = read('plugins', 'ailab', '.claude-plugin', 'plugin.json');
   assert.equal(claude.plugins[0].name, manifest.name);
   assert.equal(codex.plugins[0].name, manifest.name);
   assert.equal(claude.plugins[0].source, './plugins/ailab');
+  assert.equal(claude.plugins[1].source, './plugins/ailab-v2');
+  assert.deepEqual(codex.plugins[1].source, { source: 'local', path: './plugins/ailab-v2' });
   assert.deepEqual(codex.plugins[0].source, { source: 'local', path: './plugins/ailab' });
   assert.equal('version' in claude.plugins[0], false, 'la version solo va en plugin.json');
   assert.deepEqual(codex.plugins[0].policy, { installation: 'AVAILABLE', authentication: 'ON_INSTALL' });

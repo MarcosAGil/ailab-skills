@@ -1,0 +1,11 @@
+{
+  "name": "ailab-v2-skill",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AILAB V2 desde agentes de código: generar, recuperar y trabajar con Proyectos.",
+  "scripts": {
+    "self-test": "node scripts/ailab.mjs self-test"
+  },
+  "engines": { "node": ">=18.17" }
+}

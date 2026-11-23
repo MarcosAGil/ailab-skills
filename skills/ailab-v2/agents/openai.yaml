@@ -1,0 +1,8 @@
+interface:
+  display_name: "AILAB V2"
+  short_description: "Genera con AILAB V2 y organízalo en Proyectos"
+  brand_color: "#1296DB"
+  default_prompt: "Usa $ailab-v2 para preparar esta creación, mostrarme el proyecto y el coste y esperar mi confirmación antes de gastar créditos."
+
+policy:
+  allow_implicit_invocation: true

@@ -14,6 +14,13 @@
       "description": "Genera imagen, vídeo, voz, audio, música y más con AILAB desde Claude Code o Codex, con tu cuenta y tus créditos. Los modelos, los precios y las mejoras llegan solos desde el servidor.",
       "category": "creativity",
       "homepage": "https://ailendra.com/ailab/"
+    },
+    {
+      "name": "ailab-v2",
+      "source": "./plugins/ailab-v2",
+      "description": "Genera imagen, vídeo, voz, audio y más con AILAB V2, la plataforma nueva (ailab.ailendra.com), desde Claude Code o Codex, con tu cuenta y tus créditos. Trabaja con Proyectos compartidos con la web. Solo para cuentas ya trasladadas a AILAB V2: si sigues en la AILAB anterior, usa el plugin ailab.",
+      "category": "creativity",
+      "homepage": "https://ailab.ailendra.com/"
     }
   ]
 }

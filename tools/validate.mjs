@@ -14,7 +14,12 @@ const SECRET_PATTERNS = [
   /\bAIza[0-9A-Za-z_-]{20,}\b/,
   /\bsk-[A-Za-z0-9_-]{20,}\b/,
   /\bailp_[A-Za-z0-9_-]{40,80}\b/,
+  /\bailab_dt_[A-Za-z0-9_-]{43}/,
 ];
+
+// Skills que solo viajan dentro de un plugin: no estan en registry.json ni en marketplace.json, asi que
+// la web de AILAB no las lista ni las empaqueta. Se validan igual que las demas.
+const PLUGIN_ONLY_SKILLS = ['ailab-v2'];
 
 function fail(message) {
   throw new Error(message);
@@ -142,6 +147,11 @@ export function validateRepository() {
     ids.add(skill.id);
     results.push({ id: skill.id, ...validateSkill(skill) });
   }
+  for (const id of PLUGIN_ONLY_SKILLS) {
+    if (ids.has(id)) fail(`${id} es solo del plugin: no debe estar en registry.json.`);
+    const pkg = readJson(`skills/${id}/package.json`);
+    results.push({ id, version: pkg.version, ...validateSkill({ id, version: pkg.version, channel: 'beta', path: `skills/${id}` }) });
+  }
   const marketplace = readJson('marketplace.json');
   if (marketplace.schema_version !== 1 || !Array.isArray(marketplace.skills)
     || marketplace.skills.length !== registry.skills.length) fail('marketplace.json no coincide con registry.json.');
@@ -165,7 +175,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     const result = validateRepository();
     for (const skill of result.results) {
-      process.stdout.write(`${skill.id} ${result.registry.skills.find((item) => item.id === skill.id).version}: ${skill.files} archivos · ${skill.bytes} bytes\n`);
+      process.stdout.write(`${skill.id} ${skill.version || result.registry.skills.find((item) => item.id === skill.id).version}: ${skill.files} archivos · ${skill.bytes} bytes\n`);
     }
     process.stdout.write('Repositorio AILAB Skills válido.\n');
   } catch (error) {
