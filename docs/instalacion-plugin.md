@@ -211,3 +211,24 @@ ejecuta `logout` y revoca el dispositivo desde tu cuenta de AILAB.
 | «El sandbox de Codex impide que AILAB funcione» | Aplica el ajuste de la sección del sandbox. |
 | `guide` no existe | El runtime es anterior a 2.3.13: `node <ruta>/scripts/ailab.mjs update --confirmed`. |
 | No hay sesión | `login` en tu terminal (paso 4). |
+
+## AILAB V2: el segundo plugin (plataforma nueva)
+
+`ailab-v2` es un plugin distinto de `ailab`, para las cuentas que ya están en la plataforma nueva
+(`https://ailab.ailendra.com/`). Puedes tener los dos instalados: no comparten nada.
+
+| | `ailab` | `ailab-v2` |
+|---|---|---|
+| Plataforma | AILAB anterior (`ailendra.com/ailab`) | AILAB V2 (`ailab.ailendra.com`) |
+| Skill | `ailab` | `ailab-v2` |
+| Estado y credencial | `~/.config/ailab` y `~/.config/ailendra` | `~/.config/ailab-v2` |
+| Inicio de sesión | token personal | `login`: un código que apruebas en la web |
+
+```bash
+claude plugin marketplace add MarcosAGil/ailab-skills
+claude plugin install ailab-v2@ailendra-labs
+claude plugin update ailab-v2@ailendra-labs   # para actualizar
+```
+
+En Codex: `codex plugin add ailab-v2@ailendra-labs`. Después, en tu terminal, `login` y `doctor` con la
+ruta de la skill `ailab-v2` (no la de `ailab`). Actualizar el marketplace no cambia el plugin `ailab`.

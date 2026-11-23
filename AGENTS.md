@@ -15,7 +15,11 @@ Esta guía resume solo lo que ocurre dentro de este repositorio.
 - `skills/ailab/`: la skill y su runtime. `SKILL.md`, `references/`, `catalog/catalog.json`, `package.json`.
   - Arranque (no se actualiza solo): `scripts/ailab.mjs`, `scripts/lib/updater.mjs`, `config.mjs`, `environment.mjs`.
   - Runtime (se publica firmado y se actualiza solo): `scripts/pg.mjs`, `scripts/lib/*.mjs`, `scripts/adapters/*.mjs`.
-- `plugins/ailab/`: GENERADO por `tools/build-plugin.mjs`. No se edita a mano (`--check` falla si difiere).
+- `plugins/ailab/`: GENERADO por `tools/build-plugin.mjs` desde `skills/ailab/`. No se edita a mano (`--check` falla si difiere).
+- `skills/ailab-v2/` y `plugins/ailab-v2/`: el plugin «AILAB V2» (CLI 3.x contra la plataforma nueva). Segundo plugin del mismo
+  marketplace; `plugins/ailab-v2/` se genera igual con `tools/build-plugin.mjs`. `skills/ailab-v2` NO está en `registry.json` ni en
+  `marketplace.json` (la web de AILAB no lo lista ni lo empaqueta) y `tools/validate.mjs` lo valida aparte (`PLUGIN_ONLY_SKILLS`).
+  No toca `plugins/ailab`: otro nombre de skill, otro estado (`~/.config/ailab-v2`, `AILAB_V2_HOME`), sin variables ni carpetas de la 2.x.
 - `registry.json` y `marketplace.json`: índice de skills y fichas de la web. `.claude-plugin/` y `.agents/plugins/`: marketplaces.
 - `tools/`: `validate.mjs`, `test.mjs`, `build-plugin.mjs`, `package.mjs`, `install.mjs`, `migrate-to-plugin.mjs`.
 - `tests/`: pruebas `*.test.mjs` (se ejecutan en serie). `tests/helpers/` tiene generadores de archivos reales y el

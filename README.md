@@ -45,6 +45,17 @@ Abre una sesión nueva, ejecuta `login` y `doctor` en tu terminal y pide al agen
 algo con AILAB. La guía completa (macOS, Linux, Windows, sandbox de Codex, actualización y
 migración desde la skill manual) está en [`docs/instalacion-plugin.md`](docs/instalacion-plugin.md).
 
+### AILAB V2 (plataforma nueva)
+
+`ailab-v2` es un plugin aparte, para las cuentas ya trasladadas a la plataforma nueva
+(`https://ailab.ailendra.com/`). Convive con `ailab`: otra skill, otra credencial y otro estado
+(`~/.config/ailab-v2`). Si tu cuenta sigue en la AILAB anterior, instala `ailab`.
+
+```bash
+claude plugin marketplace add MarcosAGil/ailab-skills
+claude plugin install ailab-v2@ailendra-labs
+```
+
 ## Skills disponibles
 
 | Skill | Estado | Descripción |

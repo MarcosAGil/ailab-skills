@@ -1,0 +1,25 @@
+{
+  "name": "ailab-v2",
+  "displayName": "AILAB V2",
+  "version": "3.0.0",
+  "description": "Genera imagen, vídeo, voz, audio y más con AILAB V2, la plataforma nueva (ailab.ailendra.com), desde Claude Code o Codex, con tu cuenta y tus créditos. Trabaja con Proyectos compartidos con la web. Solo para cuentas ya trasladadas a AILAB V2: si sigues en la AILAB anterior, usa el plugin ailab.",
+  "author": {
+    "name": "Ailendra Labs",
+    "url": "https://ailendra.com"
+  },
+  "homepage": "https://ailab.ailendra.com/",
+  "repository": "https://github.com/MarcosAGil/ailab-skills",
+  "license": "MIT",
+  "keywords": [
+    "ailab",
+    "ailendra",
+    "ia-generativa",
+    "imagen",
+    "video",
+    "audio",
+    "voz",
+    "musica"
+  ],
+  "icon": "./assets/ailab-logo.png",
+  "skills": "./skills/"
+}

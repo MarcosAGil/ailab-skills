@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Regenera los PNG de marca del plugin (logo 512x512 e icono del compositor 256x256) a
+// Regenera los PNG de marca de los plugins (logo 512x512 e icono del compositor 256x256) a
 // partir del logo cuadrado de Ailendra Labs (`branding/aill-logo.png`, 1000x1000).
 // Herramienta de desarrollo: usa `sips` (macOS) o, si no existe, `ffmpeg`. Los PNG
 // resultantes se versionan; el CI no la ejecuta.
@@ -11,7 +11,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUTPUT = path.join(ROOT, 'plugins', 'ailab', 'assets');
+// Los dos plugins comparten el mismo logo; plugins/ailab no cambia con ello.
+const OUTPUTS = ['ailab', 'ailab-v2'].map((name) => path.join(ROOT, 'plugins', name, 'assets'));
 const DEFAULT_SOURCE = path.join(ROOT, 'branding', 'aill-logo.png');
 
 const source = path.resolve(process.argv[2] || DEFAULT_SOURCE);
@@ -31,8 +32,10 @@ function resize(size, target) {
   if (result.error || result.status !== 0) throw new Error('No se pudo redimensionar el logo: ' + (result.stderr || result.error?.message));
 }
 
-fs.mkdirSync(OUTPUT, { recursive: true });
-for (const [name, size] of [['ailab-logo.png', 512], ['ailab-composer-icon.png', 256]]) {
-  resize(size, path.join(OUTPUT, name));
-  process.stdout.write('plugins/ailab/assets/' + name + ' (' + size + 'x' + size + ')\n');
+for (const output of OUTPUTS) {
+  fs.mkdirSync(output, { recursive: true });
+  for (const [name, size] of [['ailab-logo.png', 512], ['ailab-composer-icon.png', 256]]) {
+    resize(size, path.join(output, name));
+    process.stdout.write(path.relative(ROOT, path.join(output, name)) + ' (' + size + 'x' + size + ')\n');
+  }
 }
